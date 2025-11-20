@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeetingsNoteAI - Générateur de Comptes-Rendus</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Bibliothèque pour lire les fichiers .docx -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 MeetingsNoteAI</h1>
+            <p class="subtitle">Générez automatiquement vos comptes-rendus de réunion</p>
+        </header>
+
+        <main>
+            <!-- Section Configuration API -->
+            <section class="card">
+                <h2>🔑 Configuration API</h2>
+                <div class="input-group">
+                    <label for="apiKey">Clé API :</label>
+                    <input type="password" id="apiKey" placeholder="Entrez votre clé API / Bearer" />
+                </div>
+                <div class="input-group">
+                    <label for="apiEndpoint">URL de l'API :</label>
+                    <input type="text" id="apiEndpoint" placeholder="https://openai.com/api/v1" value="https://openai.com/api/v1" />
+                </div>
+                <div class="input-group">
+                    <label for="modelName">Modèle :</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="modelName" style="flex-grow: 1; cursor: pointer;">
+                            <option value="standard" selected>Standard</option>
+                        </select>
+                        <button id="refreshModelsBtn" class="btn btn-secondary" style="padding: 12px; width: 52px; display: flex; align-items: center; justify-content: center;" title="Rafraîchir la liste">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section Chargement des Fichiers -->
+            <section class="card">
+                <h2>📂 Chargement des Fichiers</h2>
+                <div class="file-upload-section">
+                    <div class="file-input-wrapper">
+                        <span class="file-label">👥 Participants (.csv/.txt) :</span>
+                        <label for="participantsFile" class="drop-zone" id="participantsDropZone">
+                            <div class="drop-zone-icon">👥</div>
+                            <div class="drop-zone-text">Glissez-déposez votre fichier ici<br>ou cliquez pour parcourir</div>
+                            <input type="file" id="participantsFile" accept=".csv,.txt" />
+                        </label>
+                        <div id="participantsPreview" class="file-preview"></div>
+                    </div>
+                    
+                    <div class="file-input-wrapper">
+                        <span class="file-label">💬 Transcript (.docx/.txt) :</span>
+                        <label for="transcriptFile" class="drop-zone" id="transcriptDropZone">
+                            <div class="drop-zone-icon">📄</div>
+                            <div class="drop-zone-text">Glissez-déposez votre fichier ici<br>ou cliquez pour parcourir</div>
+                            <input type="file" id="transcriptFile" accept=".docx,.txt" />
+                        </label>
+                        <div id="transcriptPreview" class="file-preview"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section Prompt Customisé -->
+            <section class="card">
+                <h2>✍️ Prompt pour l'IA</h2>
+                <textarea id="customPrompt" rows="8" placeholder="Le prompt sera généré automatiquement...">Tu es un assistant expert en rédaction de comptes-rendus de réunion professionnels.
+
+À partir des informations fournies, tu dois rédiger un compte-rendu clair, structuré et synthétique.
+
+Instructions :
+1. Commence par lister les participants de la réunion
+2. Fais une introduction brève du contexte
+3. Organise les points discutés de manière logique avec des sections claires
+4. Pour chaque point important, indique :
+   - Le sujet abordé
+   - Les décisions prises
+   - Les actions à mener (avec responsables si mentionnés)
+5. Termine par une conclusion et les prochaines étapes
+
+Format attendu :
+- Utilise des titres et sous-titres
+- Sois concis mais complet
+- Utilise des puces pour les listes
+- Mets en évidence les décisions et actions importantes
+
+Participants :
+{PARTICIPANTS}
+
+Transcript de la réunion :
+{TRANSCRIPT}</textarea>
+                <button id="generateBtn" class="btn btn-primary">🚀 Générer le Compte-Rendu</button>
+            </section>
+
+            <!-- Section Résultat -->
+            <section class="card" id="resultSection" style="display: none;">
+                <h2>📄 Compte-Rendu Généré</h2>
+                <div id="result" class="result-text"></div>
+                <div class="action-buttons">
+                    <button id="copyBtn" class="btn btn-secondary">📋 Copier</button>
+                    <button id="feedbackBtn" class="btn btn-secondary">💭 Donner un Retour</button>
+                </div>
+            </section>
+
+            <!-- Section Feedback -->
+            <section class="card" id="feedbackSection" style="display: none;">
+                <h2>💬 Retour à l'IA</h2>
+                <textarea id="feedbackText" rows="4" placeholder="Décrivez les modifications souhaitées..."></textarea>
+                <button id="regenerateBtn" class="btn btn-primary">🔄 Regénérer</button>
+            </section>
+
+            <!-- Section de Chargement -->
+            <div id="loadingSection" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+                <p>Génération en cours...</p>
+            </div>
+        </main>
+
+        <footer>
+            <p>MeetingsNoteAI - Propulsé par l'IA 🤖</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
