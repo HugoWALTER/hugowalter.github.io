@@ -401,15 +401,6 @@ function cleanAIResponse(content) {
     return content.replace(/<details type="reasoning"[^>]*>[\s\S]*?<\/details>\s*/gi, '').trim();
 }
 
-// Générer un UUID v4
-function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
-        const v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
-
 // Afficher le résultat
 function displayResult(text) {
     lastGeneratedText = text;
@@ -510,14 +501,22 @@ modelNameInput.addEventListener('change', () => {
     }
 });
 
+customPrompt.addEventListener('blur', () => {
+    if (customPrompt.value.trim()) {
+        localStorage.setItem('meetingsNoteAI_customPrompt', customPrompt.value.trim());
+    }
+});
+
 // Charger les valeurs sauvegardées au démarrage
 window.addEventListener('load', () => {
     const savedApiKey = localStorage.getItem('meetingsNoteAI_apiKey');
     const savedApiEndpoint = localStorage.getItem('meetingsNoteAI_apiEndpoint');
+    const savedCustomPrompt = localStorage.getItem('meetingsNoteAI_customPrompt');
     // Le modèle sera restauré après le fetchModels
     
     if (savedApiKey) apiKeyInput.value = savedApiKey;
     if (savedApiEndpoint) apiEndpointInput.value = savedApiEndpoint;
+    if (savedCustomPrompt) customPrompt.value = savedCustomPrompt;
     
     checkInputs();
 
