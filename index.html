@@ -69,32 +69,13 @@
 
             <!-- Section Prompt Customisé -->
             <section class="card">
-                <h2>✍️ Prompt pour l'IA</h2>
-                <textarea id="customPrompt" rows="8" placeholder="Le prompt sera généré automatiquement...">Tu es un assistant expert en rédaction de comptes-rendus de réunion professionnels.
-
-À partir des informations fournies, tu dois rédiger un compte-rendu clair, structuré et synthétique.
-
-Instructions :
-1. Commence par lister les participants de la réunion
-2. Fais une introduction brève du contexte
-3. Organise les points discutés de manière logique avec des sections claires
-4. Pour chaque point important, indique :
-   - Le sujet abordé
-   - Les décisions prises
-   - Les actions à mener (avec responsables si mentionnés)
-5. Termine par une conclusion et les prochaines étapes
-
-Format attendu :
-- Utilise des titres et sous-titres
-- Sois concis mais complet
-- Utilise des puces pour les listes
-- Mets en évidence les décisions et actions importantes
-
-Participants :
-{PARTICIPANTS}
-
-Transcript de la réunion :
-{TRANSCRIPT}</textarea>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 style="margin: 0;">✍️ Prompt pour l'IA</h2>
+                    <button id="resetPromptBtn" class="btn btn-secondary" style="padding: 8px 15px; font-size: 0.9rem;" title="Restaurer le prompt par défaut">
+                        ↺ Défaut
+                    </button>
+                </div>
+                <textarea id="customPrompt" rows="8" placeholder="Le prompt sera généré automatiquement..."></textarea>
                 <button id="generateBtn" class="btn btn-primary">🚀 Générer le Compte-Rendu</button>
             </section>
 

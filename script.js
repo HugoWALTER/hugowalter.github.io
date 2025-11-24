@@ -23,6 +23,33 @@ const feedbackText = document.getElementById('feedbackText');
 const regenerateBtn = document.getElementById('regenerateBtn');
 const loadingSection = document.getElementById('loadingSection');
 const refreshModelsBtn = document.getElementById('refreshModelsBtn');
+const resetPromptBtn = document.getElementById('resetPromptBtn');
+
+const DEFAULT_PROMPT = `Tu es un assistant expert en rédaction de comptes-rendus de réunion professionnels.
+
+À partir des informations fournies, tu dois rédiger un compte-rendu clair, structuré et synthétique.
+
+Instructions :
+1. Commence par lister les participants de la réunion
+2. Fais une introduction brève du contexte
+3. Organise les points discutés de manière logique avec des sections claires
+4. Pour chaque point important, indique :
+   - Le sujet abordé
+   - Les décisions prises
+   - Les actions à mener (avec responsables si mentionnés)
+5. Termine par une conclusion et les prochaines étapes
+
+Format attendu :
+- Utilise des titres et sous-titres
+- Sois concis mais complet
+- Utilise des puces pour les listes
+- Mets en évidence les décisions et actions importantes
+
+Participants :
+{PARTICIPANTS}
+
+Transcript de la réunion :
+{TRANSCRIPT}`;
 
 // Vérifier l'état des entrées pour activer/désactiver le bouton
 function checkInputs() {
@@ -174,6 +201,15 @@ function setupDragAndDrop(dropZoneId, fileInputId) {
 // Initialiser le Drag & Drop
 setupDragAndDrop('participantsDropZone', 'participantsFile');
 setupDragAndDrop('transcriptDropZone', 'transcriptFile');
+
+// Réinitialiser le prompt par défaut
+resetPromptBtn.addEventListener('click', () => {
+    if (confirm('Voulez-vous vraiment réinitialiser le prompt à sa valeur par défaut ?')) {
+        customPrompt.value = DEFAULT_PROMPT;
+        localStorage.setItem('meetingsNoteAI_customPrompt', DEFAULT_PROMPT);
+        checkInputs();
+    }
+});
 
 // Charger les fichiers
 participantsFileInput.addEventListener('change', async (e) => {
@@ -516,7 +552,11 @@ window.addEventListener('load', () => {
     
     if (savedApiKey) apiKeyInput.value = savedApiKey;
     if (savedApiEndpoint) apiEndpointInput.value = savedApiEndpoint;
-    if (savedCustomPrompt) customPrompt.value = savedCustomPrompt;
+    if (savedCustomPrompt) {
+        customPrompt.value = savedCustomPrompt;
+    } else {
+        customPrompt.value = DEFAULT_PROMPT;
+    }
     
     checkInputs();
 
