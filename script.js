@@ -455,22 +455,40 @@ function displayResult(text) {
     
     // Scroll vers le résultat
     resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Copie automatique
+    copyToClipboard(true);
 }
 
-// Copier le texte
-copyBtn.addEventListener('click', () => {
+// Fonction pour copier le texte
+function copyToClipboard(isAuto = false) {
+    if (!lastGeneratedText) return;
+
+    // Si c'est une copie automatique et que le document n'a pas le focus, on annule pour éviter l'erreur
+    if (isAuto && !document.hasFocus()) {
+        return;
+    }
+
     navigator.clipboard.writeText(lastGeneratedText).then(() => {
-        const originalText = copyBtn.textContent;
         copyBtn.textContent = '✓ Copié !';
         copyBtn.style.backgroundColor = 'var(--success-color)';
         
         setTimeout(() => {
-            copyBtn.textContent = originalText;
+            copyBtn.textContent = '📋 Copier';
             copyBtn.style.backgroundColor = '';
         }, 2000);
     }).catch(err => {
-        alert('Erreur lors de la copie: ' + err);
+        if (!isAuto) {
+            alert('Erreur lors de la copie: ' + err);
+        } else {
+            console.warn('La copie automatique a échoué (probablement bloquée par le navigateur):', err);
+        }
     });
+}
+
+// Copier le texte
+copyBtn.addEventListener('click', () => {
+    copyToClipboard(false);
 });
 
 // Afficher la section de feedback
