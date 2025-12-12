@@ -22,7 +22,10 @@
                 <h2>🔑 Configuration API</h2>
                 <div class="input-group">
                     <label for="apiKey">Clé API :</label>
-                    <input type="password" id="apiKey" placeholder="Entrez votre clé API / Bearer" />
+                    <div class="password-wrapper">
+                        <input type="password" id="apiKey" placeholder="Entrez votre clé API / Bearer" />
+                        <button type="button" id="toggleApiKeyBtn" class="toggle-password" title="Afficher/Masquer">👁️</button>
+                    </div>
                 </div>
                 <div class="input-group">
                     <label for="apiEndpoint">URL de l'API :</label>

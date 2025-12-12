@@ -24,6 +24,7 @@ const regenerateBtn = document.getElementById('regenerateBtn');
 const loadingSection = document.getElementById('loadingSection');
 const refreshModelsBtn = document.getElementById('refreshModelsBtn');
 const resetPromptBtn = document.getElementById('resetPromptBtn');
+const toggleApiKeyBtn = document.getElementById('toggleApiKeyBtn');
 
 const DEFAULT_PROMPT = `Tu es un assistant expert en rédaction de comptes-rendus de réunion professionnels.
 
@@ -209,6 +210,13 @@ resetPromptBtn.addEventListener('click', () => {
         localStorage.setItem('meetingsNoteAI_customPrompt', DEFAULT_PROMPT);
         checkInputs();
     }
+});
+
+// Toggle visibility API Key
+toggleApiKeyBtn.addEventListener('click', () => {
+    const type = apiKeyInput.getAttribute('type') === 'password' ? 'text' : 'password';
+    apiKeyInput.setAttribute('type', type);
+    toggleApiKeyBtn.textContent = type === 'password' ? '👁️' : '🙈';
 });
 
 // Charger les fichiers
