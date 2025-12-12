@@ -287,6 +287,8 @@ textarea:focus {
     margin-top: 20px;
     display: flex;
     gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 /* Result Section */

@@ -17,6 +17,7 @@ const generateBtn = document.getElementById('generateBtn');
 const resultSection = document.getElementById('resultSection');
 const resultDiv = document.getElementById('result');
 const copyBtn = document.getElementById('copyBtn');
+const emailBtn = document.getElementById('emailBtn');
 const feedbackBtn = document.getElementById('feedbackBtn');
 const feedbackSection = document.getElementById('feedbackSection');
 const feedbackText = document.getElementById('feedbackText');
@@ -31,16 +32,18 @@ const DEFAULT_PROMPT = `Tu es un assistant expert en rédaction de comptes-rendu
 À partir des informations fournies, tu dois rédiger un compte-rendu clair, structuré et synthétique.
 
 Instructions :
-1. Commence par lister les participants de la réunion
-2. Fais une introduction brève du contexte
-3. Organise les points discutés de manière logique avec des sections claires
-4. Pour chaque point important, indique :
+1. Débute par un titre approprié pour le compte-rendu en commençant par l'objet de la réunion.
+2. Commence par lister les participants de la réunion
+3. Fais une introduction brève du contexte
+4. Organise les points discutés de manière logique avec des sections claires
+5. Pour chaque point important, indique :
    - Le sujet abordé
    - Les décisions prises
    - Les actions à mener (avec responsables si mentionnés)
-5. Termine par une conclusion et les prochaines étapes
+6. Termine par une conclusion et les prochaines étapes
 
 Format attendu :
+- Format texte brut .txt
 - Utilise des titres et sous-titres
 - Sois concis mais complet
 - Utilise des puces pour les listes
@@ -489,6 +492,57 @@ function copyToClipboard(isAuto = false) {
 // Copier le texte
 copyBtn.addEventListener('click', () => {
     copyToClipboard(false);
+});
+
+// Envoyer par mail
+emailBtn.addEventListener('click', () => {
+    if (!lastGeneratedText) return;
+
+    let subjectText = "Compte-rendu de réunion";
+    
+    // Extraction générique du sujet
+    // On cherche dans les premières lignes non-vides
+    const lines = lastGeneratedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    // On cherche une ligne qui ressemble à un titre (commence par #, ou Objet:, ou juste la première ligne)
+    // On privilégie les lignes avec des mots clés explicites
+    const explicitLine = lines.slice(0, 10).find(l => /^(?:objet|sujet|titre|thème|re)\s*[:\-]/i.test(l));
+    const titleLine = lines.slice(0, 5).find(l => l.startsWith('# '));
+    
+    const candidateLine = explicitLine || titleLine || lines[0];
+
+    if (candidateLine) {
+        // Nettoyage : on retire les caractères Markdown, les préfixes "Objet:", et on garde le texte brut
+        const cleanSubject = candidateLine
+            .replace(/^[#*>\-•\s]+/, '') // Retire les puces et niveaux de titre (#, ##, -, *)
+            .replace(/^(?:objet|sujet|titre|thème|re)\s*[:\-]\s*/i, '') // Retire les préfixes courants
+            .replace(/[*_`]/g, '') // Retire le gras/italique interne
+            .trim();
+
+        // Si le résultat est valide et pas trop long, on l'utilise
+        if (cleanSubject.length > 0 && cleanSubject.length < 150) {
+            subjectText = cleanSubject;
+        }
+    }
+
+    const subject = encodeURIComponent(subjectText);
+    const body = encodeURIComponent(lastGeneratedText);
+    
+    // Création du lien mailto
+    // Note: Il y a une limite de longueur pour les liens mailto selon les clients mail/navigateurs (souvent autour de 2000 caractères)
+    const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
+    
+    window.location.href = mailtoLink;
+
+    // Feedback visuel
+    const originalText = emailBtn.textContent;
+    emailBtn.textContent = '✓ Client mail ouvert !';
+    emailBtn.style.backgroundColor = 'var(--success-color)';
+    
+    setTimeout(() => {
+        emailBtn.textContent = originalText;
+        emailBtn.style.backgroundColor = '';
+    }, 2000);
 });
 
 // Afficher la section de feedback
