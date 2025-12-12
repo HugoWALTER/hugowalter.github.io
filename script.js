@@ -10,6 +10,10 @@ const apiEndpointInput = document.getElementById('apiEndpoint');
 const modelNameInput = document.getElementById('modelName');
 const participantsFileInput = document.getElementById('participantsFile');
 const transcriptFileInput = document.getElementById('transcriptFile');
+const participantsText = document.getElementById('participantsText');
+const transcriptText = document.getElementById('transcriptText');
+const clearParticipantsTextBtn = document.getElementById('clearParticipantsText');
+const clearTranscriptTextBtn = document.getElementById('clearTranscriptText');
 const participantsPreview = document.getElementById('participantsPreview');
 const transcriptPreview = document.getElementById('transcriptPreview');
 const customPrompt = document.getElementById('customPrompt');
@@ -55,13 +59,90 @@ Participants :
 Transcript de la réunion :
 {TRANSCRIPT}`;
 
+// Gestion des onglets
+function setupTabs(wrapperId) {
+    const wrapper = document.getElementById(wrapperId);
+    const tabs = wrapper.querySelectorAll('.tab-btn');
+    const modes = wrapper.querySelectorAll('.input-mode');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Activer l'onglet
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Afficher le mode correspondant
+            const target = tab.dataset.target;
+            modes.forEach(mode => {
+                if (mode.classList.contains(`mode-${target}`)) {
+                    mode.style.display = 'flex';
+                } else {
+                    mode.style.display = 'none';
+                }
+            });
+            
+            checkInputs();
+        });
+    });
+}
+
+setupTabs('participantsWrapper');
+setupTabs('transcriptWrapper');
+
+// Gestion de l'effacement du texte
+function setupTextClear(textarea, button) {
+    textarea.addEventListener('input', () => {
+        button.style.display = textarea.value.trim() ? 'block' : 'none';
+        checkInputs();
+    });
+
+    button.addEventListener('click', () => {
+        textarea.value = '';
+        button.style.display = 'none';
+        checkInputs();
+    });
+}
+
+setupTextClear(participantsText, clearParticipantsTextBtn);
+setupTextClear(transcriptText, clearTranscriptTextBtn);
+
+// Récupérer le contenu combiné (Fichier + Texte)
+function getActiveContent(wrapperId, fileContent, textInputId) {
+    // On combine le contenu du fichier et du champ texte, quel que soit l'onglet actif
+    const textContent = document.getElementById(textInputId).value.trim();
+    const parts = [];
+
+    if (fileContent && fileContent.trim()) {
+        parts.push(fileContent.trim());
+    }
+
+    if (textContent) {
+        let prefix = "INFORMATIONS COMPLÉMENTAIRES AJOUTÉES MANUELLEMENT (À PRENDRE EN COMPTE IMPÉRATIVEMENT) :\n";
+        
+        // Personnalisation du message selon le contexte
+        if (wrapperId === 'participantsWrapper') {
+            prefix = "PARTICIPANTS SUPPLÉMENTAIRES AJOUTÉS MANUELLEMENT (À FAIRE FIGURER OBLIGATOIREMENT DANS LA LISTE) :\n";
+        } else if (wrapperId === 'transcriptWrapper') {
+            prefix = "NOTES OU TRANSCRIPT SUPPLÉMENTAIRE AJOUTÉ MANUELLEMENT (À INTÉGRER OBLIGATOIREMENT AU COMPTE-RENDU) :\n";
+        }
+
+        parts.push(prefix + textContent);
+    }
+
+    return parts.join('\n\n');
+}
+
 // Vérifier l'état des entrées pour activer/désactiver le bouton
 function checkInputs() {
     const hasApiKey = apiKeyInput.value.trim() !== '';
     const hasEndpoint = apiEndpointInput.value.trim() !== '';
     const hasModel = modelNameInput.value.trim() !== '';
-    const hasParticipants = participantsContent !== '';
-    const hasTranscript = transcriptContent !== '';
+    
+    const currentParticipants = getActiveContent('participantsWrapper', participantsContent, 'participantsText');
+    const currentTranscript = getActiveContent('transcriptWrapper', transcriptContent, 'transcriptText');
+    
+    const hasParticipants = currentParticipants !== '';
+    const hasTranscript = currentTranscript !== '';
     const hasPrompt = customPrompt.value.trim() !== '';
 
     generateBtn.disabled = !(hasApiKey && hasEndpoint && hasModel && hasParticipants && hasTranscript && hasPrompt);
@@ -72,6 +153,8 @@ apiKeyInput.addEventListener('input', checkInputs);
 apiEndpointInput.addEventListener('input', checkInputs);
 modelNameInput.addEventListener('change', checkInputs);
 customPrompt.addEventListener('input', checkInputs);
+participantsText.addEventListener('input', checkInputs);
+transcriptText.addEventListener('input', checkInputs);
 
 // Initialiser l'état du bouton
 generateBtn.disabled = true;
@@ -235,8 +318,20 @@ participantsFileInput.addEventListener('change', async (e) => {
             // Estimation du nombre de participants (lignes non vides)
             const count = participantsContent.split(/\r\n|\r|\n/).filter(l => l.trim()).length;
             
-            participantsPreview.textContent = `✓ Fichier chargé: ${file.name} (~${count} entrées)`;
+            participantsPreview.innerHTML = `
+                <span>✓ Fichier chargé: ${file.name} (~${count} entrées)</span>
+                <button class="remove-file-btn" title="Supprimer le fichier">✕</button>
+            `;
             participantsPreview.classList.add('loaded');
+
+            participantsPreview.querySelector('.remove-file-btn').addEventListener('click', () => {
+                participantsFileInput.value = '';
+                participantsContent = '';
+                participantsPreview.textContent = '';
+                participantsPreview.classList.remove('loaded');
+                checkInputs();
+            });
+
             checkInputs();
         } catch (error) {
             console.error(error);
@@ -262,8 +357,21 @@ transcriptFileInput.addEventListener('change', async (e) => {
             }
             
             const wordCount = transcriptContent.split(/\s+/).length;
-            transcriptPreview.textContent = `✓ Fichier chargé: ${file.name} (${wordCount} mots)`;
+            
+            transcriptPreview.innerHTML = `
+                <span>✓ Fichier chargé: ${file.name} (${wordCount} mots)</span>
+                <button class="remove-file-btn" title="Supprimer le fichier">✕</button>
+            `;
             transcriptPreview.classList.add('loaded');
+
+            transcriptPreview.querySelector('.remove-file-btn').addEventListener('click', () => {
+                transcriptFileInput.value = '';
+                transcriptContent = '';
+                transcriptPreview.textContent = '';
+                transcriptPreview.classList.remove('loaded');
+                checkInputs();
+            });
+
             checkInputs();
         } catch (error) {
             console.error(error);
@@ -316,10 +424,13 @@ generateBtn.addEventListener('click', async () => {
         return;
     }
 
+    const currentParticipants = getActiveContent('participantsWrapper', participantsContent, 'participantsText');
+    const currentTranscript = getActiveContent('transcriptWrapper', transcriptContent, 'transcriptText');
+
     // Préparer le prompt avec les données
     const prompt = customPrompt.value
-        .replace('{PARTICIPANTS}', participantsContent)
-        .replace('{TRANSCRIPT}', transcriptContent);
+        .replace('{PARTICIPANTS}', currentParticipants)
+        .replace('{TRANSCRIPT}', currentTranscript);
 
     // Réinitialiser l'historique de conversation
     conversationHistory = [
@@ -579,13 +690,15 @@ function validateInputs() {
         return false;
     }
 
-    if (!participantsContent) {
-        alert('⚠️ Veuillez charger le fichier des participants.');
+    const currentParticipants = getActiveContent('participantsWrapper', participantsContent, 'participantsText');
+    if (!currentParticipants) {
+        alert('⚠️ Veuillez fournir la liste des participants (Fichier ou Texte).');
         return false;
     }
 
-    if (!transcriptContent) {
-        alert('⚠️ Veuillez charger le fichier du transcript.');
+    const currentTranscript = getActiveContent('transcriptWrapper', transcriptContent, 'transcriptText');
+    if (!currentTranscript) {
+        alert('⚠️ Veuillez fournir le transcript de la réunion (Fichier ou Texte).');
         return false;
     }
 
