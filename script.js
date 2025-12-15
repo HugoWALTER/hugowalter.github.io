@@ -31,6 +31,8 @@ const refreshModelsBtn = document.getElementById('refreshModelsBtn');
 const resetPromptBtn = document.getElementById('resetPromptBtn');
 const toggleApiKeyBtn = document.getElementById('toggleApiKeyBtn');
 
+let currentLanguage = 'fr';
+
 const DEFAULT_PROMPT = `Tu es un assistant expert en rédaction de comptes-rendus de réunion professionnels.
 
 À partir des informations fournies, tu dois rédiger un compte-rendu clair, structuré et synthétique.
@@ -47,11 +49,13 @@ Instructions :
 6. Termine par une conclusion et les prochaines étapes
 
 Format attendu :
-- Format texte brut .txt
+- Format texte brut .txt pour un envoi par mail sans formatage markdown
 - Utilise des titres et sous-titres
 - Sois concis mais complet
 - Utilise des puces pour les listes
 - Mets en évidence les décisions et actions importantes
+- Respecter la structure de la trame et l'étoffer si nécessaire.
+- Ne pas extrapoler ni inventer d’informations absentes.
 
 Participants :
 {PARTICIPANTS}
@@ -298,6 +302,25 @@ resetPromptBtn.addEventListener('click', () => {
     }
 });
 
+// Gestion de la langue
+const langBtns = document.querySelectorAll('.lang-btn');
+langBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Empêcher l'ouverture/fermeture de l'accordéon
+        
+        const lang = btn.dataset.lang;
+        if (lang === currentLanguage) return;
+        
+        currentLanguage = lang;
+        localStorage.setItem('meetingsNoteAI_language', currentLanguage);
+        
+        // Update UI
+        langBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    });
+});
+
 // Toggle visibility API Key
 toggleApiKeyBtn.addEventListener('click', () => {
     const type = apiKeyInput.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -428,9 +451,16 @@ generateBtn.addEventListener('click', async () => {
     const currentTranscript = getActiveContent('transcriptWrapper', transcriptContent, 'transcriptText');
 
     // Préparer le prompt avec les données
-    const prompt = customPrompt.value
+    let prompt = customPrompt.value
         .replace('{PARTICIPANTS}', currentParticipants)
         .replace('{TRANSCRIPT}', currentTranscript);
+
+    // Ajouter l'instruction de langue
+    const langInstruction = currentLanguage === 'en' 
+        ? "\n\nIMPORTANT: Write the meeting minutes in ENGLISH." 
+        : "\n\nIMPORTANT: Rédige le compte-rendu en FRANÇAIS.";
+    
+    prompt += langInstruction;
 
     // Réinitialiser l'historique de conversation
     conversationHistory = [
@@ -741,15 +771,30 @@ window.addEventListener('load', () => {
     const savedApiKey = localStorage.getItem('meetingsNoteAI_apiKey');
     const savedApiEndpoint = localStorage.getItem('meetingsNoteAI_apiEndpoint');
     const savedCustomPrompt = localStorage.getItem('meetingsNoteAI_customPrompt');
+    const savedLanguage = localStorage.getItem('meetingsNoteAI_language');
     // Le modèle sera restauré après le fetchModels
     
     if (savedApiKey) apiKeyInput.value = savedApiKey;
     if (savedApiEndpoint) apiEndpointInput.value = savedApiEndpoint;
+    
     if (savedCustomPrompt) {
         customPrompt.value = savedCustomPrompt;
     } else {
         customPrompt.value = DEFAULT_PROMPT;
     }
+
+    if (savedLanguage) {
+        currentLanguage = savedLanguage;
+    }
+    
+    // Update language buttons
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        if (btn.dataset.lang === currentLanguage) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
     
     checkInputs();
 
