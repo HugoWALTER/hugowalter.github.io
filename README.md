@@ -49,3 +49,21 @@ Avant de générer, vous pouvez affiner le résultat :
 * **Modifier** : Si le résultat ne vous convient pas, cliquez sur "💭 Donner un Retour", expliquez ce qu'il faut changer, et relancez la génération.
 
 ---
+
+## 🐳 Déploiement via Docker
+
+Si vous préférez héberger l'application sur un serveur ou utiliser Docker en local :
+
+1. Assurez-vous d'avoir **Docker** et **Docker Compose** installés.
+2. Ouvrez un terminal à la racine du projet.
+3. Lancez la commande suivante :
+
+```bash
+docker-compose -f docker/docker-compose.yml up -d --build
+```
+
+L'application sera accessible à l'adresse : `http://localhost:8080`
+
+## 📄 Licence
+
+Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
