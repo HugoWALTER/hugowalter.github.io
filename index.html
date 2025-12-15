@@ -22,7 +22,10 @@
                 <h2>🔑 Configuration API</h2>
                 <div class="input-group">
                     <label for="apiKey">Clé API :</label>
-                    <input type="password" id="apiKey" placeholder="Entrez votre clé API / Bearer" />
+                    <div class="password-wrapper">
+                        <input type="password" id="apiKey" placeholder="Entrez votre clé API / Bearer" />
+                        <button type="button" id="toggleApiKeyBtn" class="toggle-password" title="Afficher/Masquer">👁️</button>
+                    </div>
                 </div>
                 <div class="input-group">
                     <label for="apiEndpoint">URL de l'API :</label>
@@ -34,7 +37,7 @@
                         <select id="modelName" style="flex-grow: 1; cursor: pointer;">
                             <option value="standard" selected>Standard</option>
                         </select>
-                        <button id="refreshModelsBtn" class="btn btn-secondary" style="padding: 12px; width: 52px; display: flex; align-items: center; justify-content: center;" title="Rafraîchir la liste">
+                        <button id="refreshModelsBtn" class="btn btn-icon" title="Rafraîchir la liste">
                             🔄
                         </button>
                     </div>
@@ -45,38 +48,94 @@
             <section class="card">
                 <h2>📂 Chargement des Fichiers</h2>
                 <div class="file-upload-section">
-                    <div class="file-input-wrapper">
-                        <span class="file-label">👥 Participants (.csv/.txt) :</span>
-                        <label for="participantsFile" class="drop-zone" id="participantsDropZone">
-                            <div class="drop-zone-icon">👥</div>
-                            <div class="drop-zone-text">Glissez-déposez votre fichier ici<br>ou cliquez pour parcourir</div>
-                            <input type="file" id="participantsFile" accept=".csv,.txt" />
-                        </label>
-                        <div id="participantsPreview" class="file-preview"></div>
+                    <!-- Participants -->
+                    <div class="file-input-wrapper" id="participantsWrapper">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span class="file-label" style="margin-bottom: 0;">👥 Participants :</span>
+                            <div class="input-tabs">
+                                <button class="tab-btn active" data-target="file">Fichier</button>
+                                <button class="tab-btn" data-target="text">Texte</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Mode Fichier -->
+                        <div class="input-mode mode-file active">
+                            <label for="participantsFile" class="drop-zone" id="participantsDropZone">
+                                <div class="drop-zone-icon">👥</div>
+                                <div class="drop-zone-text">Glissez-déposez votre fichier ici<br>ou cliquez pour parcourir</div>
+                                <input type="file" id="participantsFile" accept=".csv,.txt" />
+                            </label>
+                            <div id="participantsPreview" class="file-preview"></div>
+                        </div>
+
+                        <!-- Mode Texte -->
+                        <div class="input-mode mode-text" style="display: none; position: relative;">
+                            <textarea id="participantsText" class="input-textarea" placeholder="Collez la liste des participants ici (un par ligne)..."></textarea>
+                            <button type="button" class="clear-text-btn" id="clearParticipantsText" title="Effacer le texte" style="display: none;">✕</button>
+                        </div>
                     </div>
                     
-                    <div class="file-input-wrapper">
-                        <span class="file-label">💬 Transcript (.docx/.txt) :</span>
-                        <label for="transcriptFile" class="drop-zone" id="transcriptDropZone">
-                            <div class="drop-zone-icon">📄</div>
-                            <div class="drop-zone-text">Glissez-déposez votre fichier ici<br>ou cliquez pour parcourir</div>
-                            <input type="file" id="transcriptFile" accept=".docx,.txt" />
-                        </label>
-                        <div id="transcriptPreview" class="file-preview"></div>
+                    <!-- Transcript -->
+                    <div class="file-input-wrapper" id="transcriptWrapper">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span class="file-label" style="margin-bottom: 0;">💬 Transcript :</span>
+                            <div class="input-tabs">
+                                <button class="tab-btn active" data-target="file">Fichier</button>
+                                <button class="tab-btn" data-target="text">Texte</button>
+                            </div>
+                        </div>
+
+                        <!-- Mode Fichier -->
+                        <div class="input-mode mode-file active">
+                            <label for="transcriptFile" class="drop-zone" id="transcriptDropZone">
+                                <div class="drop-zone-icon">📄</div>
+                                <div class="drop-zone-text">Glissez-déposez votre fichier ici<br>ou cliquez pour parcourir</div>
+                                <input type="file" id="transcriptFile" accept=".docx,.txt" />
+                            </label>
+                            <div id="transcriptPreview" class="file-preview"></div>
+                        </div>
+
+                        <!-- Mode Texte -->
+                        <div class="input-mode mode-text" style="display: none; position: relative;">
+                            <textarea id="transcriptText" class="input-textarea" placeholder="Collez le transcript de la réunion ici..."></textarea>
+                            <button type="button" class="clear-text-btn" id="clearTranscriptText" title="Effacer le texte" style="display: none;">✕</button>
+                        </div>
                     </div>
                 </div>
             </section>
 
             <!-- Section Prompt Customisé -->
             <section class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h2 style="margin: 0;">✍️ Prompt pour l'IA</h2>
-                    <button id="resetPromptBtn" class="btn btn-secondary" style="padding: 8px 15px; font-size: 0.9rem;" title="Restaurer le prompt par défaut">
-                        ↺ Défaut
+                <h2 style="margin-bottom: 15px;">✍️ Prompt pour l'IA</h2>
+                
+                <div class="language-selector">
+                    <span class="lang-label">Language de réponse :</span>
+                    <button class="lang-btn active" data-lang="fr" title="Français">
+                        <img src="public/fr.svg" alt="FR">
+                    </button>
+                    <button class="lang-btn" data-lang="en" title="English">
+                        <img src="public/gb.svg" alt="EN">
                     </button>
                 </div>
-                <textarea id="customPrompt" rows="8" placeholder="Le prompt sera généré automatiquement..."></textarea>
-                <button id="generateBtn" class="btn btn-primary">🚀 Générer le Compte-Rendu</button>
+
+                <details id="promptAccordion">
+                    <summary class="prompt-summary">
+                        <div class="summary-content">
+                            <span class="accordion-icon">▶</span>
+                            <span>Afficher / Modifier le prompt</span>
+                        </div>
+                    </summary>
+                    
+                    <div class="accordion-content">
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                            <button id="resetPromptBtn" class="btn btn-outline" title="Restaurer le prompt par défaut">
+                                ↺ Défaut
+                            </button>
+                        </div>
+                        <textarea id="customPrompt" rows="8" placeholder="Le prompt sera généré automatiquement..."></textarea>
+                    </div>
+                </details>
+                <button id="generateBtn" class="btn btn-primary" style="margin-top: 15px;">🚀 Générer le Compte-Rendu</button>
             </section>
 
             <!-- Section Résultat -->
@@ -85,6 +144,7 @@
                 <div id="result" class="result-text"></div>
                 <div class="action-buttons">
                     <button id="copyBtn" class="btn btn-secondary">📋 Copier</button>
+                    <button id="emailBtn" class="btn btn-secondary">📧 Envoyer par mail</button>
                     <button id="feedbackBtn" class="btn btn-secondary">💭 Donner un Retour</button>
                 </div>
             </section>
