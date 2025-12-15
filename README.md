@@ -17,7 +17,7 @@ Une fois la page ouverte, suivez ces 4 étapes :
 ### 1. Configuration de l'IA 🔑
 
 * **Clé API** : Entrez votre clé d'accès API ou (Token Bearer). C'est le mot de passe qui vous permet d'utiliser l'intelligence artificielle.
-* **URL de l'API** : Laissez la valeur par défaut (`https://openai.com/api`) sauf si on vous a donné une autre adresse.
+* **URL de l'API** : Laissez la valeur par défaut (`https://api.openai.com/v1`) sauf si on vous a donné une autre adresse.
 * **Modèle** : Vous pouvez choisir le modèle d'IA (par défaut "Standard"). Cliquez sur le bouton 🔄 pour rafraîchir la liste si besoin.
 
 ### 2. Chargement des fichiers ou Texte 📂
@@ -45,6 +45,7 @@ Avant de générer, vous pouvez affiner le résultat :
 * Patientez quelques instants pendant que l'IA travaille.
 * Le compte-rendu s'affiche à l'écran.
 * **Copier** : Cliquez sur "📋 Copier" pour récupérer le texte et le coller dans un mail ou un document Word.
+* **Envoyer par mail** : Cliquez sur "📧 Envoyer par mail" pour ouvrir votre logiciel de messagerie par défaut avec le compte-rendu pré-rempli.
 * **Modifier** : Si le résultat ne vous convient pas, cliquez sur "💭 Donner un Retour", expliquez ce qu'il faut changer, et relancez la génération.
 
 ---
