@@ -37,7 +37,6 @@ Pour chaque section, vous avez le choix :
 Avant de générer, vous pouvez affiner le résultat :
 
 * **Langue** : Choisissez le drapeau 🇫🇷 ou 🇬🇧 pour définir la langue du compte-rendu.
-* **Contexte** : Sélectionnez le type de réunion (Client, Candidat, Projet...) pour aider l'IA à adopter le bon ton. Par défaut, l'IA détecte le contexte automatiquement.
 * **Prompt** : Cliquez sur "▶ Afficher / Modifier le prompt" si vous souhaitez voir ou modifier les consignes données à l'IA.
 * Cliquez sur le bouton bleu **"🚀 Générer le Compte-Rendu"**.
 
