@@ -20,19 +20,25 @@ Une fois la page ouverte, suivez ces 4 étapes :
 * **URL de l'API** : Laissez la valeur par défaut (`https://openai.com/api`) sauf si on vous a donné une autre adresse.
 * **Modèle** : Vous pouvez choisir le modèle d'IA (par défaut "Standard"). Cliquez sur le bouton 🔄 pour rafraîchir la liste si besoin.
 
-### 2. Chargement des fichiers 📂
+### 2. Chargement des fichiers ou Texte 📂
 
-Vous devez fournir deux documents :
+Vous devez fournir deux types d'informations :
 
-* **👥 Participants** : Un fichier `.txt` ou `.csv` contenant la liste des personnes présentes.
-* **💬 Transcript** : Le texte brut de la réunion (ce qui a été dit). L'outil accepte les fichiers Word (`.docx`) ou Texte (`.txt`).
+* **👥 Participants** : La liste des personnes présentes.
+* **💬 Transcript** : Le texte brut de la réunion (ce qui a été dit).
 
-> **Astuce :** Vous pouvez glisser-déposer vos fichiers directement dans les zones encadrées.
+Pour chaque section, vous avez le choix :
 
-### 3. Vérification et Lancement ✍️
+* **Onglet Fichier** : Glissez-déposez un fichier (`.txt`, `.csv` pour les participants ; `.docx`, `.txt` pour le transcript).
+* **Onglet Texte** : Copiez-collez directement le texte si vous n'avez pas de fichier.
 
-* L'outil prépare automatiquement une consigne (un "Prompt") pour l'IA en bas de page.
-* Vous pouvez modifier ce texte si vous avez des besoins spécifiques.
+### 3. Personnalisation et Lancement ✍️
+
+Avant de générer, vous pouvez affiner le résultat :
+
+* **Langue** : Choisissez le drapeau 🇫🇷 ou 🇬🇧 pour définir la langue du compte-rendu.
+* **Contexte** : Sélectionnez le type de réunion (Client, Candidat, Projet...) pour aider l'IA à adopter le bon ton. Par défaut, l'IA détecte le contexte automatiquement.
+* **Prompt** : Cliquez sur "▶ Afficher / Modifier le prompt" si vous souhaitez voir ou modifier les consignes données à l'IA.
 * Cliquez sur le bouton bleu **"🚀 Générer le Compte-Rendu"**.
 
 ### 4. Résultat et Finitions 📄
