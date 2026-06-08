@@ -1,8 +1,0 @@
-.git
-.gitignore
-.gitlab-ci.yml
-README.md
-MOCK/
-Files/
-Prompt Example.txt
-*.md
