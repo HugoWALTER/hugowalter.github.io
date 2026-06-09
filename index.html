@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307090f'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%234fc3f7'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%234fc3f7' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%234fc3f7' stroke-width='1' stroke-opacity='.5'/%3E%3Cline x1='16' y1='16' x2='23' y2='9' stroke='%23ffb74d' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -36,8 +36,8 @@
       --radius-sm: 10px;
       --hh:        64px;
       --fh:        52px;
-      --fd:        'Syne', sans-serif;
-      --fb:        'DM Sans', sans-serif;
+      --fd:        'Inter', sans-serif;
+      --fb:        'Inter', sans-serif;
       --blur:      blur(20px);
     }
 
@@ -226,13 +226,45 @@
       font-family: var(--fd); font-size: 1.35rem; font-weight: 800;
       letter-spacing: 0; color: var(--txt); text-decoration: none;
     }
-    .logo-icon {
-      width: 32px; height: 32px;
+    .logo-icon { width: 32px; height: 32px;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       border-radius: 8px; display: flex; align-items: center; justify-content: center;
       font-size: 1rem;
     }
     .header-right { display: flex; align-items: center; gap: 14px; }
+
+    /* ── Nav menu ────────────────────────────────────────────────── */
+    .header-nav {
+      display: flex; align-items: center; gap: 2px;
+      margin: 0 8px;
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 11px; border-radius: 8px;
+      font-size: 0.76rem; font-weight: 500; color: var(--txt2);
+      text-decoration: none; white-space: nowrap;
+      transition: background .15s, color .15s;
+      border: 1px solid transparent;
+    }
+    .nav-link:hover {
+      color: var(--txt); background: var(--surface2);
+    }
+    .nav-link.active {
+      color: var(--accent); background: rgba(79,195,247,0.08);
+      border-color: rgba(79,195,247,0.18);
+    }
+    .nav-link svg { flex-shrink: 0; opacity: .7; }
+    /* Mobile: nav goes below the logo row */
+    @media (max-width: 860px) {
+      header { flex-wrap: wrap; min-height: var(--hh); height: auto; padding: 8px 16px; gap: 6px; }
+      .header-nav { order: 3; width: 100%; margin: 0; padding-bottom: 4px; overflow-x: auto; scrollbar-width: none; gap: 2px; }
+      .header-nav::-webkit-scrollbar { display: none; }
+      .nav-link { font-size: 0.7rem; padding: 4px 9px; }
+    }
+    @media (max-width: 600px) {
+      .nav-link span.nav-label { display: none; }
+      .nav-link { padding: 5px 8px; }
+    }
     .header-time { font-size: 0.78rem; color: var(--txt2); font-weight: 300; letter-spacing: 0; }
     .header-pill {
       padding: 4px 12px; border-radius: 20px;
@@ -369,6 +401,9 @@
     .timeline-btn.forecast { color: var(--accent); border-color: rgba(79,195,247,0.25); }
     .timeline-btn.forecast.active { background: rgba(79,195,247,0.15); border-color: var(--accent); color: var(--accent); }
 
+    #section-radar, #section-hourly, #section-charts {
+      scroll-margin-top: 80px;
+    }
     #map-container { height: 440px; position: relative; }
     #map {
       height: 100%; width: 100%; background: #0a0e18 !important;
@@ -441,6 +476,15 @@
       font-size: 0.73rem; color: var(--txt2);
       display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
     }
+    .city-sun-row {
+      display: flex; align-items: center; gap: 16px;
+      margin-top: 7px; font-size: 0.75rem; color: var(--txt2);
+      flex-wrap: wrap;
+    }
+    .city-sun-item {
+      display: flex; align-items: center; gap: 5px;
+    }
+    .city-sun-item strong { color: var(--txt); font-weight: 600; }
     .city-temp-big {
       font-family: var(--fd); font-size: 3.6rem; font-weight: 800;
       line-height: 1; letter-spacing: 0;
@@ -748,6 +792,27 @@
       </div>
       WeatherRadar
     </div>
+
+    <!-- Navigation -->
+    <nav class="header-nav" aria-label="Sections">
+      <a class="nav-link active" href="#section-radar" data-section="section-radar">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="6" stroke-opacity=".5"/><circle cx="12" cy="12" r="10" stroke-opacity=".3"/></svg>
+        <span class="nav-label">Radar</span>
+      </a>
+      <a class="nav-link" href="#section-hourly" data-section="section-hourly">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="nav-label">Horaire</span>
+      </a>
+      <a class="nav-link" href="#section-charts" data-section="section-charts">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span class="nav-label">Graphiques</span>
+      </a>
+      <a class="nav-link" href="#stats-section" data-section="stats-section">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="7" width="4" height="14"/><rect x="10" y="2" width="4" height="19"/><rect x="18" y="11" width="4" height="10"/></svg>
+        <span class="nav-label">Statistiques</span>
+      </a>
+    </nav>
+
     <div class="header-right">
       <span class="header-time" id="header-time"></span>
       <span class="header-weather-badge" id="header-badge"></span>
@@ -774,7 +839,7 @@
     </div>
 
     <!-- MAIN GRID -->
-    <div class="main-grid">
+    <div class="main-grid" id="section-radar">
 
       <!-- ── LEFT: RADAR ── -->
       <div class="card radar-card">
@@ -846,6 +911,7 @@
                 <span class="city-country" id="city-country">Île-de-France, FR</span>
               </div>
               <div class="city-meta" id="city-meta"></div>
+              <div class="city-sun-row" id="city-sun-row" style="display:none"></div>
             </div>
             <div class="city-temp-row">
               <div class="city-temp-big" id="city-temp-big">--°</div>
@@ -897,7 +963,7 @@
     </div><!-- /main-grid -->
 
     <!-- HOURLY FORECAST -->
-    <div class="card hourly-card">
+    <div class="card hourly-card" id="section-hourly">
       <div class="card-header">
         <span class="card-title">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -911,7 +977,7 @@
     </div>
 
     <!-- CHARTS -->
-    <div class="charts-section">
+    <div class="charts-section" id="section-charts">
 
       <!-- MAIN CHART: 15 jours -->
       <div class="card chart-card">
@@ -962,7 +1028,7 @@
     </div>
 
     <!-- STAT CARDS -->
-    <div class="stats-section" id="stats-section">
+    <div class="stats-section" id="stats-section" style="scroll-margin-top: 80px">
       <!-- filled by JS -->
     </div>
 
@@ -1745,8 +1811,8 @@ document.getElementById('anim-btn').addEventListener('click', function() {
 async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=temperature_2m,weathercode,precipitation,windspeed_10m,relativehumidity_2m,apparent_temperature`
-    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours`
+    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index`
+    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max`
     + `&current_weather=true`
     + `&forecast_days=16`
     + `&timezone=auto`;
@@ -1849,6 +1915,17 @@ function renderToday(d) {
   const todayDI = daily.time.indexOf(todayStr) >= 0 ? daily.time.indexOf(todayStr) : 0;
   document.getElementById('city-cond-sub').textContent =
     `${Math.round(daily.temperature_2m_min[todayDI])}° – ${Math.round(daily.temperature_2m_max[todayDI])}°`;
+
+  // Sunrise / sunset in today card
+  const fmt = t => t ? new Date(t).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '--';
+  const sunRow = document.getElementById('city-sun-row');
+  if (daily.sunrise && daily.sunset) {
+    sunRow.innerHTML =
+      `<span class="city-sun-item">🌅 Lever&nbsp;<strong>${fmt(daily.sunrise[todayDI])}</strong></span>`
+      + `<span style="width:1px;height:14px;background:var(--border2);display:inline-block"></span>`
+      + `<span class="city-sun-item">🌇 Coucher&nbsp;<strong>${fmt(daily.sunset[todayDI])}</strong></span>`;
+    sunRow.style.display = 'flex';
+  }
 
   // Morning / afternoon slots
   const hi = d.hourly;
@@ -2037,7 +2114,7 @@ function buildChart(d) {
   const ctx = document.getElementById('main-chart').getContext('2d');
   const gridColor = 'rgba(255,255,255,0.05)';
   const tickColor = '#8990ae';
-  const font = { family:'DM Sans', size:10 };
+  const font = { family:'Inter', size:10 };
   S.chart = new Chart(ctx, {
     type: isBar ? 'bar' : 'line',
     data: { datasets },
@@ -2045,13 +2122,13 @@ function buildChart(d) {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode:'index', intersect:false },
       plugins: {
-        legend: { labels: { color:tickColor, font:{ family:'Syne',size:11 }, boxWidth:12, padding:16 } },
+        legend: { labels: { color:tickColor, font:{ family:'Inter',size:11 }, boxWidth:12, padding:16 } },
         tooltip: {
           backgroundColor:'rgba(7,9,15,0.96)',
           borderColor:'rgba(255,255,255,0.1)', borderWidth:1,
           titleColor:'#e8eaf2', bodyColor:'#8990ae',
-          titleFont:{ family:'Syne', size:12 },
-          bodyFont:{ family:'DM Sans', size:11 },
+          titleFont:{ family:'Inter', size:12 },
+          bodyFont:{ family:'Inter', size:11 },
           padding:10, cornerRadius:8,
         },
       },
@@ -2102,20 +2179,35 @@ function renderAQI(data) {
   // pointer: scale 0-150 → 0-95%
   document.getElementById('aqi-pointer').style.left = `${Math.min(95, (aqi / 150) * 100).toFixed(1)}%`;
 
+  // Seuils OMS (µg/m³) : [bon, moyen, dégradé, mauvais]
+  // PM2.5 : OMS 15 / 25 / 50 / >50
+  // PM10  : OMS 45 / 75 / 150 / >150
+  // NO₂   : OMS 25 / 50 / 100 / >100
+  // O₃    : OMS 100 / 130 / 160 / >160
+  function pollutantColor(val, thresholds) {
+    if (val == null || isNaN(val)) return 'var(--border2)';
+    const [t1, t2, t3] = thresholds;
+    if (val <= t1) return '#4caf50';   // bon — vert
+    if (val <= t2) return '#fdd835';   // moyen — jaune
+    if (val <= t3) return '#ff9800';   // dégradé — orange
+    return '#f44336';                  // mauvais — rouge
+  }
+
   const pols = [
-    { name:'PM2.5', val:pm25, max:25,  unit:'µg/m³', color:'#ef9a9a' },
-    { name:'PM10',  val:pm10, max:50,  unit:'µg/m³', color:'#ffe082' },
-    { name:'NO₂',   val:no2,  max:40,  unit:'µg/m³', color:'#80cbc4' },
-    { name:'O₃',    val:o3,   max:120, unit:'µg/m³', color:'#ce93d8' },
+    { name:'PM2.5', val:pm25, max:75,  unit:'µg/m³', thresholds:[15, 25, 50]  },
+    { name:'PM10',  val:pm10, max:200, unit:'µg/m³', thresholds:[45, 75, 150] },
+    { name:'NO₂',   val:no2,  max:200, unit:'µg/m³', thresholds:[25, 50, 100] },
+    { name:'O₃',    val:o3,   max:240, unit:'µg/m³', thresholds:[100,130,160] },
   ];
   document.getElementById('pollutants').innerHTML = pols.map(p => {
-    const v   = typeof p.val === 'number' ? p.val : 0;
-    const pct = Math.min(100, (v / p.max) * 100).toFixed(1);
+    const v    = typeof p.val === 'number' ? p.val : 0;
+    const pct  = Math.min(100, (v / p.max) * 100).toFixed(1);
     const disp = typeof p.val === 'number' ? p.val.toFixed(1) + ' ' + p.unit : '--';
+    const barColor = pollutantColor(p.val, p.thresholds);
     return `
     <div class="pollutant-row">
       <span class="pollutant-name">${p.name}</span>
-      <div class="pollutant-bar-bg"><div class="pollutant-bar-fill" style="width:${pct}%;background:${p.color}"></div></div>
+      <div class="pollutant-bar-bg"><div class="pollutant-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
       <span class="pollutant-val">${disp}</span>
     </div>`;
   }).join('');
@@ -2154,9 +2246,55 @@ function renderStats(d) {
   const nwSlice = d.daily.temperature_2m_max.slice(7,14);
   const nwAvg   = nwSlice.length ? Math.round(nwSlice.reduce((a,b)=>a+b,0)/nwSlice.length) : '--';
 
+  // ── Indice UV ──────────────────────────────────────────────────
+  const uvMax = d.daily.uv_index_max?.[i] ?? null;
+  // UV hourly : valeur à l'heure courante
+  const curHourKey = currentHourKey(d);
+  const uvHourIdx  = d.hourly.time.indexOf(curHourKey);
+  const uvNow = uvHourIdx >= 0 ? (d.hourly.uv_index?.[uvHourIdx] ?? null) : null;
+  const uvVal = uvNow !== null ? uvNow : uvMax;
+
+  function uvLabel(v) {
+    if (v === null) return { txt:'N/A', color:'var(--txt2)' };
+    if (v < 3)  return { txt:'Faible',     color:'#4caf50' };
+    if (v < 6)  return { txt:'Modéré',     color:'#fdd835' };
+    if (v < 8)  return { txt:'Élevé',      color:'#ff9800' };
+    if (v < 11) return { txt:'Très élevé', color:'#f44336' };
+    return              { txt:'Extrême',   color:'#9c27b0' };
+  }
+  const uv = uvLabel(uvVal !== null ? Math.round(uvVal) : null);
+  const uvDisplay = uvVal !== null ? Math.round(uvVal) : '--';
+
+  // ── Prochaine heure de pluie ───────────────────────────────────
+  const hi = d.hourly;
+  let startIdx = hi.time.findIndex(t => t === curHourKey);
+  if (startIdx < 0) startIdx = 0;
+  let nextRainLabel = 'Aucune dans 48h';
+  let nextRainSub   = 'Pas de pluie prévue';
+  for (let h = startIdx; h < Math.min(startIdx + 48, hi.time.length); h++) {
+    const prob = hi.precipitation_probability?.[h] ?? 0;
+    const mm   = hi.precipitation?.[h] ?? 0;
+    if (prob >= 40 || mm > 0.1) {
+      const dt  = new Date(hi.time[h] + ':00');
+      const hm  = dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+      const diffH = h - startIdx;
+      const inLabel = diffH === 0 ? 'Maintenant'
+        : diffH < 2  ? `Dans ~${diffH*60} min`
+        : diffH < 24 ? `Dans ~${diffH}h`
+        : `${dt.toLocaleDateString('fr-FR',{weekday:'short'})} ${hm}`;
+      nextRainLabel = hm;
+      nextRainSub   = `${inLabel} · ${prob}% · ${mm.toFixed(1)} mm`;
+      break;
+    }
+  }
+
   const stats = [
-    { icon:'🌅', label:'Lever du soleil',    value:fmt(d.daily.sunrise[i]),   sub:'' },
-    { icon:'🌇', label:'Coucher du soleil',  value:fmt(d.daily.sunset[i]),    sub:'' },
+    { icon:'🔆', label:'Indice UV',
+      value: `<span style="color:${uv.color};font-weight:700">${uvDisplay}</span>`,
+      sub: uv.txt + (uvMax !== null ? ` · max ${Math.round(uvMax)}` : '') },
+    { icon:'🌂', label:'Prochaine pluie',
+      value: nextRainLabel,
+      sub: nextRainSub },
     { icon:'🌡', label:'Amplitude du jour',  value:`${tMin}° / ${tMax}°`,     sub:`Écart ${tMax-tMin}°C` },
     { icon:'🌧', label:'Précipitations',     value:`${precip} mm`,            sub:`${precHrs}h de pluie` },
     { icon:'💨', label:'Vent maximum',        value:`${wMax} km/h`,            sub:`Direction ${windDir(cw.winddirection)}` },
@@ -2373,6 +2511,44 @@ applyWeatherEffect('cloud'); // default while loading
 loadAll();
 loadRadar();
 setInterval(loadRadar, 600000); // Refresh radar every 10 min
+
+// ──────────────────────────────────────────────────────────────────
+// NAVIGATION — highlight active section
+// ──────────────────────────────────────────────────────────────────
+(function() {
+  const navLinks = document.querySelectorAll('.nav-link[data-section]');
+  const sectionIds = ['section-radar','section-hourly','section-charts','stats-section'];
+
+  function setActive(id) {
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.dataset.section === id);
+    });
+  }
+
+  // Smooth scroll on click
+  navLinks.forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.getElementById(a.dataset.section);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setActive(a.dataset.section);
+      }
+    });
+  });
+
+  // IntersectionObserver to track visible section
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) setActive(entry.target.id);
+    });
+  }, { rootMargin: '-20% 0px -60% 0px', threshold: 0 });
+
+  sectionIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+})();
 </script>
 </body>
 </html>
