@@ -495,10 +495,25 @@
     /* ── Hourly scroll ───────────────────────────────────────────── */
     .hourly-card {}
     .hourly-scroll {
-      display: flex; gap: 4px;
-      padding: 10px 16px 14px; overflow-x: auto; scrollbar-width: none;
+      display: flex;
+      gap: 4px;
+      padding: 10px 16px 14px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+    
+      cursor: grab;
+      user-select: none;
     }
-    .hourly-scroll::-webkit-scrollbar { display: none; }
+
+    .hourly-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .hourly-scroll.dragging {
+      cursor: grabbing;
+    }
+
     .hour-slot {
       flex-shrink: 0; width: 54px; padding: 10px 6px;
       border-radius: var(--radius-sm); border: 1px solid var(--border);
@@ -1420,6 +1435,31 @@ function selectLocation(c) {
   } catch(e){}
   loadAll();
 }
+
+// Hourly scroll dragging
+const scroller = document.getElementById('hourly-scroll');
+
+let pressed = false;
+let startX = 0;
+let startScroll = 0;
+
+scroller.addEventListener('pointerdown', e => {
+  pressed = true;
+  startX = e.clientX;
+  startScroll = scroller.scrollLeft;
+  scroller.classList.add('dragging');
+});
+
+window.addEventListener('pointerup', () => {
+  pressed = false;
+  scroller.classList.remove('dragging');
+});
+
+scroller.addEventListener('pointermove', e => {
+  if (!pressed) return;
+
+  scroller.scrollLeft = startScroll - (e.clientX - startX);
+});
 
 // ──────────────────────────────────────────────────────────────────
 // LEAFLET MAP
