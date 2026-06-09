@@ -224,7 +224,7 @@
     .logo {
       display: flex; align-items: center; gap: 10px;
       font-family: var(--fd); font-size: 1.35rem; font-weight: 800;
-      letter-spacing: -0.03em; color: var(--txt); text-decoration: none;
+      letter-spacing: 0; color: var(--txt); text-decoration: none;
     }
     .logo-icon {
       width: 32px; height: 32px;
@@ -233,7 +233,7 @@
       font-size: 1rem;
     }
     .header-right { display: flex; align-items: center; gap: 14px; }
-    .header-time { font-size: 0.78rem; color: var(--txt2); font-weight: 300; letter-spacing: 0.02em; }
+    .header-time { font-size: 0.78rem; color: var(--txt2); font-weight: 300; letter-spacing: 0; }
     .header-pill {
       padding: 4px 12px; border-radius: 20px;
       border: 1px solid var(--border2); background: var(--surface2);
@@ -278,6 +278,7 @@
     .search-input {
       flex: 1; background: transparent; border: none; outline: none;
       color: var(--txt); font-family: var(--fb); font-size: 1rem; font-weight: 400;
+      min-width: 0;
     }
     .search-input::placeholder { color: var(--txt2); }
     .search-shortcut {
@@ -290,18 +291,26 @@
       background: rgba(10,13,22,0.98); backdrop-filter: var(--blur);
       border: 1px solid var(--border2); border-radius: var(--radius);
       overflow: hidden; z-index: 300; display: none;
+      max-height: min(420px, 70vh); overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
     .search-suggestions.show { display: block; animation: fadeIn .15s ease; }
     .suggestion-item {
-      padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+      width: 100%; padding: 12px 20px; display: flex; align-items: center; gap: 12px;
       cursor: pointer; transition: background .12s;
-      border-bottom: 1px solid var(--border);
+      border: 0; border-bottom: 1px solid var(--border);
+      background: transparent; color: var(--txt); font-family: var(--fb);
+      text-align: left;
     }
     .suggestion-item:last-child { border-bottom: none; }
-    .suggestion-item:hover { background: var(--surface2); }
+    .suggestion-item:hover,
+    .suggestion-item.active { background: var(--surface2); }
+    .suggestion-item.empty,
+    .suggestion-item.loading {
+      cursor: default; color: var(--txt2);
+    }
     .suggestion-name { font-size: 0.88rem; font-weight: 500; }
-    .suggestion-sub { font-size: 0.72rem; color: var(--txt2); }
+    .suggestion-sub { font-size: 0.72rem; color: var(--txt2); line-height: 1.35; }
 
     /* ══════════════════════════════════════════════════════════════
        MAIN GRID
@@ -323,13 +332,15 @@
     }
     .card:hover { border-color: var(--border2); }
     .card-header {
-      padding: 16px 20px 0;
+      min-height: 48px;
+      padding: 16px 20px 12px;
       display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
     }
     .card-title {
       font-family: var(--fd); font-size: 0.72rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.1em; color: var(--txt2);
-      display: flex; align-items: center; gap: 7px;
+      text-transform: uppercase; letter-spacing: 0; color: var(--txt2);
+      display: flex; align-items: center; gap: 7px; line-height: 1.25;
     }
 
     /* ══════════════════════════════════════════════════════════════
@@ -337,7 +348,8 @@
     ══════════════════════════════════════════════════════════════ */
     .radar-timeline {
       display: flex; align-items: center; gap: 5px;
-      padding: 10px 20px 6px; overflow-x: auto; scrollbar-width: none;
+      padding: 0 20px 12px; overflow-x: auto; scrollbar-width: none;
+      scroll-padding: 20px;
     }
     .radar-timeline::-webkit-scrollbar { display: none; }
     .tl-sep {
@@ -357,19 +369,11 @@
     .timeline-btn.forecast { color: var(--accent); border-color: rgba(79,195,247,0.25); }
     .timeline-btn.forecast.active { background: rgba(79,195,247,0.15); border-color: var(--accent); color: var(--accent); }
 
-    #map-container { height: 420px; position: relative; }
-    #map { height: 100%; width: 100%; background: #0a0e18 !important; }
-
-    /* Radar frame transition flash */
-    #radar-flash {
-      position: absolute; inset: 0; z-index: 500;
-      pointer-events: none; border-radius: 0;
-      background: rgba(79,195,247,0.18);
-      opacity: 0;
-      transition: opacity 0.08s ease;
+    #map-container { height: 440px; position: relative; }
+    #map {
+      height: 100%; width: 100%; background: #0a0e18 !important;
+      touch-action: pan-y;
     }
-    #radar-flash.flash { opacity: 1; }
-
     /* Radar animation progress bar */
     #radar-progress {
       position: absolute; bottom: 0; left: 0; right: 0;
@@ -404,17 +408,18 @@
       border: 1px solid var(--border2); border-radius: var(--radius-sm);
       padding: 10px 14px; z-index: 1000;
     }
-    .legend-title { font-size: 0.62rem; color: var(--txt2); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
+    .legend-title { font-size: 0.62rem; color: var(--txt2); text-transform: uppercase; letter-spacing: 0; margin-bottom: 5px; }
     .legend-scale { display: flex; align-items: center; gap: 2px; }
     .legend-color { width: 18px; height: 7px; border-radius: 2px; }
     .legend-labels { display: flex; justify-content: space-between; font-size: 0.58rem; color: var(--txt2); margin-top: 3px; }
 
     .radar-status {
       padding: 9px 20px 13px; display: flex; align-items: center; gap: 8px;
-      font-size: 0.73rem; color: var(--txt2);
+      font-size: 0.73rem; color: var(--txt2); flex-wrap: wrap;
     }
+    #radar-status-txt { min-width: 0; flex: 1 1 240px; line-height: 1.35; }
     .radar-anim-btn {
-      margin-left: auto; padding: 4px 14px; border-radius: 20px;
+      margin-left: auto; min-height: 30px; padding: 4px 14px; border-radius: 20px;
       border: 1px solid var(--border2); background: var(--surface2);
       color: var(--txt); font-size: 0.73rem; font-family: var(--fb);
       cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 6px;
@@ -429,8 +434,8 @@
 
     /* ── Today / Tomorrow hero ───────────────────────────────────── */
     .city-hero { padding: 18px 20px 10px; }
-    .city-name-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 3px; }
-    .city-name { font-family: var(--fd); font-size: 1.9rem; font-weight: 800; letter-spacing: -0.04em; }
+    .city-name-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 3px; flex-wrap: wrap; }
+    .city-name { font-family: var(--fd); font-size: 1.9rem; font-weight: 800; letter-spacing: 0; }
     .city-country { font-size: 0.78rem; color: var(--txt2); }
     .city-meta {
       font-size: 0.73rem; color: var(--txt2);
@@ -438,7 +443,7 @@
     }
     .city-temp-big {
       font-family: var(--fd); font-size: 3.6rem; font-weight: 800;
-      line-height: 1; letter-spacing: -0.05em;
+      line-height: 1; letter-spacing: 0;
       background: linear-gradient(135deg, var(--txt) 30%, var(--txt2));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -460,7 +465,7 @@
       display: flex; flex-direction: column; align-items: center; gap: 5px;
     }
     .tomorrow-card .day-slot { background: rgba(12,15,26,0.6); }
-    .day-slot-label { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--txt2); }
+    .day-slot-label { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0; color: var(--txt2); }
     .day-slot-icon  { font-size: 2rem; line-height: 1; }
     .day-slot-temp  { font-family: var(--fd); font-size: 1.55rem; font-weight: 700; }
     .day-slot-desc  { font-size: 0.7rem; color: var(--txt2); text-align: center; line-height: 1.3; }
@@ -562,7 +567,7 @@
     }
     .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
     .stat-icon  { font-size: 1.25rem; }
-    .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--txt2); }
+    .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0; color: var(--txt2); line-height: 1.25; }
     .stat-value { font-family: var(--fd); font-size: 1.35rem; font-weight: 700; }
     .stat-sub   { font-size: 0.67rem; color: var(--txt2); }
 
@@ -610,7 +615,9 @@
     /* ══════════════════════════════════════════════════════════════
        LEAFLET DARK OVERRIDES
     ══════════════════════════════════════════════════════════════ */
-    .leaflet-tile { filter: brightness(0.32) saturate(0.25) hue-rotate(180deg); }
+    .leaflet-tile { filter: none; }
+    .base-map-tile { filter: brightness(0.48) saturate(0.5) contrast(1.04) hue-rotate(180deg); }
+    .radar-map-tile { filter: none !important; }
     .leaflet-container { background: #0a0e18 !important; }
     .leaflet-control-zoom a {
       background: rgba(10,14,24,0.92) !important;
@@ -640,12 +647,67 @@
       .stats-section { grid-template-columns: repeat(2,1fr); }
     }
     @media (max-width: 600px) {
-      main { padding: 14px 12px 24px; gap: 14px; }
-      header, footer { padding: 0 14px; }
+      :root { --radius: 12px; --radius-sm: 8px; }
+      main { padding: 12px 10px 24px; gap: 14px; }
+      header {
+        height: auto; min-height: 58px; padding: 9px 12px;
+        gap: 10px; align-items: center;
+      }
+      .logo { font-size: 1.06rem; gap: 8px; }
+      .logo-icon { width: 28px; height: 28px; border-radius: 7px; }
+      .header-right { gap: 8px; min-width: 0; }
       .header-time { display: none; }
+      .header-weather-badge { display: none; }
+      .header-pill { max-width: 42vw; overflow: hidden; }
+      #header-location { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .search-bar { padding: 11px 14px; gap: 9px; border-radius: 14px; }
+      .search-shortcut { display: none; }
+      .search-suggestions { border-radius: 12px; max-height: 58vh; }
+      .suggestion-item { padding: 12px 14px; }
+      .main-grid, .charts-section { gap: 14px; }
+      .card-header { padding: 14px 16px 10px; min-height: 44px; }
+      .card-title { font-size: 0.69rem; }
+      .radar-timeline { padding: 0 16px 10px; scroll-padding: 16px; }
+      .timeline-btn { padding: 5px 10px; }
+      #map-container { height: 58vh; min-height: 340px; max-height: 470px; }
+      .map-legend {
+        left: 10px; right: 10px; bottom: 10px;
+        padding: 9px 10px;
+      }
+      .legend-color { flex: 1; min-width: 0; }
+      .radar-status { padding: 10px 16px 14px; align-items: flex-start; }
+      .radar-anim-btn { margin-left: 0; }
+      .right-col { gap: 14px; }
+      .city-hero { padding: 12px 16px 8px; }
+      .city-name { font-size: 1.55rem; }
+      .city-temp-row { padding: 8px 16px 14px; gap: 14px; }
+      .city-temp-big { font-size: 3rem; }
+      .day-grid { grid-template-columns: 1fr; }
+      .day-slot-extra { flex-wrap: wrap; justify-content: center; }
+      .week-row {
+        grid-template-columns: 54px 28px minmax(0,1fr) 36px 36px;
+        padding: 9px 16px; gap: 5px;
+      }
+      .hourly-scroll { padding: 8px 12px 14px; }
+      .chart-tabs { padding: 10px 12px 0; }
       .stats-section { grid-template-columns: repeat(2,1fr); gap: 10px; }
-      .chart-tabs { gap: 3px; }
       .chart-tab { font-size: 0.68rem; padding: 4px 9px; }
+      .chart-wrap { height: 240px; padding: 4px 12px 14px; }
+      .stat-card { padding: 13px; }
+      footer {
+        height: auto; padding: 12px;
+        flex-direction: column; align-items: flex-start; gap: 8px;
+        line-height: 1.35;
+      }
+      .footer-links { flex-wrap: wrap; gap: 8px 14px; }
+    }
+    @media (max-width: 380px) {
+      main { padding-left: 8px; padding-right: 8px; }
+      .header-pill { max-width: 38vw; }
+      .stats-section { grid-template-columns: 1fr; }
+      .week-row { grid-template-columns: 48px 24px minmax(0,1fr) 34px 34px; padding-left: 12px; padding-right: 12px; }
+      .city-temp-big { font-size: 2.65rem; }
+      .city-cond-label { font-size: 0.92rem; }
     }
   </style>
 </head>
@@ -689,7 +751,7 @@
       <div class="search-bar">
         <span class="search-icon">🔍</span>
         <input type="text" class="search-input" id="search-input"
-          placeholder="Rechercher une ville… Paris, Lyon, Marseille, Brest…"
+          placeholder="Rechercher une ville… Paris, Montréal, Tokyo, Brest…"
           autocomplete="off" spellcheck="false" />
         <span class="search-shortcut">⌘K</span>
       </div>
@@ -721,17 +783,16 @@
         </div>
         <div id="map-container">
           <div id="map"></div>
-          <div id="radar-flash"></div>
           <div id="radar-progress"><div id="radar-progress-fill" style="width:0%"></div></div>
           <div class="map-legend">
             <div class="legend-title">Précipitations mm/h</div>
             <div class="legend-scale">
-              <div class="legend-color" style="background:#b3e5fc"></div>
-              <div class="legend-color" style="background:#4fc3f7"></div>
-              <div class="legend-color" style="background:#0288d1"></div>
-              <div class="legend-color" style="background:#01579b"></div>
-              <div class="legend-color" style="background:#1a237e"></div>
-              <div class="legend-color" style="background:#e040fb"></div>
+              <div class="legend-color" style="background:#8bd6ff"></div>
+              <div class="legend-color" style="background:#149cff"></div>
+              <div class="legend-color" style="background:#ffe45c"></div>
+              <div class="legend-color" style="background:#ff9d28"></div>
+              <div class="legend-color" style="background:#f44336"></div>
+              <div class="legend-color" style="background:#b71c1c"></div>
             </div>
             <div class="legend-labels">
               <span>0.1</span><span>1</span><span>5</span><span>10</span><span>25</span><span>50+</span>
@@ -920,6 +981,7 @@ const S = {
   lat:  48.8566,
   lon:  2.3522,
   region: 'Île-de-France, FR',
+  timezone: 'Europe/Paris',
   forecast: null,
   aqi:      null,
   chart:    null,
@@ -927,6 +989,11 @@ const S = {
   radarFrames: [],
   radarIdx: 0,
   radarLayer: null,
+  radarLayers: new Map(),
+  radarHost: 'https://tilecache.rainviewer.com',
+  radarFadeFrame: null,
+  radarPending: null,
+  radarTransition: 0,
   animInterval: null,
   cityMarker: null,
   weatherEffect: 'cloud',
@@ -1033,63 +1100,346 @@ document.getElementById('tomorrow-date').textContent =
 // ──────────────────────────────────────────────────────────────────
 const searchEl = document.getElementById('search-input');
 const suggestEl = document.getElementById('search-suggestions');
+const GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+let searchTimer = null;
+let searchAbort = null;
+let searchSeq = 0;
+let searchResults = [];
+let activeSuggestion = -1;
 
-searchEl.addEventListener('input', () => {
-  const q = searchEl.value.trim().toLowerCase();
-  if (q.length < 2) { suggestEl.classList.remove('show'); return; }
-  const hits = CITIES.filter(c =>
-    c.name.toLowerCase().startsWith(q) ||
-    c.name.toLowerCase().includes(q) ||
-    c.region.toLowerCase().includes(q)
-  ).slice(0, 7);
-  if (!hits.length) { suggestEl.classList.remove('show'); return; }
-  suggestEl.innerHTML = hits.map(c => `
-    <div class="suggestion-item" onclick="selectCity(${CITIES.indexOf(c)})">
-      <span style="font-size:1.1rem">📍</span>
-      <div>
-        <div class="suggestion-name">${c.name}</div>
-        <div class="suggestion-sub">${c.region}, FR</div>
-      </div>
-    </div>`).join('');
+searchEl.setAttribute('aria-controls', 'search-suggestions');
+searchEl.setAttribute('aria-autocomplete', 'list');
+searchEl.setAttribute('aria-expanded', 'false');
+
+function normalizeText(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[ch]));
+}
+
+function localCityToLocation(c) {
+  return {
+    name: c.name,
+    region: c.region,
+    country: 'France',
+    countryCode: 'FR',
+    lat: c.lat,
+    lon: c.lon,
+    timezone: 'Europe/Paris',
+    population: c.population || 0,
+    source: 'local',
+  };
+}
+
+function geocodeResultToLocation(r) {
+  const region = [r.admin1, r.admin2].filter(Boolean).join(' · ') || r.country || '';
+  return {
+    name: r.name,
+    region,
+    country: r.country || '',
+    countryCode: r.country_code || '',
+    lat: r.latitude,
+    lon: r.longitude,
+    timezone: r.timezone || 'auto',
+    population: r.population || 0,
+    source: 'geocoding',
+  };
+}
+
+function nominatimResultToLocation(r) {
+  const address = r.address || {};
+  const name = address.city || address.town || address.village || address.municipality || r.name || String(r.display_name || '').split(',')[0];
+  const region = [
+    address.state || address.region || address.county,
+    address.country,
+  ].filter(Boolean).join(', ');
+
+  return {
+    name,
+    region,
+    country: address.country || '',
+    countryCode: String(address.country_code || '').toUpperCase(),
+    lat: Number(r.lat),
+    lon: Number(r.lon),
+    timezone: 'auto',
+    population: 0,
+    source: 'nominatim',
+  };
+}
+
+function locationRegionLabel(c) {
+  const region = [c.region, c.country || c.countryCode].filter(Boolean).join(', ');
+  if (region) return region;
+  return `${Number(c.lat).toFixed(2)}, ${Number(c.lon).toFixed(2)}`;
+}
+
+function locationKey(c) {
+  return [
+    normalizeText(c.name),
+    normalizeText(c.countryCode || c.country),
+    Number(c.lat).toFixed(2),
+    Number(c.lon).toFixed(2),
+  ].join('|');
+}
+
+function localSuggestions(q) {
+  const n = normalizeText(q);
+  return CITIES
+    .map(localCityToLocation)
+    .filter(c => normalizeText(`${c.name} ${c.region} France FR`).includes(n))
+    .slice(0, 5);
+}
+
+function mergeSuggestions(local, remote) {
+  const seen = new Set();
+  return [...local, ...remote].filter(c => {
+    const key = locationKey(c);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return Number.isFinite(c.lat) && Number.isFinite(c.lon);
+  }).slice(0, 8);
+}
+
+function hideSuggestions() {
+  searchSeq++;
+  if (searchTimer) clearTimeout(searchTimer);
+  if (searchAbort) searchAbort.abort();
+  suggestEl.classList.remove('show');
+  searchEl.setAttribute('aria-expanded', 'false');
+  activeSuggestion = -1;
+}
+
+function renderSuggestions(results, state = '') {
+  searchResults = results;
+  activeSuggestion = results.length ? Math.min(Math.max(0, activeSuggestion), results.length - 1) : -1;
+
+  if (state === 'loading' && !results.length) {
+    suggestEl.innerHTML = '<div class="suggestion-item loading"><span>⌕</span><div><div class="suggestion-name">Recherche…</div><div class="suggestion-sub">Open-Meteo Geocoding</div></div></div>';
+  } else if (!results.length) {
+    suggestEl.innerHTML = '<div class="suggestion-item empty"><span>⌕</span><div><div class="suggestion-name">Aucune ville trouvée</div><div class="suggestion-sub">Essayez un nom plus complet ou un code postal.</div></div></div>';
+  } else {
+    const rows = results.map((c, i) => `
+      <button type="button" class="suggestion-item${i === activeSuggestion ? ' active' : ''}" data-suggestion-index="${i}">
+        <span style="font-size:1.1rem">📍</span>
+        <div>
+          <div class="suggestion-name">${escapeHTML(c.name)}</div>
+          <div class="suggestion-sub">${escapeHTML(locationRegionLabel(c))}</div>
+        </div>
+      </button>`);
+    if (state === 'loading') {
+      rows.push('<div class="suggestion-item loading"><span>⌕</span><div><div class="suggestion-name">Recherche mondiale…</div><div class="suggestion-sub">Open-Meteo puis OpenStreetMap si nécessaire</div></div></div>');
+    }
+    suggestEl.innerHTML = rows.join('');
+  }
+
   suggestEl.classList.add('show');
+  searchEl.setAttribute('aria-expanded', 'true');
+}
+
+function updateActiveSuggestion(nextIdx) {
+  if (!searchResults.length) return;
+  activeSuggestion = (nextIdx + searchResults.length) % searchResults.length;
+  document.querySelectorAll('.suggestion-item[data-suggestion-index]').forEach((el, i) => {
+    el.classList.toggle('active', i === activeSuggestion);
+  });
+}
+
+async function geocodeOpenMeteo(q, signal, force = false) {
+  const params = new URLSearchParams({
+    name: q,
+    count: force ? '12' : '8',
+    language: 'fr',
+    format: 'json',
+  });
+  const res = await fetch(`${GEOCODING_URL}?${params}`, { signal });
+  if (!res.ok) throw new Error('Geocoding ' + res.status);
+  const data = await res.json();
+  return (data.results || [])
+    .filter(r => r.name && Number.isFinite(r.latitude) && Number.isFinite(r.longitude))
+    .map(geocodeResultToLocation);
+}
+
+async function geocodeNominatim(q, signal) {
+  const params = new URLSearchParams({
+    q,
+    format: 'jsonv2',
+    addressdetails: '1',
+    limit: '8',
+    'accept-language': 'fr',
+  });
+  const res = await fetch(`${NOMINATIM_URL}?${params}`, { signal });
+  if (!res.ok) throw new Error('Nominatim ' + res.status);
+  const data = await res.json();
+  return (data || [])
+    .filter(r => Number.isFinite(Number(r.lat)) && Number.isFinite(Number(r.lon)))
+    .map(nominatimResultToLocation)
+    .filter(r => r.name);
+}
+
+async function geocodeCities(q, force = false) {
+  if (searchAbort) searchAbort.abort();
+  searchAbort = new AbortController();
+  const signal = searchAbort.signal;
+
+  try {
+    const openMeteo = await geocodeOpenMeteo(q, signal, force);
+    if (openMeteo.length) return openMeteo;
+  } catch(e) {
+    if (e.name === 'AbortError') throw e;
+  }
+
+  return geocodeNominatim(q, signal);
+}
+
+function queueCitySearch() {
+  const q = searchEl.value.trim();
+  const seq = ++searchSeq;
+  if (searchTimer) clearTimeout(searchTimer);
+  if (searchAbort) searchAbort.abort();
+
+  if (q.length < 2) {
+    hideSuggestions();
+    return;
+  }
+
+  const local = localSuggestions(q);
+  activeSuggestion = -1;
+  renderSuggestions(local, 'loading');
+
+  searchTimer = setTimeout(async () => {
+    try {
+      const remote = await geocodeCities(q);
+      if (seq !== searchSeq) return;
+      const merged = mergeSuggestions(local, remote);
+      activeSuggestion = merged.length ? 0 : -1;
+      renderSuggestions(merged);
+    } catch(e) {
+      if (e.name === 'AbortError') return;
+      if (seq !== searchSeq) return;
+      renderSuggestions(local.length ? local : []);
+    }
+  }, 230);
+}
+
+async function submitCitySearch() {
+  const q = searchEl.value.trim();
+  if (!q) return;
+
+  renderSuggestions([], 'loading');
+  try {
+    const seq = ++searchSeq;
+    const remote = await geocodeCities(q, true);
+    if (seq !== searchSeq) return;
+    const merged = mergeSuggestions(localSuggestions(q), remote);
+    if (merged[0]) selectLocation(merged[0]);
+    else renderSuggestions([]);
+  } catch(e) {
+    if (e.name !== 'AbortError') {
+      const local = localSuggestions(q);
+      if (local[0]) selectLocation(local[0]);
+      else renderSuggestions([]);
+    }
+  }
+}
+
+searchEl.addEventListener('input', queueCitySearch);
+searchEl.addEventListener('focus', () => {
+  if (searchEl.value === S.city) searchEl.select();
+});
+
+searchEl.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    updateActiveSuggestion(activeSuggestion + 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    updateActiveSuggestion(activeSuggestion - 1);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    submitCitySearch();
+  }
+});
+
+suggestEl.addEventListener('click', e => {
+  const btn = e.target.closest('.suggestion-item[data-suggestion-index]');
+  if (!btn) return;
+  const loc = searchResults[Number(btn.dataset.suggestionIndex)];
+  if (loc) selectLocation(loc);
 });
 
 document.addEventListener('click', e => {
-  if (!e.target.closest('.search-section')) suggestEl.classList.remove('show');
+  if (!e.target.closest('.search-section')) hideSuggestions();
 });
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); searchEl.focus(); }
-  if (e.key === 'Escape') { suggestEl.classList.remove('show'); searchEl.blur(); }
+  if (e.key === 'Escape') { hideSuggestions(); searchEl.blur(); }
 });
 
 function selectCity(idx) {
   const c = CITIES[idx];
-  if (!c) return;
+  if (c) selectLocation(localCityToLocation(c));
+}
+
+function selectLocation(c) {
   S.city = c.name;
-  S.lat  = c.lat;
-  S.lon  = c.lon;
-  S.region = c.region + ', FR';
-  searchEl.value = '';
-  suggestEl.classList.remove('show');
+  S.lat  = Number(c.lat);
+  S.lon  = Number(c.lon);
+  S.region = locationRegionLabel(c);
+  S.timezone = c.timezone || 'auto';
+
+  searchEl.value = c.name;
+  hideSuggestions();
   document.getElementById('city-name').textContent = c.name;
   document.getElementById('city-country').textContent = S.region;
   document.getElementById('header-location').textContent = c.name;
-  map.flyTo([c.lat, c.lon], 8, { duration: 1.4 });
-  // Persist selection
-  try { localStorage.setItem('wr_city', JSON.stringify({ name:c.name, region:c.region, lat:c.lat, lon:c.lon })); } catch(e){}
+  map.flyTo([S.lat, S.lon], 8, { duration: 1.2 });
+
+  try {
+    localStorage.setItem('wr_city', JSON.stringify({
+      name: c.name,
+      region: c.region,
+      country: c.country,
+      countryCode: c.countryCode,
+      lat: S.lat,
+      lon: S.lon,
+      timezone: S.timezone,
+    }));
+  } catch(e){}
   loadAll();
 }
 
 // ──────────────────────────────────────────────────────────────────
 // LEAFLET MAP
 // ──────────────────────────────────────────────────────────────────
+const IS_COARSE_POINTER = window.matchMedia?.('(pointer: coarse)').matches ?? false;
 const map = L.map('map', {
   center: [46.5, 2.5], zoom: 5.5,
-  zoomControl: true, attributionControl: true,
+  zoomControl: true,
+  attributionControl: true,
+  scrollWheelZoom: false,
+  dragging: !IS_COARSE_POINTER,
+  touchZoom: !IS_COARSE_POINTER,
+  tap: false,
 });
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors', maxZoom: 18,
-}).addTo(map);
+  className: 'base-map-layer',
+});
+baseLayer.on('tileload', e => e.tile.classList.add('base-map-tile'));
+baseLayer.addTo(map);
 
 function updateMarker() {
   if (S.cityMarker) map.removeLayer(S.cityMarker);
@@ -1103,17 +1453,32 @@ updateMarker();
 // ──────────────────────────────────────────────────────────────────
 // RAINVIEWER RADAR
 // ──────────────────────────────────────────────────────────────────
+const RADAR_MAX_OPACITY = 0.96;
+const RAINVIEWER_COLOR_SCHEME = 2;
+const RAINVIEWER_TILE_IMAGE_SIZE = window.devicePixelRatio >= 2 ? 512 : 256;
+
 async function loadRadar() {
+  const wasAnimating = Boolean(S.animInterval);
   try {
+    if (wasAnimating) stopRadarAnimation();
     const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+    if (!res.ok) throw new Error('RainViewer ' + res.status);
     const data = await res.json();
-    const past = data.radar.past.slice(-5);
-    const cast = (data.radar.nowcast || []).slice(0, 6);
+    const past = (data.radar?.past || []).slice(-8);
+    const cast = (data.radar?.nowcast || []).slice(0, 6);
+    if (!past.length && !cast.length) throw new Error('Aucune frame radar');
+
+    clearRadarLayerCache();
+    S.radarHost = data.host || 'https://tilecache.rainviewer.com';
     S.radarFrames = [...past, ...cast];
     S._pastCount  = past.length;
     buildTimeline(past.length);
-    // Show the most recent past frame (last past index)
-    showRadarFrame(past.length - 1);
+    preloadRadarLayers();
+
+    // Show the most recent past frame (last past index), or first available frame.
+    showRadarFrame(Math.max(0, past.length - 1), { instant: true });
+    document.getElementById('radar-status-txt').textContent = radarStatusText();
+    if (wasAnimating) startRadarAnimation();
   } catch(e) {
     document.getElementById('radar-status-txt').textContent = 'Radar temporairement indisponible';
   }
@@ -1148,85 +1513,190 @@ function buildTimeline(pastCount) {
   });
 }
 
-function showRadarFrame(idx) {
-  if (!S.radarFrames[idx]) return;
-  S.radarIdx = idx;
-  const f   = S.radarFrames[idx];
-  // colour scheme 8 = smooth colour scale, smooth=1
-  const url = `https://tilecache.rainviewer.com${f.path}/512/{z}/{x}/{y}/8/1_1.png`;
+function radarTileUrl(f) {
+  return `${S.radarHost}${f.path}/${RAINVIEWER_TILE_IMAGE_SIZE}/{z}/{x}/{y}/${RAINVIEWER_COLOR_SCHEME}/1_1.png`;
+}
 
-  // ── Crossfade: bring in new layer, fade out old ──────────────────
-  const oldLayer = S.radarLayer;
-  const newLayer = L.tileLayer(url, { opacity: 0, zIndex: 10 }).addTo(map);
-  S.radarLayer = newLayer;
+function clearRadarLayerCache() {
+  if (S.radarFadeFrame) cancelAnimationFrame(S.radarFadeFrame);
+  S.radarFadeFrame = null;
+  S.radarPending = null;
+  S.radarLayers.forEach(layer => {
+    try { map.removeLayer(layer); } catch(e){}
+  });
+  S.radarLayers.clear();
+  S.radarLayer = null;
+}
 
-  // Fade new layer in
-  let fadeIn = 0;
-  const stepIn = setInterval(() => {
-    fadeIn = Math.min(1, fadeIn + 0.12);
-    newLayer.setOpacity(fadeIn * 0.75);
-    if (fadeIn >= 1) clearInterval(stepIn);
-  }, 30);
+function getRadarLayer(idx) {
+  if (S.radarLayers.has(idx)) return S.radarLayers.get(idx);
+  const f = S.radarFrames[idx];
+  if (!f) return null;
+  const layer = L.tileLayer(radarTileUrl(f), {
+    opacity: 0,
+    zIndex: 20 + idx,
+    maxNativeZoom: 7,
+    maxZoom: 12,
+    tileSize: 256,
+    updateWhenIdle: true,
+    updateWhenZooming: false,
+    keepBuffer: 2,
+    crossOrigin: true,
+    className: 'radar-map-layer',
+  });
+  layer._wrLoaded = false;
+  layer.on('load', () => { layer._wrLoaded = true; });
+  layer.on('tileload', e => e.tile.classList.add('radar-map-tile'));
+  layer.addTo(map);
+  layer.setOpacity(0);
+  S.radarLayers.set(idx, layer);
+  return layer;
+}
 
-  // Fade old layer out and remove
-  if (oldLayer) {
-    let fadeOut = 0.75;
-    const stepOut = setInterval(() => {
-      fadeOut = Math.max(0, fadeOut - 0.15);
-      try { oldLayer.setOpacity(fadeOut); } catch(e) { /* layer may already be gone */ }
-      if (fadeOut <= 0) { clearInterval(stepOut); try { map.removeLayer(oldLayer); } catch(e){} }
-    }, 30);
+function preloadRadarLayers() {
+  S.radarFrames.forEach((f, idx) => {
+    getRadarLayer(idx);
+  });
+}
+
+function crossfadeRadarLayers(nextLayer, prevLayer, instant = false) {
+  if (S.radarFadeFrame) cancelAnimationFrame(S.radarFadeFrame);
+  const transition = ++S.radarTransition;
+
+  nextLayer.setZIndex(60);
+  if (prevLayer && prevLayer !== nextLayer) prevLayer.setZIndex(55);
+
+  if (instant || !prevLayer || prevLayer === nextLayer) {
+    nextLayer.setOpacity(RADAR_MAX_OPACITY);
+    S.radarLayers.forEach(layer => {
+      if (layer !== nextLayer) layer.setOpacity(0);
+    });
+    return;
   }
 
-  // ── Flash border on frame change (when animating) ────────────────
-  if (S.animInterval) {
-    const flash = document.getElementById('radar-flash');
-    flash.classList.add('flash');
-    setTimeout(() => flash.classList.remove('flash'), 100);
+  const started = performance.now();
+  const duration = 280;
 
-    // Update progress bar
-    const total  = S.radarFrames.length;
-    const pct    = ((idx + 1) / total * 100).toFixed(1);
-    const fill   = document.getElementById('radar-progress-fill');
-    if (fill) fill.style.width = pct + '%';
-  }
+  const step = now => {
+    if (transition !== S.radarTransition) return;
+    const raw = Math.min(1, (now - started) / duration);
+    const eased = 1 - Math.pow(1 - raw, 3);
+    nextLayer.setOpacity(eased * RADAR_MAX_OPACITY);
+    prevLayer.setOpacity((1 - eased) * RADAR_MAX_OPACITY);
 
-  // ── Timeline active state ────────────────────────────────────────
+    if (raw < 1) {
+      S.radarFadeFrame = requestAnimationFrame(step);
+      return;
+    }
+
+    S.radarFadeFrame = null;
+    nextLayer.setOpacity(RADAR_MAX_OPACITY);
+    S.radarLayers.forEach(layer => {
+      if (layer !== nextLayer) layer.setOpacity(0);
+    });
+  };
+
+  S.radarFadeFrame = requestAnimationFrame(step);
+}
+
+function centerTimelineButton(btn) {
+  const tl = document.getElementById('radar-timeline');
+  const left = btn.offsetLeft - (tl.clientWidth - btn.offsetWidth) / 2;
+  tl.scrollTo({ left, behavior: S.animInterval ? 'auto' : 'smooth' });
+}
+
+function updateRadarProgress(idx) {
+  const fill = document.getElementById('radar-progress-fill');
+  if (!fill || !S.radarFrames.length) return;
+  const pct = ((idx + 1) / S.radarFrames.length * 100).toFixed(1);
+  fill.style.width = pct + '%';
+}
+
+function radarStatusText() {
+  const forecastCount = Math.max(0, S.radarFrames.length - (S._pastCount || 0));
+  return forecastCount
+    ? 'Données RainViewer · historique + vraie prévision radar'
+    : 'Données RainViewer · historique radar disponible, prévision radar publique indisponible';
+}
+
+function updateRadarFrameUI(idx) {
   document.querySelectorAll('.timeline-btn').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById(`tl-${idx}`);
-  if (btn) { btn.classList.add('active'); btn.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' }); }
+  if (btn) {
+    btn.classList.add('active');
+    centerTimelineButton(btn);
+  }
 
-  // ── Status label ─────────────────────────────────────────────────
+  const f = S.radarFrames[idx];
+  if (!f) return;
   const dt = new Date(f.time * 1000);
-  const isNow = Math.abs(f.time * 1000 - Date.now()) < 700000;
-  const pastCount = S.radarFrames.findIndex((_, i) => i >= S.radarFrames.length - (S.radarFrames.length - S._pastCount));
-  const isForecast = idx >= (S._pastCount || 5);
-  const label = isNow
+  const nowIdx = Math.max(0, (S._pastCount || 1) - 1);
+  const isForecast = idx >= (S._pastCount || 0);
+  const label = idx === nowIdx
     ? '<span style="width:6px;height:6px;border-radius:50%;background:#4caf50;display:inline-block;animation:blink 2s infinite"></span> En direct'
     : isForecast
       ? `<span style="color:var(--accent)">▶ Prévision</span> ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`
       : `◀ ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
   document.getElementById('radar-time-label').innerHTML = label;
+  updateRadarProgress(idx);
+}
+
+function showRadarFrame(idx, options = {}) {
+  if (!S.radarFrames[idx]) return;
+  S.radarIdx = idx;
+  updateRadarFrameUI(idx);
+
+  const previousLayer = S.radarLayer;
+  const nextLayer = getRadarLayer(idx);
+  if (!nextLayer) return;
+  const request = Symbol('radar-frame');
+  S.radarPending = request;
+
+  const reveal = () => {
+    if (S.radarPending !== request) return;
+    crossfadeRadarLayers(nextLayer, previousLayer, Boolean(options.instant));
+    S.radarLayer = nextLayer;
+    document.getElementById('radar-status-txt').textContent = radarStatusText();
+  };
+
+  if (options.instant || nextLayer._wrLoaded) {
+    reveal();
+    return;
+  }
+
+  document.getElementById('radar-status-txt').textContent = 'Chargement de l’image radar…';
+  nextLayer.once('load', reveal);
+  setTimeout(reveal, 1100);
+}
+
+function startRadarAnimation() {
+  if (!S.radarFrames.length || S.animInterval) return;
+  const progress = document.getElementById('radar-progress');
+  const btn = document.getElementById('anim-btn');
+  btn.innerHTML = '⏹&nbsp; Stop';
+  btn.classList.add('active');
+  progress.classList.add('visible');
+  updateRadarProgress(S.radarIdx);
+  S.animInterval = setInterval(() => {
+    showRadarFrame((S.radarIdx + 1) % S.radarFrames.length);
+  }, 820);
+}
+
+function stopRadarAnimation(resetProgress = true) {
+  if (S.animInterval) clearInterval(S.animInterval);
+  S.animInterval = null;
+  const progress = document.getElementById('radar-progress');
+  const btn = document.getElementById('anim-btn');
+  btn.innerHTML = '▶&nbsp; Animer';
+  btn.classList.remove('active');
+  progress.classList.remove('visible');
+  if (resetProgress) document.getElementById('radar-progress-fill').style.width = '0%';
 }
 
 // Animation toggle
 document.getElementById('anim-btn').addEventListener('click', function() {
-  const progress = document.getElementById('radar-progress');
-  if (S.animInterval) {
-    clearInterval(S.animInterval);
-    S.animInterval = null;
-    this.innerHTML = '▶&nbsp; Animer';
-    this.classList.remove('active');
-    progress.classList.remove('visible');
-    document.getElementById('radar-progress-fill').style.width = '0%';
-  } else {
-    this.innerHTML = '⏹&nbsp; Stop';
-    this.classList.add('active');
-    progress.classList.add('visible');
-    S.animInterval = setInterval(() => {
-      showRadarFrame((S.radarIdx + 1) % S.radarFrames.length);
-    }, 600);
-  }
+  if (S.animInterval) stopRadarAnimation();
+  else startRadarAnimation();
 });
 
 // ──────────────────────────────────────────────────────────────────
@@ -1239,7 +1709,7 @@ async function fetchWeather() {
     + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours`
     + `&current_weather=true`
     + `&forecast_days=16`
-    + `&timezone=Europe%2FParis`;
+    + `&timezone=auto`;
   const r = await fetch(u);
   if (!r.ok) throw new Error('Open-Meteo ' + r.status);
   return r.json();
@@ -1249,7 +1719,7 @@ async function fetchAQI() {
   const u = `https://air-quality-api.open-meteo.com/v1/air-quality`
     + `?latitude=${S.lat}&longitude=${S.lon}`
     + `&hourly=pm2_5,pm10,nitrogen_dioxide,ozone,european_aqi`
-    + `&timezone=Europe%2FParis&forecast_days=1`;
+    + `&timezone=auto&forecast_days=1`;
   const r = await fetch(u);
   if (!r.ok) throw new Error('AQI ' + r.status);
   return r.json();
@@ -1289,6 +1759,31 @@ function daySlotHTML(s) {
     </div>`;
 }
 
+function dateFromDay(day) {
+  return new Date(`${day}T12:00:00`);
+}
+
+function updateDateLabels(d) {
+  const today = d.daily.time[0] || TODAY_STR;
+  const tomorrow = d.daily.time[1] || TOMORROW_STR;
+  document.getElementById('today-date').textContent =
+    dateFromDay(today).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+  document.getElementById('tomorrow-date').textContent =
+    dateFromDay(tomorrow).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+}
+
+function coordLabel(lat, lon) {
+  const ns = lat >= 0 ? 'N' : 'S';
+  const ew = lon >= 0 ? 'E' : 'O';
+  return `${Math.abs(lat).toFixed(2)}°${ns} ${Math.abs(lon).toFixed(2)}°${ew}`;
+}
+
+function currentHourKey(d) {
+  const current = d.current_weather?.time;
+  if (current) return `${current.slice(0, 13)}:00`;
+  return d.hourly.time[0];
+}
+
 // ──────────────────────────────────────────────────────────────────
 // RENDER TODAY
 // ──────────────────────────────────────────────────────────────────
@@ -1296,6 +1791,7 @@ function renderToday(d) {
   const cw   = d.current_weather;
   const info = wmoInfo(cw.weathercode);
   S.weatherEffect = info.effect;
+  const todayStr = d.daily.time[0] || TODAY_STR;
 
   // Header badge
   document.getElementById('header-badge').innerHTML =
@@ -1306,29 +1802,29 @@ function renderToday(d) {
   document.getElementById('city-cond-icon').textContent = info.icon;
   document.getElementById('city-cond-label').textContent = info.desc;
   document.getElementById('city-meta').innerHTML =
-    `<span>${S.lat.toFixed(2)}°N ${S.lon.toFixed(2)}°E</span>`
+    `<span>${coordLabel(S.lat, S.lon)}</span>`
     + `<span>Vent: ${Math.round(cw.windspeed)} km/h ${windDir(cw.winddirection)}</span>`;
 
   const daily = d.daily;
-  const todayDI = daily.time.indexOf(TODAY_STR) >= 0 ? daily.time.indexOf(TODAY_STR) : 0;
+  const todayDI = daily.time.indexOf(todayStr) >= 0 ? daily.time.indexOf(todayStr) : 0;
   document.getElementById('city-cond-sub').textContent =
     `${Math.round(daily.temperature_2m_min[todayDI])}° – ${Math.round(daily.temperature_2m_max[todayDI])}°`;
 
   // Morning / afternoon slots
   const hi = d.hourly;
   const morning = {
-    label:'Matin', code: hi.weathercode[findHourIdx(hi.time, TODAY_STR, 9)] ?? cw.weathercode,
-    temp: Math.round(hi.temperature_2m[findHourIdx(hi.time, TODAY_STR, 9)] ?? cw.temperature),
-    hum:  hi.relativehumidity_2m[findHourIdx(hi.time, TODAY_STR, 9)],
-    wind: Math.round(hi.windspeed_10m[findHourIdx(hi.time, TODAY_STR, 9)] ?? cw.windspeed),
-    precip: hi.precipitation[findHourIdx(hi.time, TODAY_STR, 9)],
+    label:'Matin', code: hi.weathercode[findHourIdx(hi.time, todayStr, 9)] ?? cw.weathercode,
+    temp: Math.round(hi.temperature_2m[findHourIdx(hi.time, todayStr, 9)] ?? cw.temperature),
+    hum:  hi.relativehumidity_2m[findHourIdx(hi.time, todayStr, 9)],
+    wind: Math.round(hi.windspeed_10m[findHourIdx(hi.time, todayStr, 9)] ?? cw.windspeed),
+    precip: hi.precipitation[findHourIdx(hi.time, todayStr, 9)],
   };
   const afternoon = {
-    label:'Après-midi', code: hi.weathercode[findHourIdx(hi.time, TODAY_STR, 15)] ?? cw.weathercode,
-    temp: Math.round(hi.temperature_2m[findHourIdx(hi.time, TODAY_STR, 15)] ?? cw.temperature),
-    hum:  hi.relativehumidity_2m[findHourIdx(hi.time, TODAY_STR, 15)],
-    wind: Math.round(hi.windspeed_10m[findHourIdx(hi.time, TODAY_STR, 15)] ?? cw.windspeed),
-    precip: hi.precipitation[findHourIdx(hi.time, TODAY_STR, 15)],
+    label:'Après-midi', code: hi.weathercode[findHourIdx(hi.time, todayStr, 15)] ?? cw.weathercode,
+    temp: Math.round(hi.temperature_2m[findHourIdx(hi.time, todayStr, 15)] ?? cw.temperature),
+    hum:  hi.relativehumidity_2m[findHourIdx(hi.time, todayStr, 15)],
+    wind: Math.round(hi.windspeed_10m[findHourIdx(hi.time, todayStr, 15)] ?? cw.windspeed),
+    precip: hi.precipitation[findHourIdx(hi.time, todayStr, 15)],
   };
 
   document.getElementById('today-grid').innerHTML = daySlotHTML(morning) + daySlotHTML(afternoon);
@@ -1343,8 +1839,9 @@ function renderToday(d) {
 // ──────────────────────────────────────────────────────────────────
 function renderTomorrow(d) {
   const hi = d.hourly;
+  const tomorrowStr = d.daily.time[1] || TOMORROW_STR;
   const make = (hour, label) => {
-    const idx = findHourIdx(hi.time, TOMORROW_STR, hour);
+    const idx = findHourIdx(hi.time, tomorrowStr, hour);
     if (idx < 0) return null;
     return {
       label,
@@ -1366,12 +1863,13 @@ function renderTomorrow(d) {
 // ──────────────────────────────────────────────────────────────────
 function renderWeek(d) {
   const DAYS = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const todayStr = d.daily.time[0] || TODAY_STR;
   const rows = d.daily.time.slice(0, 7).map((t, i) => {
     const date = new Date(t + 'T12:00:00');
     const info  = wmoInfo(d.daily.weathercode[i]);
     const tMax  = Math.round(d.daily.temperature_2m_max[i]);
     const tMin  = Math.round(d.daily.temperature_2m_min[i]);
-    const isToday = t === TODAY_STR;
+    const isToday = t === todayStr;
     const dayLbl  = isToday ? `<span class="week-day is-today">Auj.</span>` :
                               `<span class="week-day">${DAYS[date.getDay()]} ${date.getDate()}</span>`;
     return `
@@ -1391,11 +1889,10 @@ function renderWeek(d) {
 // ──────────────────────────────────────────────────────────────────
 function renderHourly(d) {
   const hi  = d.hourly;
-  const now = new Date();
-  const currentH = now.getHours();
+  const now = new Date(currentHourKey(d) || hi.time[0]);
 
   // Find starting index: current hour today
-  let startIdx = hi.time.findIndex(t => t === `${TODAY_STR}T${String(currentH).padStart(2,'0')}:00`);
+  let startIdx = hi.time.findIndex(t => t === currentHourKey(d));
   if (startIdx < 0) startIdx = 0;
 
   const slots = [];
@@ -1419,7 +1916,11 @@ function renderHourly(d) {
   // Scroll to "now" after render
   setTimeout(() => {
     const nowEl = document.querySelector('.hour-slot.now-hr');
-    if (nowEl) nowEl.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+    const scroller = document.getElementById('hourly-scroll');
+    if (nowEl && scroller) {
+      const left = nowEl.offsetLeft - (scroller.clientWidth - nowEl.offsetWidth) / 2;
+      scroller.scrollTo({ left, behavior:'smooth' });
+    }
   }, 200);
 }
 
@@ -1536,7 +2037,7 @@ document.getElementById('chart-tabs').addEventListener('click', e => {
 // ──────────────────────────────────────────────────────────────────
 function renderAQI(data) {
   // Find current hour index
-  const nowStr = `${TODAY_STR}T${String(new Date().getHours()).padStart(2,'0')}:00`;
+  const nowStr = S.forecast ? currentHourKey(S.forecast) : data.hourly.time[0];
   let idx = data.hourly.time.indexOf(nowStr);
   if (idx < 0) idx = 0;
 
@@ -1580,12 +2081,22 @@ function renderAQI(data) {
   }).join('');
 }
 
+function renderAQIUnavailable() {
+  document.getElementById('aqi-number').textContent = '--';
+  document.getElementById('aqi-number').style.color = 'var(--txt2)';
+  document.getElementById('aqi-label').textContent = 'Indisponible';
+  document.getElementById('aqi-label').style.color = 'var(--txt2)';
+  document.getElementById('aqi-pointer').style.left = '5%';
+  document.getElementById('pollutants').innerHTML =
+    '<div style="font-size:.75rem;color:var(--txt2);line-height:1.4">Données de qualité de l’air indisponibles pour cette zone.</div>';
+}
+
 // ──────────────────────────────────────────────────────────────────
 // RENDER STATS CARDS
 // ──────────────────────────────────────────────────────────────────
 function renderStats(d) {
   const cw = d.current_weather;
-  const i  = Math.max(0, d.daily.time.indexOf(TODAY_STR));
+  const i  = 0;
 
   const fmt = t => t
     ? new Date(t).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
@@ -1758,21 +2269,30 @@ async function loadAll() {
   document.getElementById('today-content').style.display  = 'none';
 
   try {
-    const [wData, aData] = await Promise.all([fetchWeather(), fetchAQI()]);
+    const wData = await fetchWeather();
     S.forecast = wData;
-    S.aqi      = aData;
 
+    updateDateLabels(wData);
     renderToday(wData);
     renderTomorrow(wData);
     renderWeek(wData);
     renderHourly(wData);
     buildChart(wData);
     renderStats(wData);
-    renderAQI(aData);
   } catch(err) {
     console.error('Erreur chargement météo:', err);
     document.getElementById('today-skeleton').innerHTML =
       '<div style="padding:20px;color:var(--txt2);font-size:.85rem">⚠️ Données temporairement indisponibles. Vérifiez votre connexion.</div>';
+    return;
+  }
+
+  try {
+    const aData = await fetchAQI();
+    S.aqi = aData;
+    renderAQI(aData);
+  } catch(err) {
+    console.error('Erreur chargement qualité air:', err);
+    renderAQIUnavailable();
   }
 }
 
@@ -1785,13 +2305,23 @@ try {
   const saved = localStorage.getItem('wr_city');
   if (saved) {
     const c = JSON.parse(saved);
+    const savedLoc = {
+      name: c.name,
+      region: c.region,
+      country: c.country || 'France',
+      countryCode: c.countryCode || 'FR',
+      lat: Number(c.lat),
+      lon: Number(c.lon),
+      timezone: c.timezone || 'auto',
+    };
     S.city   = c.name;
-    S.lat    = c.lat;
-    S.lon    = c.lon;
-    S.region = c.region + ', FR';
+    S.lat    = savedLoc.lat;
+    S.lon    = savedLoc.lon;
+    S.region = locationRegionLabel(savedLoc);
+    S.timezone = savedLoc.timezone;
     // Update UI immediately so it doesn't flash "Paris"
     document.getElementById('city-name').textContent       = c.name;
-    document.getElementById('city-country').textContent    = c.region + ', FR';
+    document.getElementById('city-country').textContent    = S.region;
     document.getElementById('header-location').textContent = c.name;
     // Centre map on saved city (no fly animation on cold start)
     map.setView([c.lat, c.lon], 8);
