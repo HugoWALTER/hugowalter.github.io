@@ -372,7 +372,7 @@
     #map-container { height: 440px; position: relative; }
     #map {
       height: 100%; width: 100%; background: #0a0e18 !important;
-      touch-action: pan-y;
+      touch-action: none;
     }
     /* Radar animation progress bar */
     #radar-progress {
@@ -1469,10 +1469,10 @@ const map = L.map('map', {
   center: [46.5, 2.5], zoom: 5.5,
   zoomControl: true,
   attributionControl: true,
-  scrollWheelZoom: false,
-  dragging: !IS_COARSE_POINTER,
-  touchZoom: !IS_COARSE_POINTER,
-  tap: false,
+  scrollWheelZoom: true,
+  dragging: true,
+  touchZoom: true,
+  tap: true,
 });
 const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors', maxZoom: 18,
