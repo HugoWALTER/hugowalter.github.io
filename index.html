@@ -56,6 +56,11 @@
     ══════════════════════════════════════════════════════════════ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
+    /* Supprimer le rectangle de tap sur tous les éléments interactifs */
+    a, button, [role="button"], input, select, textarea, label {
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+    }
     body {
       font-family: var(--fb);
       background: var(--bg);
@@ -414,8 +419,13 @@
       border: 1px solid var(--border); background: transparent;
       color: var(--txt2); font-size: 0.7rem; font-family: var(--fb);
       cursor: pointer; transition: all .15s; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
     }
-    .timeline-btn:hover { border-color: var(--border2); color: var(--txt); }
+    .timeline-btn:hover  { border-color: var(--border2); color: var(--txt); }
+    .timeline-btn:active { opacity: .75; transform: scale(.96); }
     .timeline-btn.active { background: var(--accent2); border-color: var(--accent); color: #fff; }
     .timeline-btn.now    { border-color: rgba(76,175,80,0.5); color: #81c784; }
     .timeline-btn.now.active { background: rgba(76,175,80,0.2); border-color: #81c784; color: #a5d6a7; }
@@ -451,12 +461,12 @@
     }
     #radar-progress.visible { display: block; }
 
-    /* Animate button pulse when active */
-    .radar-anim-btn.active {
+    /* Animate button pulse when running */
+    .radar-anim-btn.animating {
       border-color: var(--accent) !important;
       color: var(--accent) !important;
       background: rgba(79,195,247,0.1) !important;
-      animation: pulse-btn 1.2s ease infinite;
+      animation: pulse-btn 2s ease infinite;
     }
     @keyframes pulse-btn {
       0%,100% { box-shadow: 0 0 0 0 rgba(79,195,247,0.3); }
@@ -484,9 +494,14 @@
       border: 1px solid var(--border2); background: var(--surface2);
       color: var(--txt); font-size: 0.73rem; font-family: var(--fb);
       cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 6px;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
     }
-    .radar-anim-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .radar-anim-btn.active { border-color: #ef9a9a; color: #ef9a9a; }
+    .radar-anim-btn:hover  { border-color: var(--accent); color: var(--accent); }
+    .radar-anim-btn:active { opacity: .75; transform: scale(.96); }
+    .radar-anim-btn.stop  { border-color: #ef9a9a; color: #ef9a9a; }
 
     /* ══════════════════════════════════════════════════════════════
        RIGHT COLUMN
@@ -1858,12 +1873,13 @@ function startRadarAnimation() {
   const progress = document.getElementById('radar-progress');
   const btn = document.getElementById('anim-btn');
   btn.innerHTML = '⏹&nbsp; Stop';
-  btn.classList.add('active');
+  btn.classList.add('animating');
+  btn.classList.add('stop');
   progress.classList.add('visible');
   updateRadarProgress(S.radarIdx);
   S.animInterval = setInterval(() => {
     showRadarFrame((S.radarIdx + 1) % S.radarFrames.length);
-  }, 820);
+  }, 500);
 }
 
 function stopRadarAnimation(resetProgress = true) {
@@ -1872,7 +1888,8 @@ function stopRadarAnimation(resetProgress = true) {
   const progress = document.getElementById('radar-progress');
   const btn = document.getElementById('anim-btn');
   btn.innerHTML = '▶&nbsp; Animer';
-  btn.classList.remove('active');
+  btn.classList.remove('animating');
+  btn.classList.remove('stop');
   progress.classList.remove('visible');
   if (resetProgress) document.getElementById('radar-progress-fill').style.width = '0%';
 }
