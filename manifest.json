@@ -1,18 +1,28 @@
 {
   "name": "WeatherRadar",
   "short_name": "WeatherRadar",
-  "description": "Météo radar en temps réel",
+  "description": "Météo radar en temps réel — France et monde",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#07090f",
   "theme_color": "#07090f",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
+  "lang": "fr",
+  "categories": ["weather", "utilities"],
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%2307090f'/%3E%3Ccircle cx='256' cy='256' r='48' fill='%234fc3f7'/%3E%3Ccircle cx='256' cy='256' r='112' fill='none' stroke='%234fc3f7' stroke-width='24' stroke-opacity='.7'/%3E%3Ccircle cx='256' cy='256' r='176' fill='none' stroke='%234fc3f7' stroke-width='16' stroke-opacity='.4'/%3E%3Cline x1='256' y1='256' x2='368' y2='144' stroke='%23ffb74d' stroke-width='24' stroke-linecap='round'/%3E%3C/svg%3E",
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [],
+  "shortcuts": []
 }
