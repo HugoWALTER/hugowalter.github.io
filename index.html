@@ -697,14 +697,14 @@
     .pollen-name { font-size: 0.68rem; color: var(--txt2); text-align: center; line-height: 1.2; }
     .pollen-gauge {
       width: 100%; height: 5px; border-radius: 3px;
-      background: rgba(255,255,255,0.14); overflow: hidden; margin-top: 2px;
+      background: rgba(255,255,255,0.28); overflow: hidden; margin-top: 2px;
       position: relative;
     }
     .pollen-gauge-fill { height: 100%; border-radius: 3px; transition: width 1.6s ease; }
     /* Tick marks at the start of each level (Faible|Modéré|Élevé|Très élevé) */
     .pollen-gauge-tick {
       position: absolute; top: -1px; bottom: -1px; width: 1px;
-      background: rgba(7,9,15,0.65); z-index: 2;
+      background: rgba(7,9,15,0.75); z-index: 2;
     }
     .pollen-level { font-size: 0.66rem; font-weight: 700; }
     .pollen-value { font-size: 0.6rem; color: var(--txt2); }
@@ -2593,6 +2593,25 @@ function pollenLevel(val, thresholds) {
   return                 { label: 'Très élevé', color: '#f44336', idx: 3 };
 }
 
+function pollenGaugePercent(val, thresholds) {
+  if (val == null || isNaN(val)) return 0;
+  const [t1, t2, t3] = thresholds;
+  const v = Math.max(0, val);
+
+  const segment = (fromVal, toVal, fromPct, toPct) => {
+    const span = toVal - fromVal;
+    if (span <= 0) return fromPct;
+    return fromPct + ((v - fromVal) / span) * (toPct - fromPct);
+  };
+
+  if (v <= t1) return segment(0, t1, 0, 25);
+  if (v <= t2) return segment(t1, t2, 25, 50);
+  if (v <= t3) return segment(t2, t3, 50, 75);
+
+  const veryHighMax = t3 + Math.max(1, t3 - t2);
+  return Math.min(100, segment(t3, veryHighMax, 75, 100));
+}
+
 function renderPollen(data) {
   const body = document.getElementById('pollen-body');
   const hi = data.hourly;
@@ -2618,9 +2637,8 @@ function renderPollen(data) {
       val = dayMax.length ? Math.max(...dayMax) : null;
     }
     const lvl = pollenLevel(val, p.thresholds);
-    const max = p.thresholds[2];
-    const pct = val != null ? Math.min(100, (val / max) * 100) : 0;
-    // 4 ticks équidistants : repères visuels, le fill color indique déjà le niveau
+    const pct = pollenGaugePercent(val, p.thresholds);
+    // 4 ticks équidistants : seuils faible|modéré|élevé|très élevé sur l'échelle segmentée
     const ticks = [25, 50, 75, 99.5];
     // Texte indiquant le prochain seuil ou le seuil dépassé
     let hint;
