@@ -552,7 +552,19 @@
     .day-slot-icon  { font-size: 2rem; line-height: 1; }
     .day-slot-temp  { font-family: var(--fd); font-size: 1.55rem; font-weight: 700; }
     .day-slot-desc  { font-size: 0.7rem; color: var(--txt2); text-align: center; line-height: 1.3; }
-    .day-slot-extra { font-size: 0.66rem; color: var(--txt2); display: flex; gap: 8px; margin-top: 1px; }
+    .day-slot-extra {
+      font-size: 0.66rem; color: var(--txt2);
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 8px; margin-top: 1px;
+    }
+    .day-slot-extra-item {
+      display: inline-flex; align-items: center; gap: 3px;
+      line-height: 1;
+    }
+    .day-slot-extra-arrow {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; font-weight: 700; line-height: 1;
+    }
 
     .temp-hot  { color: var(--warm); }
     .temp-mid  { color: #e8eaf2; }
@@ -659,15 +671,89 @@
     .pollutant-bar-fill { height: 100%; border-radius: 2px; transition: width 1.6s ease; }
     .pollutant-val { font-size: 0.68rem; color: var(--txt2); width: 52px; text-align: right; flex-shrink: 0; }
 
+    /* ── Pollens ─────────────────────────────────────────────────── */
+    .pollen-body { padding: 14px 20px 20px; }
+    .pollen-summary {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 14px; border-radius: var(--radius-sm);
+      background: var(--surface2); border: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .pollen-summary-icon { font-size: 1.8rem; line-height: 1; flex-shrink: 0; }
+    .pollen-summary-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .pollen-summary-title { font-size: 0.85rem; font-weight: 700; font-family: var(--fd); }
+    .pollen-summary-sub   { font-size: 0.72rem; color: var(--txt2); line-height: 1.4; }
+    .pollen-grid {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+    }
+    .pollen-item {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 12px 8px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface);
+      transition: border-color .2s, transform .2s;
+    }
+    .pollen-item:hover { border-color: var(--border2); transform: translateY(-2px); }
+    .pollen-icon { font-size: 1.5rem; line-height: 1; }
+    .pollen-name { font-size: 0.68rem; color: var(--txt2); text-align: center; line-height: 1.2; }
+    .pollen-gauge {
+      width: 100%; height: 5px; border-radius: 3px;
+      background: rgba(255,255,255,0.14); overflow: hidden; margin-top: 2px;
+      position: relative;
+    }
+    .pollen-gauge-fill { height: 100%; border-radius: 3px; transition: width 1.6s ease; }
+    /* Tick marks at the start of each level (Faible|Modéré|Élevé|Très élevé) */
+    .pollen-gauge-tick {
+      position: absolute; top: -1px; bottom: -1px; width: 1px;
+      background: rgba(7,9,15,0.65); z-index: 2;
+    }
+    .pollen-level { font-size: 0.66rem; font-weight: 700; }
+    .pollen-value { font-size: 0.6rem; color: var(--txt2); }
+    .pollen-threshold-hint { font-size: 0.56rem; color: var(--txt2); opacity: .8; margin-top: 1px; }
+
+    /* ── Mini graphique tendance pollen dominant ────────────────── */
+    .pollen-chart-wrap {
+      margin-top: 18px; padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .pollen-chart-title {
+      font-size: 0.66rem; font-weight: 600; text-transform: uppercase;
+      color: var(--txt2); letter-spacing: 0; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .pollen-chart-canvas-box { height: 140px; }
+    /* Tablet / mobile */
+    @media (max-width: 1100px) {
+      .pollen-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .pollen-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .pollen-item { padding: 10px 6px; }
+      .pollen-icon { font-size: 1.3rem; }
+      .pollen-name { font-size: 0.63rem; }
+      .pollen-summary { padding: 10px 12px; gap: 10px; }
+      .pollen-summary-icon { font-size: 1.5rem; }
+      .pollen-summary-title { font-size: 0.8rem; }
+      .pollen-summary-sub { font-size: 0.68rem; }
+      .pollen-chart-canvas-box { height: 120px; }
+    }
+    @media (max-width: 380px) {
+      .pollen-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
     /* ══════════════════════════════════════════════════════════════
        STAT CARDS
     ══════════════════════════════════════════════════════════════ */
-    .stats-section { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+    .stats-section {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 14px;
+      align-items: stretch;
+    }
     .stat-card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 16px;
-      display: flex; flex-direction: column; gap: 5px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; gap: 5px;
       transition: border-color .2s, transform .2s;
+      min-height: 118px;
     }
     .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
     .stat-icon  { font-size: 1.25rem; }
@@ -825,7 +911,7 @@
       .stats-section { grid-template-columns: repeat(2,1fr); gap: 10px; }
       .chart-tab { font-size: 0.65rem; padding: 4px 8px; }
       .chart-wrap { height: 220px; padding: 4px 10px 12px; }
-      .stat-card { padding: 12px; }
+      .stat-card { padding: 12px; min-height: 100px; }
       .stat-value { font-size: 1.15rem; }
       footer {
         height: auto; padding: 12px;
@@ -1117,6 +1203,25 @@
             <div class="skel skel-line"></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- POLLENS -->
+    <div class="card pollen-card" id="pollen-card">
+      <div class="card-header">
+        <span class="card-title">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1l2.1-2.1M17 7l2.1-2.1"/></svg>
+          Pollens
+        </span>
+        <span id="pollen-updated" style="font-size:.68rem;color:var(--txt2)">Données CAMS — Europe</span>
+      </div>
+      <div class="pollen-body" id="pollen-body">
+        <div class="skel skel-line"></div>
+        <div class="skel skel-line"></div>
+        <div class="skel skel-line"></div>
+        <div class="skel skel-line"></div>
+        <div class="skel skel-line"></div>
+        <div class="skel skel-line"></div>
       </div>
     </div>
 
@@ -1879,7 +1984,7 @@ function startRadarAnimation() {
   updateRadarProgress(S.radarIdx);
   S.animInterval = setInterval(() => {
     showRadarFrame((S.radarIdx + 1) % S.radarFrames.length);
-  }, 500);
+  }, 450);
 }
 
 function stopRadarAnimation(resetProgress = true) {
@@ -1906,7 +2011,7 @@ document.getElementById('anim-btn').addEventListener('click', function() {
 async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index`
+    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover`
     + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max`
     + `&current_weather=true`
     + `&forecast_days=16`
@@ -1919,7 +2024,7 @@ async function fetchWeather() {
 async function fetchAQI() {
   const u = `https://air-quality-api.open-meteo.com/v1/air-quality`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=pm2_5,pm10,nitrogen_dioxide,ozone,european_aqi`
+    + `&hourly=pm2_5,pm10,nitrogen_dioxide,ozone,european_aqi,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`
     + `&timezone=auto&forecast_days=1`;
   const r = await fetch(u);
   if (!r.ok) throw new Error('AQI ' + r.status);
@@ -1946,6 +2051,10 @@ function windDir(deg) {
 
 function daySlotHTML(s) {
   const inf = wmoInfo(s.code);
+  // Badge min/max optionnel : { value, label } ex. { value: 15, label: 'min' }
+  const extraTemp = s.extra
+    ? `<span class="day-slot-extra-item" title="Température ${s.extra.label === 'min' ? 'minimale' : 'maximale'} du jour">${s.extra.label === 'min' ? '⬇️' : '⬆️'} ${s.extra.value}°</span>`
+    : '';
   return `
     <div class="day-slot">
       <div class="day-slot-label">${s.label}</div>
@@ -1953,9 +2062,10 @@ function daySlotHTML(s) {
       <div class="day-slot-temp ${tempClass(s.temp)}">${s.temp}°</div>
       <div class="day-slot-desc">${inf.desc}</div>
       <div class="day-slot-extra">
-        <span>💧 ${s.hum ?? '--'}%</span>
-        <span>💨 ${s.wind ?? '--'} km/h</span>
-        ${s.precip ? `<span>🌧 ${s.precip} mm</span>` : ''}
+        <span class="day-slot-extra-item">💧 ${s.hum ?? '--'}%</span>
+        <span class="day-slot-extra-item">💨 ${s.wind ?? '--'} km/h</span>
+        ${extraTemp}
+        ${s.precip ? `<span class="day-slot-extra-item">🌧 ${s.precip} mm</span>` : ''}
       </div>
     </div>`;
 }
@@ -2008,8 +2118,15 @@ function renderToday(d) {
 
   const daily = d.daily;
   const todayDI = daily.time.indexOf(todayStr) >= 0 ? daily.time.indexOf(todayStr) : 0;
+  const tMinToday = Math.round(daily.temperature_2m_min[todayDI]);
+  const tMaxToday = Math.round(daily.temperature_2m_max[todayDI]);
+
+  // Couverture nuageuse actuelle (complète la description "Couvert"/"Dégagé"...)
+  const hi0 = d.hourly;
+  const nowIdx = hi0.time.indexOf(currentHourKey(d));
+  const cloudCover = nowIdx >= 0 ? Math.round(hi0.cloudcover[nowIdx]) : null;
   document.getElementById('city-cond-sub').textContent =
-    `${Math.round(daily.temperature_2m_min[todayDI])}° – ${Math.round(daily.temperature_2m_max[todayDI])}°`;
+    cloudCover != null ? `Couverture nuageuse ${cloudCover}% (maintenant)` : '';
 
   // Sunrise / sunset in today card
   const fmt = t => t ? new Date(t).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '--';
@@ -2030,6 +2147,7 @@ function renderToday(d) {
     hum:  hi.relativehumidity_2m[findHourIdx(hi.time, todayStr, 9)],
     wind: Math.round(hi.windspeed_10m[findHourIdx(hi.time, todayStr, 9)] ?? cw.windspeed),
     precip: hi.precipitation[findHourIdx(hi.time, todayStr, 9)],
+    extra: { label: 'min', value: tMinToday },
   };
   const afternoon = {
     label:'Après-midi', code: hi.weathercode[findHourIdx(hi.time, todayStr, 15)] ?? cw.weathercode,
@@ -2037,6 +2155,7 @@ function renderToday(d) {
     hum:  hi.relativehumidity_2m[findHourIdx(hi.time, todayStr, 15)],
     wind: Math.round(hi.windspeed_10m[findHourIdx(hi.time, todayStr, 15)] ?? cw.windspeed),
     precip: hi.precipitation[findHourIdx(hi.time, todayStr, 15)],
+    extra: { label: 'max', value: tMaxToday },
   };
 
   document.getElementById('today-grid').innerHTML = daySlotHTML(morning) + daySlotHTML(afternoon);
@@ -2181,7 +2300,9 @@ function buildInlineChart(d) {
 function renderTomorrow(d) {
   const hi = d.hourly;
   const tomorrowStr = d.daily.time[1] || TOMORROW_STR;
-  const make = (hour, label) => {
+  const tMinTomorrow = Math.round(d.daily.temperature_2m_min[1] ?? 0);
+  const tMaxTomorrow = Math.round(d.daily.temperature_2m_max[1] ?? 0);
+  const make = (hour, label, extra) => {
     const idx = findHourIdx(hi.time, tomorrowStr, hour);
     if (idx < 0) return null;
     return {
@@ -2191,10 +2312,11 @@ function renderTomorrow(d) {
       hum:   hi.relativehumidity_2m[idx],
       wind:  Math.round(hi.windspeed_10m[idx] ?? 0),
       precip: hi.precipitation[idx],
+      extra,
     };
   };
-  const morn = make(9,'Matin');
-  const aftn = make(15,'Après-midi');
+  const morn = make(9,'Matin', { label: 'min', value: tMinTomorrow });
+  const aftn = make(15,'Après-midi', { label: 'max', value: tMaxTomorrow });
   const html = [morn, aftn].filter(Boolean).map(daySlotHTML).join('');
   document.getElementById('tomorrow-grid').innerHTML = html || '<div class="day-slot" style="grid-column:1/-1"><span style="color:var(--txt2)">Données indisponibles</span></div>';
 }
@@ -2448,6 +2570,237 @@ function renderAQIUnavailable() {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// RENDER POLLENS
+// ──────────────────────────────────────────────────────────────────
+// Seuils EAN/EAACI (grains/m³) — différenciés par famille de pollen.
+// Arbres (bouleau, aulne, olivier) : seuils plus élevés.
+// Herbacées (graminées, armoise, ambroisie) : seuils plus bas, plus allergisantes à faible dose.
+const POLLEN_CONFIG = [
+  { key: 'birch_pollen',   name: 'Bouleau',   icon: '🌳', thresholds: [10, 70, 150]  },
+  { key: 'alder_pollen',   name: 'Aulne',     icon: '🌲', thresholds: [10, 70, 150]  },
+  { key: 'grass_pollen',   name: 'Graminées', icon: '🌾', thresholds: [3, 20, 50]    },
+  { key: 'olive_pollen',   name: 'Olivier',   icon: '🌿', thresholds: [10, 70, 150]  },
+  { key: 'mugwort_pollen', name: 'Armoise',   icon: '🌼', thresholds: [3, 20, 50]    },
+  { key: 'ragweed_pollen', name: 'Ambroisie', icon: '🌻', thresholds: [3, 20, 50]    },
+];
+
+function pollenLevel(val, thresholds) {
+  if (val == null || isNaN(val)) return { label: 'N/A', color: 'var(--txt2)', idx: -1 };
+  const [t1, t2, t3] = thresholds;
+  if (val <= t1) return { label: 'Faible',     color: '#4caf50', idx: 0 };
+  if (val <= t2) return { label: 'Modéré',     color: '#fdd835', idx: 1 };
+  if (val <= t3) return { label: 'Élevé',      color: '#ff9800', idx: 2 };
+  return                 { label: 'Très élevé', color: '#f44336', idx: 3 };
+}
+
+function renderPollen(data) {
+  const body = document.getElementById('pollen-body');
+  const hi = data.hourly;
+
+  // Vérifie la disponibilité (hors zone CAMS Europe → tout est null)
+  const hasData = POLLEN_CONFIG.some(p => hi[p.key] && hi[p.key].some(v => v != null));
+  if (!hasData) {
+    renderPollenUnavailable();
+    return;
+  }
+
+  const nowStr = S.forecast ? currentHourKey(S.forecast) : hi.time[0];
+  let idx = hi.time.indexOf(nowStr);
+  if (idx < 0) idx = 0;
+
+  // Calcule le niveau de chaque pollen à l'heure courante (pic du jour utilisé en fallback)
+  const items = POLLEN_CONFIG.map(p => {
+    const series = hi[p.key] || [];
+    let val = series[idx];
+    // Fallback : pic du jour si la valeur courante est nulle
+    if (val == null) {
+      const dayMax = series.filter(v => v != null);
+      val = dayMax.length ? Math.max(...dayMax) : null;
+    }
+    const lvl = pollenLevel(val, p.thresholds);
+    const max = p.thresholds[2];
+    const pct = val != null ? Math.min(100, (val / max) * 100) : 0;
+    // 4 ticks équidistants : repères visuels, le fill color indique déjà le niveau
+    const ticks = [25, 50, 75, 99.5];
+    // Texte indiquant le prochain seuil ou le seuil dépassé
+    let hint;
+    if (val == null) {
+      hint = 'Donnée indisponible';
+    } else if (lvl.idx === 3) {
+      hint = `> seuil très élevé (${p.thresholds[2]} gr/m³)`;
+    } else {
+      const nextThreshold = p.thresholds[lvl.idx];
+      hint = `seuil suivant : ${nextThreshold} gr/m³`;
+    }
+    return { ...p, val, lvl, pct, ticks, hint };
+  });
+
+  // Détermine le pollen dominant (niveau le plus élevé, puis valeur la plus haute)
+  const known = items.filter(it => it.lvl.idx >= 0);
+  const dominant = known.length
+    ? known.reduce((a, b) => {
+        if (b.lvl.idx !== a.lvl.idx) return b.lvl.idx > a.lvl.idx ? b : a;
+        return (b.val ?? 0) > (a.val ?? 0) ? b : a;
+      })
+    : null;
+
+  let summaryHTML = '';
+  if (dominant && dominant.lvl.idx >= 1) {
+    const advice = {
+      1: 'Les personnes sensibles peuvent ressentir de légers symptômes.',
+      2: 'Pic allergisant — limitez les activités extérieures prolongées si vous êtes sensible.',
+      3: 'Risque allergique très élevé — réduisez les sorties et fermez les fenêtres si possible.',
+    }[dominant.lvl.idx];
+    summaryHTML = `
+      <div class="pollen-summary">
+        <div class="pollen-summary-icon">${dominant.icon}</div>
+        <div class="pollen-summary-text">
+          <div class="pollen-summary-title" style="color:${dominant.lvl.color}">
+            ${dominant.name} — Risque ${dominant.lvl.label.toLowerCase()}
+          </div>
+          <div class="pollen-summary-sub">${advice}</div>
+        </div>
+      </div>`;
+  } else {
+    summaryHTML = `
+      <div class="pollen-summary">
+        <div class="pollen-summary-icon">✅</div>
+        <div class="pollen-summary-text">
+          <div class="pollen-summary-title" style="color:#4caf50">Risque allergique faible</div>
+          <div class="pollen-summary-sub">Concentrations de pollens faibles pour tous les types surveillés aujourd'hui.</div>
+        </div>
+      </div>`;
+  }
+
+  const gridHTML = `<div class="pollen-grid">` + items.map(it => {
+    const valDisp = it.val != null ? Math.round(it.val) : '--';
+    const ticksHTML = it.ticks.map(t =>
+      `<div class="pollen-gauge-tick" style="left:${t.toFixed(1)}%"></div>`
+    ).join('');
+    return `
+      <div class="pollen-item" title="${it.name} : ${valDisp} grains/m³ — ${it.hint}">
+        <div class="pollen-icon">${it.icon}</div>
+        <div class="pollen-name">${it.name}</div>
+        <div class="pollen-gauge">
+          ${ticksHTML}
+          <div class="pollen-gauge-fill" style="width:${it.pct}%;background:${it.lvl.color}"></div>
+        </div>
+        <div class="pollen-level" style="color:${it.lvl.color}">${it.lvl.label}</div>
+        <div class="pollen-value">${valDisp} gr/m³</div>
+        <div class="pollen-threshold-hint">${it.hint}</div>
+      </div>`;
+  }).join('') + `</div>`;
+
+  // Mini graphique tendance 24h du pollen dominant
+  const chartHTML = `
+    <div class="pollen-chart-wrap">
+      <div class="pollen-chart-title">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Tendance 24h — ${dominant ? dominant.name : 'Graminées'}
+      </div>
+      <div class="pollen-chart-canvas-box">
+        <canvas id="pollen-inline-canvas"></canvas>
+      </div>
+    </div>`;
+
+  body.innerHTML = summaryHTML + gridHTML + chartHTML;
+
+  // Construit le graphique après insertion du canvas dans le DOM
+  buildPollenChart(data, dominant ?? items[0], idx);
+}
+
+// ──────────────────────────────────────────────────────────────────
+// MINI GRAPHIQUE — tendance 24h du pollen dominant
+// ──────────────────────────────────────────────────────────────────
+let _pollenChart = null;
+function buildPollenChart(data, pollenCfg, startIdx) {
+  const hi = data.hourly;
+  const series = hi[pollenCfg.key] || [];
+
+  const hours = 24;
+  const labels = [], values = [], colors = [];
+
+  for (let i = startIdx; i < Math.min(startIdx + hours, hi.time.length); i++) {
+    const dt = new Date(hi.time[i] + ':00');
+    labels.push(dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+    const v = series[i] ?? 0;
+    values.push(Math.round(v * 10) / 10);
+    colors.push(pollenLevel(v, pollenCfg.thresholds).color);
+  }
+
+  if (_pollenChart) { _pollenChart.destroy(); _pollenChart = null; }
+
+  const ctx = document.getElementById('pollen-inline-canvas');
+  if (!ctx) return;
+
+  const gridColor = 'rgba(255,255,255,0.05)';
+  const tickColor = '#8990ae';
+  const tickFont  = { family: 'Inter', size: 9 };
+
+  _pollenChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: `${pollenCfg.name} (gr/m³)`,
+        data: values,
+        backgroundColor: colors,
+        borderRadius: 2,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(7,9,15,0.96)',
+          borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          titleColor: '#e8eaf2', bodyColor: '#8990ae',
+          titleFont: { family: 'Inter', size: 11 },
+          bodyFont:  { family: 'Inter', size: 10 },
+          padding: 9, cornerRadius: 8,
+          callbacks: {
+            label: ctx => `${ctx.parsed.y} grains/m³ — ${pollenLevel(ctx.parsed.y, pollenCfg.thresholds).label}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: tickColor, font: tickFont, maxRotation: 0,
+            maxTicksLimit: 8,
+            callback(val, idx) {
+              return idx % 3 === 0 ? this.getLabelForValue(val) : '';
+            },
+          },
+          grid: { display: false },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: tickColor, font: tickFont,
+            callback: v => v + ' gr/m³' },
+          grid: { color: gridColor },
+        },
+      },
+    },
+  });
+}
+
+function renderPollenUnavailable() {
+  if (_pollenChart) { _pollenChart.destroy(); _pollenChart = null; }
+  document.getElementById('pollen-body').innerHTML = `
+    <div class="pollen-summary">
+      <div class="pollen-summary-icon">🌍</div>
+      <div class="pollen-summary-text">
+        <div class="pollen-summary-title" style="color:var(--txt2)">Données indisponibles</div>
+        <div class="pollen-summary-sub">Les prévisions de pollens (CAMS) ne couvrent que l'Europe. Cette zone n'est pas dans la zone de couverture.</div>
+      </div>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────
 // RENDER STATS CARDS
 // ──────────────────────────────────────────────────────────────────
 function renderStats(d) {
@@ -2463,6 +2816,12 @@ function renderStats(d) {
   const wMax   = Math.round(d.daily.windspeed_10m_max[i]);
   const precip = (d.daily.precipitation_sum[i]||0).toFixed(1);
   const precHrs= d.daily.precipitation_hours?.[i] ?? '--';
+
+  // Ressenti actuel — apparent_temperature de l'API (cohérent avec la card Aujourd'hui)
+  const nowIdxStat = d.hourly.time.indexOf(currentHourKey(d));
+  const feelsLikeStat = nowIdxStat >= 0
+    ? Math.round(d.hourly.apparent_temperature[nowIdxStat])
+    : Math.round(cw.temperature);
 
   // 7-day rain days
   const rainDays = d.daily.precipitation_sum.slice(0,7).filter(p=>p>1).length;
@@ -2522,7 +2881,7 @@ function renderStats(d) {
     { icon:'🌡', label:'Amplitude du jour',  value:`${tMin}° / ${tMax}°`,     sub:`Écart ${tMax-tMin}°C` },
     { icon:'🌧', label:'Précipitations',     value:`${precip} mm`,            sub:`${precHrs}h de pluie` },
     { icon:'💨', label:'Vent maximum',        value:`${wMax} km/h`,            sub:`Direction ${windDir(cw.winddirection)}` },
-    { icon:'🌡', label:'Ressenti actuel',     value:`${Math.round(cw.temperature - (wMax>20?Math.sqrt(wMax)*0.4:0))}°`, sub:'Température ressentie' },
+    { icon:'🌡', label:'Ressenti actuel',     value:`${feelsLikeStat}°`, sub:'Température ressentie' },
     { icon:'📅', label:'Moy. semaine proch.', value:`${nwAvg}°`,               sub:'T° max moyenne J+7→14' },
     { icon:'🌦', label:'Jours de pluie',      value:`${rainDays} / 7`,         sub:'7 prochains jours' },
   ];
@@ -2692,9 +3051,11 @@ async function loadAll() {
     const aData = await fetchAQI();
     S.aqi = aData;
     renderAQI(aData);
+    renderPollen(aData);
   } catch(err) {
     console.error('Erreur chargement qualité air:', err);
     renderAQIUnavailable();
+    renderPollenUnavailable();
   }
 }
 
