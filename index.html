@@ -432,7 +432,7 @@
     .timeline-btn.forecast { color: var(--accent); border-color: rgba(79,195,247,0.25); }
     .timeline-btn.forecast.active { background: rgba(79,195,247,0.15); border-color: var(--accent); color: var(--accent); }
 
-    #section-radar, #section-hourly, #section-charts {
+    #section-radar, #section-hourly, #section-charts, #section-tides {
       scroll-margin-top: 80px;
     }
     /* Map takes all remaining height inside the flex radar-card */
@@ -741,6 +741,46 @@
     }
 
     /* ══════════════════════════════════════════════════════════════
+       MARÉES
+    ══════════════════════════════════════════════════════════════ */
+    .tide-body { padding: 14px 20px 20px; }
+    .tide-metrics-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px; margin-bottom: 16px;
+    }
+    .tide-metric {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 12px;
+      display: flex; flex-direction: column; gap: 4px;
+      transition: border-color .2s;
+    }
+    .tide-metric:hover { border-color: var(--border2); }
+    .tide-metric-label  { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0; color: var(--txt2); }
+    .tide-metric-value  { font-family: var(--fd); font-size: 1.55rem; font-weight: 700; line-height: 1.1; }
+    .tide-metric-sub    { font-size: 0.7rem; color: var(--txt2); line-height: 1.3; }
+    .tide-metric-detail { font-size: 0.63rem; color: var(--txt2); margin-top: 2px; }
+    .tide-coeff-bar {
+      height: 5px; border-radius: 3px; background: var(--border);
+      overflow: hidden; margin-top: 6px;
+    }
+    .tide-coeff-fill { height: 100%; border-radius: 3px; transition: width 1.4s ease; }
+    .tide-chart-wrap { padding-top: 16px; border-top: 1px solid var(--border); }
+    .tide-chart-title {
+      font-size: 0.66rem; font-weight: 600; text-transform: uppercase;
+      color: var(--txt2); letter-spacing: 0; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tide-chart-canvas-box { height: 160px; }
+    @media (max-width: 768px) { .tide-metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) {
+      .tide-metrics-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .tide-metric { padding: 12px 10px; }
+      .tide-metric-value { font-size: 1.3rem; }
+      .tide-body { padding: 12px 14px 16px; }
+      .tide-chart-canvas-box { height: 130px; }
+    }
+
+    /* ══════════════════════════════════════════════════════════════
        STAT CARDS
     ══════════════════════════════════════════════════════════════ */
     .stats-section {
@@ -972,6 +1012,10 @@
       <a class="nav-link" href="#stats-section" data-section="stats-section">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="7" width="4" height="14"/><rect x="10" y="2" width="4" height="19"/><rect x="18" y="11" width="4" height="10"/></svg>
         <span class="nav-label">Statistiques</span>
+      </a>
+      <a class="nav-link" href="#section-tides" data-section="section-tides">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/></svg>
+        <span class="nav-label">Marées</span>
       </a>
     </nav>
 
@@ -1222,6 +1266,22 @@
         <div class="skel skel-line"></div>
         <div class="skel skel-line"></div>
         <div class="skel skel-line"></div>
+      </div>
+    </div>
+
+    <!-- MARÉES -->
+    <div class="card tide-card" id="section-tides">
+      <div class="card-header">
+        <span class="card-title">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/></svg>
+          Marées &amp; État de la mer
+        </span>
+        <span id="tide-source" style="font-size:.68rem;color:var(--txt2)">Coeff. astronomique · Marine Open-Meteo</span>
+      </div>
+      <div class="tide-body" id="tide-body">
+        <div style="padding:8px 0">
+          <div class="skel skel-line" style="width:100%;height:80px;border-radius:var(--radius-sm)"></div>
+        </div>
       </div>
     </div>
 
@@ -2011,7 +2071,7 @@ document.getElementById('anim-btn').addEventListener('click', function() {
 async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover`
+    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,surface_pressure`
     + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max`
     + `&current_weather=true`
     + `&forecast_days=16`
@@ -2132,10 +2192,19 @@ function renderToday(d) {
   const fmt = t => t ? new Date(t).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '--';
   const sunRow = document.getElementById('city-sun-row');
   if (daily.sunrise && daily.sunset) {
+    const moonTimes = moonRiseSet(new Date(), S.lat, S.lon);
+    const moonAge   = getMoonAge(new Date());
+    const moonIcon  = moonPhaseName(moonAge).icon;
+    const fmtLocal  = t => t ? t.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '--';
+    const sep = `<span style="width:1px;height:14px;background:var(--border2);display:inline-block"></span>`;
     sunRow.innerHTML =
       `<span class="city-sun-item">🌅 Lever&nbsp;<strong>${fmt(daily.sunrise[todayDI])}</strong></span>`
-      + `<span style="width:1px;height:14px;background:var(--border2);display:inline-block"></span>`
-      + `<span class="city-sun-item">🌇 Coucher&nbsp;<strong>${fmt(daily.sunset[todayDI])}</strong></span>`;
+      + sep
+      + `<span class="city-sun-item">🌇 Coucher&nbsp;<strong>${fmt(daily.sunset[todayDI])}</strong></span>`
+      + sep
+      + `<span class="city-sun-item">${moonIcon} Lune&nbsp;<strong>${fmtLocal(moonTimes.rise)}</strong></span>`
+      + sep
+      + `<span class="city-sun-item">${moonIcon} Coucher&nbsp;<strong>${fmtLocal(moonTimes.set)}</strong></span>`;
     sunRow.style.display = 'flex';
   }
 
@@ -2889,7 +2958,27 @@ function renderStats(d) {
     }
   }
 
+  // ── Pression atmosphérique + tendance ─────────────────────────
+  const pNow = nowIdxStat >= 0 ? d.hourly.surface_pressure?.[nowIdxStat] : null;
+  const p3h  = nowIdxStat >= 3 ? d.hourly.surface_pressure?.[nowIdxStat - 3] : null;
+  let pressureVal = '--', pressureSub = 'Non disponible', pressureTrend = '';
+  if (pNow !== null && pNow !== undefined) {
+    pressureVal = `${Math.round(pNow)} hPa`;
+    if (p3h !== null && p3h !== undefined) {
+      const delta = pNow - p3h;
+      if      (delta >  2)   { pressureTrend = ' ↑↑'; pressureSub = `En hausse rapide (+${delta.toFixed(1)} hPa/3h)`; }
+      else if (delta >  0.5) { pressureTrend = ' ↑';  pressureSub = `En hausse (+${delta.toFixed(1)} hPa/3h)`; }
+      else if (delta < -2)   { pressureTrend = ' ↓↓'; pressureSub = `En baisse rapide (${delta.toFixed(1)} hPa/3h)`; }
+      else if (delta < -0.5) { pressureTrend = ' ↓';  pressureSub = `En baisse (${delta.toFixed(1)} hPa/3h)`; }
+      else                   { pressureTrend = ' →';  pressureSub = `Stable (${delta >= 0 ? '+' : ''}${delta.toFixed(1)} hPa/3h)`; }
+    }
+  }
+
   const stats = [
+    { icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--txt2)"><path d="M3 12A9 9 0 0 1 21 12"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 12l3-4" stroke="var(--accent)" stroke-linecap="round" stroke-width="2"/></svg>',
+      label:'Pression',
+      value: `${pressureVal}<span style="color:var(--txt2)">${pressureTrend}</span>`,
+      sub: pressureSub },
     { icon:'🔆', label:'Indice UV',
       value: `<span style="color:${uv.color};font-weight:700">${uvDisplay}</span>`,
       sub: uv.txt + (uvMax !== null ? ` · max ${Math.round(uvMax)}` : '') },
@@ -3035,6 +3124,266 @@ function applyWeatherEffect(effect) {
 })();
 
 // ──────────────────────────────────────────────────────────────────
+// LEVER / COUCHER DE LUNE (calcul astronomique simplifié)
+// ──────────────────────────────────────────────────────────────────
+function moonRiseSet(date, latDeg, lonDeg) {
+  const R = Math.PI / 180;
+  const JD = date.getTime() / 86400000 + 2440587.5;
+  const d  = JD - 2451545.0;
+
+  // Éléments moyens de la Lune
+  const L   = (218.316 + 13.176396 * d) % 360;
+  const M   = ((134.963 + 13.064993 * d) % 360) * R;
+  const F   = ((93.272  + 13.229350 * d) % 360) * R;
+  const Lr  = L * R;
+
+  // Longitude & latitude écliptique (degrés)
+  const lamDeg = L + 6.289*Math.sin(M) - 1.274*Math.sin(2*Lr-M)
+               + 0.658*Math.sin(2*Lr)  - 0.214*Math.sin(2*M) - 0.110*Math.sin(Lr);
+  const betDeg = 5.128*Math.sin(F) + 0.280*Math.sin(M+F)
+               - 0.279*Math.sin(F-M)   - 0.173*Math.sin(2*Lr-F) - 0.055*Math.sin(2*Lr-M+F);
+
+  const lam = lamDeg * R;
+  const bet = betDeg * R;
+  const eps = (23.439 - 0.0000004 * d) * R;  // obliquité
+
+  // Coordonnées équatoriales
+  const sinDec = Math.sin(bet)*Math.cos(eps) + Math.cos(bet)*Math.sin(eps)*Math.sin(lam);
+  const decl   = Math.asin(Math.max(-1, Math.min(1, sinDec)));
+  const RA_deg = ((Math.atan2(Math.sin(lam)*Math.cos(eps) - Math.tan(bet)*Math.sin(eps), Math.cos(lam)) * 180/Math.PI) + 360) % 360;
+
+  // JD à 0h UT du jour courant
+  const JD0   = Math.floor(JD - 0.5) + 0.5;
+  const d0    = JD0 - 2451545.0;
+  const GMST0 = ((280.46061837 + 360.98564736629 * d0) % 360 + 360) % 360;
+  const LMST0 = (GMST0 + lonDeg + 360) % 360;
+
+  // Fraction de jour du passage au méridien
+  let mT = ((RA_deg - LMST0) % 360 + 360) % 360 / 360.98564736629;
+  mT = ((mT % 1) + 1) % 1;
+
+  // Angle horaire au lever/coucher (h0 ≈ 0.7° pour la Lune : rayon + réfraction)
+  const latR  = latDeg * R;
+  const h0    = 0.7 * R;
+  const cosH  = (Math.sin(h0) - Math.sin(latR)*Math.sin(decl)) / (Math.cos(latR)*Math.cos(decl));
+
+  if (Math.abs(cosH) > 1) return { rise: null, set: null, alwaysUp: cosH < -1 };
+
+  const H0_frac = Math.acos(cosH) / (2 * Math.PI);
+  const midMs   = (JD0 - 2440587.5) * 86400000;
+
+  return {
+    rise: new Date(midMs + (mT - H0_frac) * 86400000),
+    set:  new Date(midMs + (mT + H0_frac) * 86400000),
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// MARÉES — MOON PHASE & TIDAL COEFFICIENT
+// ──────────────────────────────────────────────────────────────────
+function getMoonAge(date) {
+  // Known new moon: 6 Jan 2000, 18:14 UTC
+  const ref = 946742040000;
+  const synodic = 29.530588853 * 24 * 3600 * 1000;
+  return (((date.getTime() - ref) % synodic) + synodic) % synodic / synodic; // 0..1
+}
+
+function moonPhaseName(age) {
+  // age = 0..1 (0 = new moon, 0.5 = full moon)
+  const phases = [
+    [0.0625, '🌑', 'Nouvelle lune'],
+    [0.1875, '🌒', 'Premier croissant'],
+    [0.3125, '🌓', 'Premier quartier'],
+    [0.4375, '🌔', 'Gibbeuse croissante'],
+    [0.5625, '🌕', 'Pleine lune'],
+    [0.6875, '🌖', 'Gibbeuse décroissante'],
+    [0.8125, '🌗', 'Dernier quartier'],
+    [0.9375, '🌘', 'Dernier croissant'],
+  ];
+  const p = phases.find(([t]) => age < t) || phases[phases.length - 1];
+  return { icon: p[1], name: p[2] };
+}
+
+function getTidalCoefficient(date) {
+  const age = getMoonAge(date);
+  // ~2-day lag (âge des eaux) between alignment and actual tide peak
+  const lag = 2 / 29.530588853;
+  const shifted = ((age - lag) + 1) % 1;
+  // Peaks at 0 (new moon) and 0.5 (full moon), valleys at quarters
+  return Math.max(20, Math.min(120, Math.round(70 + 50 * Math.cos(4 * Math.PI * shifted))));
+}
+
+function coeffLabel(c) {
+  if (c >= 95) return { txt: 'Grande vive-eau', color: '#ef5350' };
+  if (c >= 70) return { txt: 'Vive-eau',        color: '#ff9800' };
+  if (c >= 45) return { txt: 'Marée moyenne',   color: '#fdd835' };
+  return              { txt: 'Morte-eau',        color: '#4fc3f7' };
+}
+
+async function fetchMarine() {
+  const u = `https://marine-api.open-meteo.com/v1/marine`
+    + `?latitude=${S.lat}&longitude=${S.lon}`
+    + `&hourly=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period`
+    + `&forecast_days=3&timezone=auto`;
+  const r = await fetch(u);
+  if (!r.ok) throw new Error('Marine ' + r.status);
+  const d = await r.json();
+  // Inland detection: all wave heights are null or 0
+  const wh = d.hourly?.wave_height;
+  if (!wh || !wh.some(v => v !== null && v > 0)) throw new Error('Inland');
+  return d;
+}
+
+let _tideChart = null;
+
+function buildTideChart(marineData) {
+  const hi = marineData.hourly;
+  const curKey = new Date().toISOString().slice(0, 13);
+  let startIdx = hi.time.findIndex(t => t.startsWith(curKey));
+  if (startIdx < 0) startIdx = 0;
+
+  const labels = [], waveHts = [], swellHts = [];
+  for (let i = startIdx; i < Math.min(startIdx + 48, hi.time.length); i++) {
+    const dt = new Date(hi.time[i] + ':00');
+    labels.push(dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+    waveHts.push(hi.wave_height?.[i] ?? null);
+    swellHts.push(hi.swell_wave_height?.[i] ?? null);
+  }
+
+  if (_tideChart) { _tideChart.destroy(); _tideChart = null; }
+  const ctx = document.getElementById('tide-canvas');
+  if (!ctx) return;
+
+  const gridColor = 'rgba(255,255,255,0.05)';
+  const tickColor = '#8990ae';
+  const tickFont  = { family: 'Inter', size: 9 };
+
+  _tideChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Vagues (m)',
+          data: waveHts,
+          borderColor: '#4fc3f7',
+          backgroundColor: 'rgba(79,195,247,0.1)',
+          fill: true, tension: 0.4, borderWidth: 2,
+          pointRadius: 0, pointHoverRadius: 3,
+        },
+        {
+          label: 'Houle (m)',
+          data: swellHts,
+          borderColor: 'rgba(79,195,247,0.5)',
+          backgroundColor: 'transparent',
+          fill: false, tension: 0.4, borderWidth: 1.5,
+          pointRadius: 0, pointHoverRadius: 3,
+          borderDash: [4, 3],
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index', intersect: false,
+          backgroundColor: 'rgba(7,9,15,0.92)',
+          borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          titleColor: '#8990ae', bodyColor: '#e8eaf2',
+          callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(2) : '--'} m` },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: tickColor, font: tickFont, maxTicksLimit: 10, maxRotation: 0 },
+          grid: { color: gridColor },
+        },
+        y: {
+          min: 0,
+          ticks: { color: tickColor, font: tickFont, callback: v => v + ' m' },
+          grid: { color: gridColor },
+        },
+      },
+    },
+  });
+}
+
+function renderTides(marineData) {
+  const now   = new Date();
+  const coeff = getTidalCoefficient(now);
+  const age   = getMoonAge(now);
+  const moon  = moonPhaseName(age);
+  const cl    = coeffLabel(coeff);
+
+  const hi = marineData?.hourly;
+  let waveH = null, waveDir_ = null, wavePeriod = null;
+  let swellH = null, swellPeriod = null;
+
+  if (hi) {
+    const curKey = now.toISOString().slice(0, 13);
+    const idx = hi.time.findIndex(t => t.startsWith(curKey));
+    if (idx >= 0) {
+      waveH       = hi.wave_height?.[idx];
+      waveDir_    = hi.wave_direction?.[idx];
+      wavePeriod  = hi.wave_period?.[idx];
+      swellH      = hi.swell_wave_height?.[idx];
+      swellPeriod = hi.swell_wave_period?.[idx];
+    }
+  }
+
+  const hasWave = waveH !== null && waveH !== undefined && waveH > 0;
+  const coeffPct = Math.round((coeff - 20) / 100 * 100);
+
+  document.getElementById('tide-body').innerHTML = `
+    <div class="tide-metrics-grid">
+      <div class="tide-metric">
+        <div class="tide-metric-label">Coefficient de marée</div>
+        <div class="tide-metric-value" style="color:${cl.color}">${coeff}<span style="font-size:.85rem;font-weight:400;color:var(--txt2)"> /120</span></div>
+        <div class="tide-metric-sub">${cl.txt}</div>
+        <div class="tide-coeff-bar" style="margin-top:8px">
+          <div class="tide-coeff-fill" style="width:${coeffPct}%;background:${cl.color}"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.55rem;color:var(--txt2);margin-top:3px">
+          <span>Morte-eau 20</span><span>Vive-eau 120</span>
+        </div>
+      </div>
+      <div class="tide-metric">
+        <div class="tide-metric-label">Phase lunaire</div>
+        <div class="tide-metric-value">${moon.icon}</div>
+        <div class="tide-metric-sub">${moon.name}</div>
+        <div class="tide-metric-detail">Âge : ${Math.round(age * 29.53)} j / 29 j</div>
+      </div>
+      ${hasWave ? `
+      <div class="tide-metric">
+        <div class="tide-metric-label">État de la mer</div>
+        <div class="tide-metric-value">${waveH.toFixed(1)} m</div>
+        <div class="tide-metric-sub">Période ${wavePeriod !== null ? Math.round(wavePeriod) : '--'} s · ${waveDir_ !== null ? windDir(waveDir_) : '--'}</div>
+        ${swellH !== null && swellH > 0 ? `<div class="tide-metric-detail">Houle : ${swellH.toFixed(1)} m · ${swellPeriod !== null ? Math.round(swellPeriod) : '--'} s</div>` : ''}
+      </div>
+      ` : `
+      <div class="tide-metric" style="align-items:center;justify-content:center;text-align:center">
+        <div style="font-size:1.8rem">🏔</div>
+        <div class="tide-metric-sub" style="margin-top:6px">Zone non côtière</div>
+        <div class="tide-metric-detail">Données de vagues<br>non disponibles</div>
+      </div>
+      `}
+    </div>
+    ${hasWave ? `
+    <div class="tide-chart-wrap">
+      <div class="tide-chart-title">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/></svg>
+        Hauteur des vagues — prochaines 48h
+      </div>
+      <div class="tide-chart-canvas-box"><canvas id="tide-canvas"></canvas></div>
+    </div>
+    ` : ''}
+  `;
+
+  if (hasWave) buildTideChart(marineData);
+}
+
+// ──────────────────────────────────────────────────────────────────
 // LOAD ALL DATA
 // ──────────────────────────────────────────────────────────────────
 async function loadAll() {
@@ -3074,6 +3423,14 @@ async function loadAll() {
     console.error('Erreur chargement qualité air:', err);
     renderAQIUnavailable();
     renderPollenUnavailable();
+  }
+
+  try {
+    const marineData = await fetchMarine();
+    renderTides(marineData);
+  } catch(err) {
+    console.warn('Marine API non disponible (zone non côtière ou erreur):', err.message);
+    renderTides(null);
   }
 }
 
@@ -3151,7 +3508,7 @@ setInterval(loadRadar, 600000); // Refresh radar every 10 min
 // ──────────────────────────────────────────────────────────────────
 (function() {
   const navLinks = document.querySelectorAll('.nav-link[data-section]');
-  const sectionIds = ['section-radar','section-hourly','section-charts','stats-section'];
+  const sectionIds = ['section-radar','section-hourly','section-charts','section-tides','stats-section'];
 
   function setActive(id) {
     navLinks.forEach(a => {
