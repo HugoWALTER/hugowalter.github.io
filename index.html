@@ -585,7 +585,10 @@
     .week-icon { font-size: 1.25rem; justify-self: center; }
     .week-desc { font-size: 0.7rem; color: var(--txt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .week-temp-min { font-size: 0.78rem; color: var(--cold); text-align: right; }
-    .week-temp-max { font-size: 0.78rem; color: var(--warm); font-weight: 600; text-align: right; }
+    .week-temp-max {
+      font-size: 0.78rem; color: var(--warm); font-weight: 600;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+    }
 
     /* ── Hourly scroll ───────────────────────────────────────────── */
     .hourly-card {}
@@ -738,6 +741,101 @@
     }
     @media (max-width: 380px) {
       .pollen-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       HISTORIQUE TEMPÉRATURES — POPUP
+    ══════════════════════════════════════════════════════════════ */
+    .history-overlay {
+      position: fixed; inset: 0; z-index: 600;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s;
+    }
+    .history-overlay.open { opacity: 1; pointer-events: all; }
+    .history-modal {
+      background: rgba(12,15,26,0.98);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      width: 100%; max-width: 880px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+      transform: translateY(14px); transition: transform .25s;
+    }
+    .history-overlay.open .history-modal { transform: translateY(0); }
+    .history-modal-header {
+      padding: 18px 24px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+      background: rgba(12,15,26,0.98); z-index: 2;
+    }
+    .history-modal-title {
+      font-family: var(--fd); font-size: 0.88rem; font-weight: 700;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .history-close-btn {
+      background: transparent; border: 1px solid var(--border2); color: var(--txt2);
+      border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, color .15s; flex-shrink: 0;
+    }
+    .history-close-btn:hover { background: var(--surface2); color: var(--txt); }
+    .history-modal-body { padding: 20px 24px 28px; }
+    .history-year-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; }
+    .history-year-tab {
+      padding: 4px 12px; border-radius: 20px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--txt2); font-family: var(--fb); font-size: 0.72rem;
+      cursor: pointer; transition: all .15s;
+    }
+    .history-year-tab:hover { border-color: var(--border2); color: var(--txt); }
+    .history-year-tab.active { background: rgba(79,195,247,0.12); border-color: var(--accent); color: var(--accent); }
+    .history-chart-box { height: 280px; margin-bottom: 18px; }
+    .history-stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+    .history-stat {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 14px;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .history-stat-label { font-size: 0.63rem; text-transform: uppercase; color: var(--txt2); }
+    .history-stat-value { font-family: var(--fd); font-size: 1.25rem; font-weight: 700; }
+    .history-stat-sub   { font-size: 0.65rem; color: var(--txt2); }
+    .history-trigger-btn {
+      padding: 5px 14px; border-radius: 20px;
+      border: 1px solid var(--border2); background: var(--surface2);
+      color: var(--txt2); font-family: var(--fb); font-size: 0.73rem;
+      cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 6px;
+    }
+    .history-trigger-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Indicateur saisonnier — carte Aujourd'hui */
+    .seasonal-delta {
+      display: none; align-items: center; gap: 7px;
+      font-size: 0.71rem; color: var(--txt2);
+      padding: 0 20px 10px;
+    }
+    .sd-badge {
+      padding: 2px 9px; border-radius: 20px; font-size: 0.67rem; font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .sd-above  { color: #ff9800; background: rgba(255,152,0,0.1); border-color: rgba(255,152,0,0.3); }
+    .sd-below  { color: #4fc3f7; background: rgba(79,195,247,0.1); border-color: rgba(79,195,247,0.3); }
+    .sd-normal { color: #81c784; background: rgba(76,175,80,0.1); border-color: rgba(76,175,80,0.3); }
+
+    /* Delta semaine */
+    .week-delta { font-size: 0.58rem; font-weight: 700; line-height: 1; }
+    .week-delta.above { color: #ff9800; }
+    .week-delta.below { color: #81d4fa; }
+
+    @media (max-width: 600px) {
+      .history-modal-body { padding: 14px 16px 20px; }
+      .history-stats-row { grid-template-columns: repeat(2,1fr); }
+      .history-chart-box { height: 220px; }
+      .history-modal-header { padding: 14px 16px; }
     }
 
     /* ══════════════════════════════════════════════════════════════
@@ -1132,6 +1230,7 @@
                 <span style="font-size:.72rem;color:var(--txt2)" id="city-cond-sub"></span>
               </div>
             </div>
+            <div id="seasonal-delta" class="seasonal-delta"></div>
             <div class="day-grid" id="today-grid"></div>
           </div>
         </div>
@@ -1209,6 +1308,10 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Graphiques 15 jours
           </span>
+          <button class="history-trigger-btn" id="history-trigger-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Historique
+          </button>
         </div>
         <div class="chart-tabs" id="chart-tabs">
           <button class="chart-tab active" data-chart="temp">🌡 Températures</button>
@@ -1304,6 +1407,27 @@
 
 </div><!-- /app-shell -->
 
+<!-- POPUP HISTORIQUE TEMPÉRATURES -->
+<div class="history-overlay" id="history-overlay" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
+  <div class="history-modal" id="history-modal">
+    <div class="history-modal-header">
+      <div class="history-modal-title" id="history-modal-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Historique des températures — <span id="history-city-label">–</span>
+      </div>
+      <button class="history-close-btn" id="history-close-btn" aria-label="Fermer">×</button>
+    </div>
+    <div class="history-modal-body">
+      <div id="history-loading" style="padding:40px;text-align:center;color:var(--txt2);font-size:.85rem">Chargement des données historiques…</div>
+      <div id="history-content" style="display:none">
+        <div class="history-year-tabs" id="history-year-tabs"></div>
+        <div class="history-chart-box"><canvas id="history-chart-canvas"></canvas></div>
+        <div class="history-stats-row" id="history-stats-row"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ================================================================
    CIEL — Météo France  |  Pure HTML/CSS/JS — GitHub Pages ready
@@ -1323,6 +1447,8 @@ const S = {
   timezone: 'Europe/Paris',
   forecast: null,
   aqi:      null,
+  normals:  null,
+  archive:  null,
   chart:    null,
   chartType: 'temp',
   radarFrames: [],
@@ -2404,13 +2530,25 @@ function renderWeek(d) {
     const isToday = t === todayStr;
     const dayLbl  = isToday ? `<span class="week-day is-today">Auj.</span>` :
                               `<span class="week-day">${DAYS[date.getDay()]} ${date.getDate()}</span>`;
+
+    // Badge delta vs normale saisonnière
+    const norm = normalForDate(t);
+    let deltaHtml = '';
+    if (norm && norm.tmax !== null) {
+      const delta = Math.round(tMax - norm.tmax);
+      if (Math.abs(delta) >= 1) {
+        const cls = delta > 0 ? 'above' : 'below';
+        deltaHtml = `<span class="week-delta ${cls}">${delta > 0 ? '+' : ''}${delta}°</span>`;
+      }
+    }
+
     return `
     <div class="week-row">
       ${dayLbl}
       <span class="week-icon">${info.icon}</span>
       <span class="week-desc">${info.desc}</span>
       <span class="week-temp-min">${tMin}°</span>
-      <span class="week-temp-max">${tMax}°</span>
+      <span class="week-temp-max">${tMax}°${deltaHtml}</span>
     </div>`;
   });
   document.getElementById('week-list').innerHTML = rows.join('');
@@ -3124,6 +3262,311 @@ function applyWeatherEffect(effect) {
 })();
 
 // ──────────────────────────────────────────────────────────────────
+// HISTORIQUE TEMPÉRATURES — ARCHIVE & NORMALES SAISONNIÈRES
+// ──────────────────────────────────────────────────────────────────
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+async function fetchArchiveRange(startYear, endYear) {
+  const u = `https://archive-api.open-meteo.com/v1/archive`
+    + `?latitude=${S.lat}&longitude=${S.lon}`
+    + `&daily=temperature_2m_max,temperature_2m_min`
+    + `&start_date=${startYear}-01-01&end_date=${endYear}-12-31`
+    + `&timezone=auto`;
+  const r = await fetch(u);
+  if (!r.ok) throw new Error('Archive ' + r.status);
+  return r.json();
+}
+
+function computeNormals(data) {
+  // Returns { 'MM-DD': { tmax, tmin } } averaged over all years in data
+  const acc = {};
+  const { time, temperature_2m_max: tmx, temperature_2m_min: tmn } = data.daily;
+  for (let i = 0; i < time.length; i++) {
+    const key = time[i].slice(5); // 'MM-DD'
+    if (!acc[key]) acc[key] = { sx: 0, sn: 0, c: 0 };
+    if (tmx[i] !== null) { acc[key].sx += tmx[i]; acc[key].c++; }
+    if (tmn[i] !== null)   acc[key].sn += tmn[i];
+  }
+  const out = {};
+  for (const [k, v] of Object.entries(acc)) {
+    out[k] = { tmax: v.c ? v.sx / v.c : null, tmin: v.c ? v.sn / v.c : null };
+  }
+  return out;
+}
+
+function normalForDate(dateStr) {
+  if (!S.normals) return null;
+  return S.normals[dateStr.slice(5)] || null; // 'MM-DD'
+}
+
+// Group archive data by year → monthly averages
+function groupByYear(data) {
+  const years = {};
+  const { time, temperature_2m_max: tmx, temperature_2m_min: tmn } = data.daily;
+  for (let i = 0; i < time.length; i++) {
+    const [y, m] = time[i].split('-');
+    const mo = parseInt(m, 10) - 1; // 0-11
+    if (!years[y]) years[y] = { tmax: Array(12).fill(null), tmin: Array(12).fill(null), cnt: Array(12).fill(0) };
+    if (tmx[i] !== null) {
+      years[y].tmax[mo] = (years[y].tmax[mo] || 0) + tmx[i];
+      years[y].cnt[mo]++;
+    }
+    if (tmn[i] !== null) years[y].tmin[mo] = (years[y].tmin[mo] || 0) + tmn[i];
+  }
+  // Compute monthly averages
+  for (const y of Object.values(years)) {
+    for (let mo = 0; mo < 12; mo++) {
+      const c = y.cnt[mo];
+      y.tmax[mo] = c ? y.tmax[mo] / c : null;
+      y.tmin[mo] = c ? y.tmin[mo] / c : null;
+    }
+  }
+  return years;
+}
+
+function renderSeasonalDelta(todayStr, currentTemp) {
+  const el = document.getElementById('seasonal-delta');
+  if (!el) return;
+  const norm = normalForDate(todayStr);
+  if (!norm || norm.tmax === null) return;
+  const delta = currentTemp - norm.tmax;
+  const abs = Math.abs(delta).toFixed(1);
+  const isAbove = delta > 0.5, isBelow = delta < -0.5;
+  const cls = isAbove ? 'sd-above' : isBelow ? 'sd-below' : 'sd-normal';
+  const sign = delta >= 0 ? '+' : '';
+  const lbl = isAbove ? 'au-dessus de la normale' : isBelow ? 'en-dessous de la normale' : 'dans la normale';
+  el.innerHTML = `<span class="sd-badge ${cls}">${sign}${abs}°C</span><span>${lbl} saisonnière (moy. 5 ans)</span>`;
+  el.style.display = 'flex';
+}
+
+async function loadArchiveNormals() {
+  try {
+    const curYear = new Date().getFullYear();
+    const data = await fetchArchiveRange(curYear - 5, curYear - 1);
+    S.normals = computeNormals(data);
+    // Update Today delta
+    if (S.forecast) {
+      const todayStr = S.forecast.daily.time[0] || TODAY_STR;
+      const cw = S.forecast.current_weather;
+      renderSeasonalDelta(todayStr, Math.round(cw.temperature));
+    }
+    // Re-render week rows with delta badges
+    if (S.forecast) renderWeek(S.forecast);
+  } catch(e) {
+    console.warn('Archive normals unavailable:', e.message);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// POPUP HISTORIQUE
+// ──────────────────────────────────────────────────────────────────
+let _historyChart = null;
+let _historyYears = null; // grouped data cache
+let _historyNormals = null; // monthly normals from full archive
+let _activeHistoryYear = null;
+
+const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+
+function openHistoryModal() {
+  const overlay = document.getElementById('history-overlay');
+  document.getElementById('history-city-label').textContent = S.city;
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  if (S.archive) {
+    renderHistoryContent();
+  } else {
+    loadFullArchive();
+  }
+}
+
+function closeHistoryModal() {
+  document.getElementById('history-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+async function loadFullArchive() {
+  try {
+    const curYear = new Date().getFullYear();
+    const data = await fetchArchiveRange(curYear - 10, curYear - 1);
+    S.archive = data;
+    if (!S.normals) {
+      S.normals = computeNormals(data);
+      if (S.forecast) {
+        const todayStr = S.forecast.daily.time[0] || TODAY_STR;
+        renderSeasonalDelta(todayStr, Math.round(S.forecast.current_weather.temperature));
+        renderWeek(S.forecast);
+      }
+    }
+    renderHistoryContent();
+  } catch(e) {
+    document.getElementById('history-loading').textContent = '⚠️ Données historiques indisponibles.';
+  }
+}
+
+function renderHistoryContent() {
+  document.getElementById('history-loading').style.display = 'none';
+  document.getElementById('history-content').style.display = 'block';
+
+  _historyYears = groupByYear(S.archive);
+  const years = Object.keys(_historyYears).sort((a,b) => b - a); // most recent first
+
+  // Compute monthly normals across all years
+  _historyNormals = Array(12).fill(0).map((_, mo) => {
+    const vals = Object.values(_historyYears).map(y => y.tmax[mo]).filter(v => v !== null);
+    return vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+  });
+
+  // Year tabs
+  if (!_activeHistoryYear || !_historyYears[_activeHistoryYear]) {
+    _activeHistoryYear = years[0];
+  }
+  const tabs = document.getElementById('history-year-tabs');
+  tabs.innerHTML = years.map(y => `
+    <button class="history-year-tab${y === _activeHistoryYear ? ' active' : ''}" data-year="${y}">${y}</button>
+  `).join('');
+  tabs.querySelectorAll('.history-year-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _activeHistoryYear = btn.dataset.year;
+      tabs.querySelectorAll('.history-year-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      buildHistoryChart();
+      renderHistoryStats();
+    });
+  });
+
+  buildHistoryChart();
+  renderHistoryStats();
+}
+
+function buildHistoryChart() {
+  if (_historyChart) { _historyChart.destroy(); _historyChart = null; }
+  const ctx = document.getElementById('history-chart-canvas');
+  if (!ctx || !_historyYears) return;
+
+  const years = Object.keys(_historyYears).sort();
+  const gridColor = 'rgba(255,255,255,0.05)';
+  const tickColor = '#8990ae';
+  const tickFont  = { family: 'Inter', size: 9 };
+
+  // Faint lines for all years
+  const datasets = years.map(y => ({
+    label: y,
+    data: _historyYears[y].tmax,
+    borderColor: y === _activeHistoryYear ? '#ffb74d' : 'rgba(255,255,255,0.12)',
+    backgroundColor: 'transparent',
+    borderWidth: y === _activeHistoryYear ? 2.5 : 1,
+    pointRadius: y === _activeHistoryYear ? 3 : 0,
+    pointHoverRadius: 4,
+    tension: 0.4,
+    order: y === _activeHistoryYear ? 1 : 3,
+  }));
+
+  // Normale reference line
+  datasets.push({
+    label: 'Normale',
+    data: _historyNormals,
+    borderColor: 'rgba(79,195,247,0.7)',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderDash: [5, 4],
+    pointRadius: 0,
+    tension: 0.4,
+    order: 2,
+  });
+
+  _historyChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: MONTHS_SHORT, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            color: tickColor, font: { family: 'Inter', size: 9 },
+            boxWidth: 8, padding: 10,
+            filter: item => item.text === _activeHistoryYear || item.text === 'Normale',
+          },
+        },
+        tooltip: {
+          mode: 'index', intersect: false,
+          backgroundColor: 'rgba(7,9,15,0.92)',
+          borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          titleColor: '#e8eaf2', bodyColor: '#8990ae',
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label === _activeHistoryYear || ctx.dataset.label === 'Normale') {
+                return `${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + '°C' : '--'}`;
+              }
+              return null;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { color: tickColor, font: tickFont }, grid: { color: gridColor } },
+        y: {
+          ticks: { color: tickColor, font: tickFont, callback: v => v + '°' },
+          grid: { color: gridColor },
+        },
+      },
+    },
+  });
+}
+
+function renderHistoryStats() {
+  const el = document.getElementById('history-stats-row');
+  if (!el || !_historyYears || !_activeHistoryYear) return;
+  const y = _historyYears[_activeHistoryYear];
+  if (!y) return;
+
+  const valids = y.tmax.filter(v => v !== null);
+  const annualMean = valids.length ? (valids.reduce((a,b)=>a+b,0)/valids.length).toFixed(1) : '--';
+  const hotIdx = y.tmax.reduce((best, v, i) => (v !== null && (best === -1 || v > y.tmax[best])) ? i : best, -1);
+  const coldIdx = y.tmin.reduce((best, v, i) => (v !== null && (best === -1 || v < y.tmin[best])) ? i : best, -1);
+
+  // Anomalie vs normale (annual mean Tmax)
+  const normValids = _historyNormals.filter(v => v !== null);
+  const normMean = normValids.length ? normValids.reduce((a,b)=>a+b,0)/normValids.length : null;
+  const anomaly = normMean !== null && annualMean !== '--' ? (parseFloat(annualMean) - normMean).toFixed(1) : null;
+  const anomSign = anomaly !== null && anomaly >= 0 ? '+' : '';
+  const anomColor = anomaly > 0.5 ? '#ff9800' : anomaly < -0.5 ? '#4fc3f7' : '#81c784';
+
+  el.innerHTML = `
+    <div class="history-stat">
+      <div class="history-stat-label">Tmax moy. annuelle</div>
+      <div class="history-stat-value">${annualMean}°</div>
+      <div class="history-stat-sub">${_activeHistoryYear}</div>
+    </div>
+    <div class="history-stat">
+      <div class="history-stat-label">Anomalie vs normale</div>
+      <div class="history-stat-value" style="color:${anomColor}">${anomaly !== null ? anomSign+anomaly+'°' : '--'}</div>
+      <div class="history-stat-sub">par rapport à la moyenne</div>
+    </div>
+    <div class="history-stat">
+      <div class="history-stat-label">Mois le plus chaud</div>
+      <div class="history-stat-value">${hotIdx >= 0 ? MONTHS_SHORT[hotIdx] : '--'}</div>
+      <div class="history-stat-sub">${hotIdx >= 0 ? y.tmax[hotIdx].toFixed(1)+'°C moy.' : ''}</div>
+    </div>
+    <div class="history-stat">
+      <div class="history-stat-label">Mois le plus froid</div>
+      <div class="history-stat-value">${coldIdx >= 0 ? MONTHS_SHORT[coldIdx] : '--'}</div>
+      <div class="history-stat-sub">${coldIdx >= 0 ? y.tmin[coldIdx].toFixed(1)+'°C moy.' : ''}</div>
+    </div>
+  `;
+}
+
+document.getElementById('history-trigger-btn').addEventListener('click', openHistoryModal);
+document.getElementById('history-close-btn').addEventListener('click', closeHistoryModal);
+document.getElementById('history-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeHistoryModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeHistoryModal();
+});
+
+// ──────────────────────────────────────────────────────────────────
 // LEVER / COUCHER DE LUNE (calcul astronomique simplifié)
 // ──────────────────────────────────────────────────────────────────
 function moonRiseSet(date, latDeg, lonDeg) {
@@ -3432,6 +3875,9 @@ async function loadAll() {
     console.warn('Marine API non disponible (zone non côtière ou erreur):', err.message);
     renderTides(null);
   }
+
+  // Normes saisonnières en arrière-plan (non bloquant)
+  loadArchiveNormals();
 }
 
 // ──────────────────────────────────────────────────────────────────
