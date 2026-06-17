@@ -534,10 +534,68 @@
     .city-temp-row {
       display: flex; align-items: center; gap: 18px;
       padding: 10px 20px 16px;
+      flex-wrap: wrap;
     }
     .city-temp-right { display: flex; flex-direction: column; gap: 3px; }
     .city-cond-label { font-size: 1rem; font-weight: 500; }
     .city-cond-icon  { font-size: 2rem; }
+
+    /* ── Tide box (marée, dans la case Aujourd'hui) ───────────────── */
+    .city-tide-box {
+      display: none;
+      margin-left: auto;
+      flex-direction: column;
+      gap: 6px;
+      padding: 9px 13px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      min-width: 168px;
+    }
+    .city-tide-box.show { display: flex; }
+    .tide-box-title {
+      font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--txt2); font-weight: 600;
+    }
+    .tide-cycles { display: flex; flex-direction: column; gap: 5px; }
+    .tide-cycle-row {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 0.71rem; color: var(--txt2);
+    }
+    .tide-cycle-time { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+    .tide-cycle-time strong { color: var(--txt); font-weight: 600; font-size: 0.76rem; }
+    .tide-cycle-coeff {
+      margin-left: auto; font-family: var(--fd); font-weight: 800; font-size: 0.78rem;
+      padding: 1px 7px; border-radius: 7px; background: var(--surface2);
+    }
+    .tide-cycle-coeff.coeff-low  { color: var(--cold); }
+    .tide-cycle-coeff.coeff-mid  { color: var(--warm); }
+    .tide-cycle-coeff.coeff-high { color: #ef9a9a; }
+
+    /* ── Marégramme (carte pleine largeur) ─────────────────────────── */
+    .tide-chart-wrap { padding: 10px 16px 2px; height: 190px; }
+    .tide-list {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      padding: 6px 16px 16px;
+    }
+    .tide-item {
+      flex: 1 1 130px; min-width: 122px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 3px;
+    }
+    .tide-item-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      font-size: 0.68rem; color: var(--txt2);
+    }
+    .tide-item-time { font-family: var(--fd); font-size: 1.15rem; font-weight: 700; color: var(--txt); }
+    .tide-item-height { font-size: 0.71rem; color: var(--txt2); }
+    .tide-item-coeff {
+      font-size: 0.66rem; font-weight: 800; padding: 1px 7px; border-radius: 6px;
+      background: var(--surface2); white-space: nowrap;
+    }
+    .tide-item-coeff.coeff-low  { color: var(--cold); }
+    .tide-item-coeff.coeff-mid  { color: var(--warm); }
+    .tide-item-coeff.coeff-high { color: #ef9a9a; }
 
     .day-grid {
       display: grid; grid-template-columns: 1fr 1fr;
@@ -889,6 +947,9 @@
       .city-name { font-size: 1.45rem; }
       .city-temp-row { padding: 8px 14px 14px; gap: 12px; }
       .city-temp-big { font-size: 2.8rem; }
+      .city-tide-box { margin-left: 0; width: 100%; min-width: 0; }
+      .tide-chart-wrap { height: 160px; padding: 8px 12px 0; }
+      .tide-list { padding: 6px 12px 14px; }
       .day-grid { grid-template-columns: 1fr 1fr; }
       .day-slot { padding: 12px 8px; }
       .day-slot-temp { font-size: 1.3rem; }
@@ -1087,6 +1148,10 @@
                 <span class="city-cond-label" id="city-cond-label">--</span>
                 <span style="font-size:.72rem;color:var(--txt2)" id="city-cond-sub"></span>
               </div>
+              <div class="city-tide-box" id="city-tide-box">
+                <div class="tide-box-title">🌊 Marées du jour</div>
+                <div class="tide-cycles" id="tide-cycles"></div>
+              </div>
             </div>
             <div class="day-grid" id="today-grid"></div>
           </div>
@@ -1153,6 +1218,21 @@
       <div class="hourly-scroll" id="hourly-scroll">
         <div style="padding:10px;color:var(--txt2);font-size:.8rem">Chargement…</div>
       </div>
+    </div>
+
+    <!-- MARÉGRAMME — visible uniquement pour une ville côtière -->
+    <div class="card tide-card" id="tide-card" style="display:none">
+      <div class="card-header">
+        <span class="card-title">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 11c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0M2 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/></svg>
+          Marégramme
+        </span>
+        <span id="tide-card-date" style="font-size:.7rem;color:var(--txt2)"></span>
+      </div>
+      <div class="tide-chart-wrap">
+        <canvas id="tide-chart"></canvas>
+      </div>
+      <div class="tide-list" id="tide-list"></div>
     </div>
 
     <!-- CHARTS -->
@@ -2032,6 +2112,31 @@ async function fetchAQI() {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// MARÉES — hauteur d'eau (sea_level_height_msl, marées comprises)
+// fournie par l'API Marine d'Open-Meteo.
+// ──────────────────────────────────────────────────────────────────
+const TIDE_COASTAL_MAX_KM = 50; // au-delà : on considère que ce n'est pas une ville côtière
+
+// Port de référence officiel du SHOM pour le coefficient de marée.
+// En France, le coefficient est calculé UNE SEULE FOIS pour Brest puis
+// appliqué tel quel à toute la façade Manche-Atlantique — ce n'est pas
+// une valeur propre à chaque port (voir Wikipédia « Calcul de marée »).
+const BREST_LAT = 48.39, BREST_LON = -4.48;
+// Marnage moyen de vive-eau d'équinoxe à Brest = référence du coefficient 100.
+const BREST_REF_MARNAGE = 6.10;
+
+async function fetchSeaLevel(lat, lon) {
+  const u = `https://marine-api.open-meteo.com/v1/marine`
+    + `?latitude=${lat}&longitude=${lon}`
+    + `&hourly=sea_level_height_msl`
+    + `&past_days=1&forecast_days=2`
+    + `&cell_selection=sea&timezone=auto`;
+  const r = await fetch(u);
+  if (!r.ok) throw new Error('Marine ' + r.status);
+  return r.json();
+}
+
+// ──────────────────────────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────────────────────────
 function tempClass(t) {
@@ -2093,6 +2198,310 @@ function currentHourKey(d) {
   const current = d.current_weather?.time;
   if (current) return `${current.slice(0, 13)}:00`;
   return d.hourly.time[0];
+}
+
+// ──────────────────────────────────────────────────────────────────
+// MARÉES — détection des pleines/basses mers + coefficient
+// ──────────────────────────────────────────────────────────────────
+
+// Distance approximative (km) entre deux points — sert à vérifier
+// que la maille marine renvoyée par l'API est bien proche de la ville
+// demandée (sinon : ville non côtière, on n'affiche rien).
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// Repère les pleines mers (maxima locaux) et basses mers (minima locaux)
+// dans la série horaire de hauteur d'eau. On filtre le bruit en exigeant
+// au moins 3h entre deux extrema consécutifs (un cycle de marée dure
+// environ 6h12 entre une pleine et une basse mer).
+function detectTideExtrema(values) {
+  const raw = [];
+  for (let i = 1; i < values.length - 1; i++) {
+    const v = values[i], a = values[i - 1], b = values[i + 1];
+    if (v == null || a == null || b == null) continue;
+    if (v >= a && v >= b && (v > a || v > b)) raw.push({ idx: i, type: 'high', value: v });
+    else if (v <= a && v <= b && (v < a || v < b)) raw.push({ idx: i, type: 'low', value: v });
+  }
+  const clean = [];
+  for (const e of raw) {
+    const last = clean[clean.length - 1];
+    if (last && last.type === e.type) {
+      // plateau : on garde l'extremum le plus marqué
+      if ((e.type === 'high' && e.value > last.value) || (e.type === 'low' && e.value < last.value)) {
+        clean[clean.length - 1] = e;
+      }
+      continue;
+    }
+    if (last && (e.idx - last.idx) < 3) continue; // trop proche (<3h) = bruit
+    clean.push(e);
+  }
+  return clean;
+}
+
+// Affine l'heure et la hauteur d'un extremum par interpolation parabolique
+// (3 points horaires autour du pic) pour une précision à la minute plutôt
+// qu'à l'heure pile.
+function refineExtremum(times, values, idx) {
+  const y1 = values[idx];
+  if (idx <= 0 || idx >= values.length - 1) return { time: times[idx], value: y1 };
+  const t1 = new Date(times[idx]).getTime();
+  const t0 = new Date(times[idx - 1]).getTime();
+  const t2 = new Date(times[idx + 1]).getTime();
+  const x0 = (t0 - t1) / 3600000, x2 = (t2 - t1) / 3600000;
+  const y0 = values[idx - 1], y2 = values[idx + 1];
+  const denom = x0 * x2 * (x0 - x2);
+  if (!denom) return { time: times[idx], value: y1 };
+  const a = (x2 * (y0 - y1) - x0 * (y2 - y1)) / denom;
+  const b = (x0 * x0 * (y2 - y1) - x2 * x2 * (y0 - y1)) / denom;
+  if (!a) return { time: times[idx], value: y1 };
+  let xv = -b / (2 * a);
+  xv = Math.max(x0, Math.min(x2, xv));
+  const yv = a * xv * xv + b * xv + y1;
+  const tv = new Date(t1 + xv * 3600000);
+  const pad = n => String(n).padStart(2, '0');
+  // Format naïf (sans fuseau), cohérent avec les chaînes renvoyées par l'API
+  const iso = `${tv.getFullYear()}-${pad(tv.getMonth() + 1)}-${pad(tv.getDate())}T${pad(tv.getHours())}:${pad(tv.getMinutes())}`;
+  return { time: iso, value: yv };
+}
+
+// Transforme une réponse de l'API Marine en liste d'extrema typés
+// (pleine/basse mer) avec heure affinée à la minute.
+function tideExtrema(marine) {
+  const times = marine?.hourly?.time;
+  const values = marine?.hourly?.sea_level_height_msl;
+  if (!times || !values || times.length < 6) return [];
+  return detectTideExtrema(values).map(e => ({ type: e.type, ...refineExtremum(times, values, e.idx) }));
+}
+
+// Coefficient de marée « national » calculé à partir du marnage de Brest :
+// coeff = marnage(Brest) / 6,10 m × 100, borné à [20, 120].
+// Un coefficient est attribué à chaque cycle basse mer → pleine mer.
+function brestCoefficients(extrema) {
+  const out = [];
+  for (let i = 1; i < extrema.length; i++) {
+    if (extrema[i].type === 'high' && extrema[i - 1].type === 'low') {
+      const marnage = Math.abs(extrema[i].value - extrema[i - 1].value);
+      const coeff = Math.max(20, Math.min(120, Math.round(marnage / BREST_REF_MARNAGE * 100)));
+      out.push({ time: extrema[i].time, coeff });
+    }
+  }
+  return out;
+}
+
+// Associe une heure locale (ex : la pleine mer du port demandé) au
+// coefficient de Brest le plus proche dans le temps — les deux suivent
+// le même rythme lunaire avec seulement quelques heures de décalage.
+function nearestCoeff(brestCoeffs, targetTimeStr) {
+  if (!brestCoeffs.length) return null;
+  const target = new Date(targetTimeStr).getTime();
+  let best = null, bestDiff = Infinity;
+  for (const c of brestCoeffs) {
+    const diff = Math.abs(new Date(c.time).getTime() - target);
+    if (diff < bestDiff) { bestDiff = diff; best = c; }
+  }
+  return bestDiff <= 9 * 3600000 ? best.coeff : null; // > 9h = correspondance non fiable
+}
+
+// Construit les données de marée du jour pour le port demandé :
+// - cycles : les paires basse mer → pleine mer du jour (matin, après-midi, …),
+//   chacune avec son coefficient (calculé via Brest, méthode officielle SHOM) ;
+// - events : tous les extrema du jour (utiles pour la liste du marégramme) ;
+// - series : la courbe de hauteur d'eau du jour (pour le graphique).
+function buildTideDay(localMarine, brestMarine, todayStr) {
+  const localExtrema = tideExtrema(localMarine);
+  if (localExtrema.length < 2) return null;
+
+  const brestCoeffs = brestCoefficients(tideExtrema(brestMarine));
+
+  const cycles = [];
+  for (let i = 0; i < localExtrema.length - 1; i++) {
+    const a = localExtrema[i], b = localExtrema[i + 1];
+    if (a.type === 'low' && b.type === 'high'
+      && (a.time.slice(0, 10) === todayStr || b.time.slice(0, 10) === todayStr)) {
+      cycles.push({
+        bmTime: a.time, bmHeight: a.value,
+        pmTime: b.time, pmHeight: b.value,
+        coeff: nearestCoeff(brestCoeffs, b.time),
+      });
+    }
+  }
+
+  const events = localExtrema
+    .filter(e => e.time.slice(0, 10) === todayStr)
+    .map(e => ({
+      type: e.type, time: e.time, value: e.value,
+      coeff: e.type === 'high' ? nearestCoeff(brestCoeffs, e.time) : null,
+    }));
+
+  if (!cycles.length && !events.length) return null;
+
+  // Série du marégramme : la journée, avec une marge d'1-2h de part et
+  // d'autre pour que la courbe se ferme proprement aux extrémités.
+  const times = localMarine.hourly.time, values = localMarine.hourly.sea_level_height_msl;
+  const dayStart = new Date(`${todayStr}T00:00:00`).getTime() - 3600000;
+  const dayEnd   = new Date(`${todayStr}T23:00:00`).getTime() + 7200000;
+  const series = { time: [], value: [] };
+  for (let i = 0; i < times.length; i++) {
+    const t = new Date(times[i]).getTime();
+    if (t >= dayStart && t <= dayEnd) { series.time.push(times[i]); series.value.push(values[i]); }
+  }
+
+  return { cycles, events, series };
+}
+
+function coeffClass(coeff) {
+  if (coeff == null) return '';
+  return coeff >= 90 ? 'coeff-high' : coeff >= 60 ? 'coeff-mid' : 'coeff-low';
+}
+
+// Petite boîte dans la case « Aujourd'hui » : matin + après-midi, compact.
+function renderTideBox(cycles) {
+  const box = document.getElementById('city-tide-box');
+  if (!cycles || !cycles.length) { box.classList.remove('show'); return; }
+  const fmt = t => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('tide-cycles').innerHTML = cycles.slice(0, 2).map(c => `
+    <div class="tide-cycle-row">
+      <span class="tide-cycle-time">BM&nbsp;<strong>${fmt(c.bmTime)}</strong></span>
+      <span class="tide-cycle-time">PM&nbsp;<strong>${fmt(c.pmTime)}</strong></span>
+      <span class="tide-cycle-coeff ${coeffClass(c.coeff)}">${c.coeff ?? '--'}</span>
+    </div>`).join('');
+  box.classList.add('show');
+}
+
+// Marégramme : courbe de hauteur d'eau + repères pleine/basse mer + liste détaillée.
+let _tideChart = null;
+function renderTideCard(day, todayStr) {
+  const card = document.getElementById('tide-card');
+  if (!day || !day.events.length) { card.style.display = 'none'; return; }
+
+  document.getElementById('tide-card-date').textContent =
+    dateFromDay(todayStr).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  // Courbe
+  const times = day.series.time;
+  const values = day.series.value;
+
+  // Position de l'heure actuelle : l'axe est en catégories (espacement égal
+  // par index, pas proportionnel au temps réel) — on ne doit donc JAMAIS
+  // insérer un point supplémentaire dans la série, sous peine de décaler
+  // tous les points suivants d'un cran. On vise simplement l'index horaire
+  // existant le plus proche, ce qui place le point exactement sur la courbe.
+  const nowMs = Date.now();
+  let nowIdx = -1, bestDiff = Infinity;
+  for (let i = 0; i < times.length; i++) {
+    const diff = Math.abs(new Date(times[i]).getTime() - nowMs);
+    if (diff < bestDiff) { bestDiff = diff; nowIdx = i; }
+  }
+  if (bestDiff > 90 * 60000) nowIdx = -1; // hors de la fenêtre affichée (>1h30)
+
+  const labels = times.map(t => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+  const isExtremum = t => day.events.some(e => Math.abs(new Date(e.time) - new Date(t)) < 30 * 60000);
+  const pointRadius = times.map(t => isExtremum(t) ? 5 : 0);
+  const pointColor  = times.map(t => isExtremum(t) ? 'rgba(79,195,247,1)' : 'rgba(79,195,247,0)');
+  const nowData        = nowIdx === -1 ? null : values.map((v, i) => i === nowIdx ? v : null);
+  const nowPointRadius = nowIdx === -1 ? null : values.map((v, i) => i === nowIdx ? 6 : 0);
+
+  const gridColor = 'rgba(255,255,255,0.05)';
+  const tickColor = '#8990ae';
+  const tickFont  = { family: 'Inter', size: 9 };
+
+  if (_tideChart) { _tideChart.destroy(); _tideChart = null; }
+  const ctx = document.getElementById('tide-chart');
+  if (ctx) {
+    const datasets = [{
+      data: values,
+      borderColor: 'rgba(79,195,247,0.9)',
+      backgroundColor: 'rgba(79,195,247,0.12)',
+      fill: true, tension: 0.4, borderWidth: 2,
+      pointRadius, pointBackgroundColor: pointColor, pointBorderColor: pointColor,
+    }];
+    if (nowData) {
+      datasets.push({
+        label: 'now',
+        data: nowData,
+        showLine: false, fill: false, spanGaps: false,
+        pointRadius: nowPointRadius, pointHoverRadius: 7,
+        pointBackgroundColor: '#ff5252', pointBorderColor: '#fff', pointBorderWidth: 1.5,
+        order: -1,
+      });
+    }
+    _tideChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(7,9,15,0.96)',
+            borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+            titleColor: '#e8eaf2', bodyColor: '#8990ae',
+            titleFont: { family: 'Inter', size: 11 }, bodyFont: { family: 'Inter', size: 10 },
+            padding: 9, cornerRadius: 8,
+            callbacks: {
+              label: c => c.dataset.label === 'now' ? `Maintenant — ${c.parsed.y.toFixed(2)} m` : `${c.parsed.y.toFixed(2)} m`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: tickColor, font: tickFont, maxRotation: 0, maxTicksLimit: 8,
+              callback(val, idx) { return idx % 3 === 0 ? this.getLabelForValue(val) : ''; },
+            },
+            grid: { color: gridColor },
+          },
+          y: {
+            ticks: { color: tickColor, font: tickFont, callback: v => v + ' m' },
+            grid: { color: gridColor },
+          },
+        },
+      },
+    });
+  }
+
+  // Liste détaillée (toutes les marées du jour)
+  const fmt = t => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('tide-list').innerHTML = day.events.map(e => `
+    <div class="tide-item">
+      <div class="tide-item-head">
+        <span>${e.type === 'high' ? '🌊 Pleine mer' : '〜 Basse mer'}</span>
+        ${e.coeff != null ? `<span class="tide-item-coeff ${coeffClass(e.coeff)}">${e.coeff}</span>` : ''}
+      </div>
+      <div class="tide-item-time">${fmt(e.time)}</div>
+      <div class="tide-item-height">${e.value.toFixed(2)} m</div>
+    </div>`).join('');
+
+  card.style.display = 'block';
+}
+
+// Charge la marée en tâche de fond : n'empêche jamais l'affichage météo
+// de fonctionner si l'API marine échoue ou si la ville n'est pas côtière.
+async function loadTide(todayStr) {
+  document.getElementById('city-tide-box').classList.remove('show');
+  document.getElementById('tide-card').style.display = 'none';
+  try {
+    const [localMarine, brestMarine] = await Promise.all([
+      fetchSeaLevel(S.lat, S.lon),
+      fetchSeaLevel(BREST_LAT, BREST_LON),
+    ]);
+    if (typeof localMarine.latitude !== 'number' || typeof localMarine.longitude !== 'number') return;
+    const distKm = haversineKm(S.lat, S.lon, localMarine.latitude, localMarine.longitude);
+    if (distKm > TIDE_COASTAL_MAX_KM) return; // pas une ville côtière
+
+    const day = buildTideDay(localMarine, brestMarine, todayStr);
+    renderTideBox(day?.cycles);
+    renderTideCard(day, todayStr);
+  } catch (err) {
+    console.warn('Marée indisponible:', err);
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -3058,6 +3467,9 @@ async function loadAll() {
     renderHourly(wData);
     buildChart(wData);
     renderStats(wData);
+
+    // Marée (ville côtière) — en arrière-plan, ne bloque pas le reste
+    loadTide(wData.daily.time[0] || TODAY_STR);
   } catch(err) {
     console.error('Erreur chargement météo:', err);
     document.getElementById('today-skeleton').innerHTML =
