@@ -312,9 +312,8 @@
     .search-section { position: relative; }
     .search-bar {
       display: flex; align-items: center; gap: 12px;
-      background: var(--surface2); border: 1px solid var(--border2);
+      background: rgba(28,32,44,0.6); border: 1px solid var(--border2);
       border-radius: 50px; padding: 13px 20px;
-      backdrop-filter: var(--blur);
       transition: border-color .2s, box-shadow .2s;
     }
     .search-bar:focus-within {
@@ -335,7 +334,7 @@
     }
     .search-suggestions {
       position: absolute; top: calc(100% + 8px); left: 0; right: 0;
-      background: rgba(10,13,22,0.98); backdrop-filter: var(--blur);
+      background: rgba(10,13,22,0.98);
       border: 1px solid var(--border2); border-radius: var(--radius);
       overflow: hidden; z-index: 300; display: none;
       max-height: min(420px, 70vh); overflow-y: auto;
@@ -379,12 +378,15 @@
        CARDS
     ══════════════════════════════════════════════════════════════ */
     .card {
-      background: var(--surface); border: 1px solid var(--border);
+      background: rgba(22,24,30,0.60); border: 1px solid var(--border);
       border-radius: var(--radius);
-      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       overflow: hidden; transition: border-color .2s;
     }
     .card:hover { border-color: var(--border2); }
+    /* Perf : pas de backdrop-filter sur les cartes (11+ éléments au scroll). Le
+       fond derrière est quasi uniforme et sombre, le flou n'apportait rien de
+       visible mais recalculait à chaque frame. Léger fond opaque pour garder le
+       relief sans flou. */
     .card-header {
       min-height: 48px;
       padding: 16px 20px 12px;
@@ -436,7 +438,7 @@
       scroll-margin-top: 80px;
     }
     /* Map takes all remaining height inside the flex radar-card */
-    #map-container { flex: 1; min-height: 320px; position: relative; overflow: hidden; }
+    #map-container { flex: 1; min-height: 320px; position: relative; overflow: hidden; contain: paint; }
     #map {
       position: absolute; inset: 0;
       background: #0a0e18 !important;
@@ -475,7 +477,7 @@
 
     .map-legend {
       position: absolute; bottom: 12px; right: 12px;
-      background: rgba(7,9,15,0.88); backdrop-filter: blur(10px);
+      background: rgba(7,9,15,0.94);
       border: 1px solid var(--border2); border-radius: var(--radius-sm);
       padding: 10px 14px; z-index: 1000;
     }
@@ -1923,6 +1925,7 @@ const map = L.map('map', {
   dragging: true,
   touchZoom: true,
   tap: true,
+  preferCanvas: true, // marqueur vectoriel rendu sur canvas (moins de DOM/SVG)
 });
 const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors', maxZoom: 18,
@@ -1963,7 +1966,9 @@ async function loadRadar() {
     S.radarFrames = [...past, ...cast];
     S._pastCount  = past.length;
     buildTimeline(past.length);
-    preloadRadarLayers();
+    // Pas de préchargement de toutes les frames ici : on ne garde sur la carte
+    // que la frame courante au repos (pan/zoom fluides). Les autres couches
+    // sont créées à la demande, et préchargées seulement pendant l'animation.
 
     // Show the most recent past frame (last past index), or first available frame.
     showRadarFrame(Math.max(0, past.length - 1), { instant: true });
@@ -2049,6 +2054,16 @@ function preloadRadarLayers() {
   });
 }
 
+// Retire de la carte toutes les couches radar sauf celle à conserver. Appelé
+// au repos (hors animation) pour ne garder qu'une seule couche sur la carte.
+function pruneRadarLayers(keepLayer) {
+  S.radarLayers.forEach((layer, idx) => {
+    if (layer === keepLayer) return;
+    try { map.removeLayer(layer); } catch(e){}
+    S.radarLayers.delete(idx);
+  });
+}
+
 function crossfadeRadarLayers(nextLayer, prevLayer, instant = false) {
   if (S.radarFadeFrame) cancelAnimationFrame(S.radarFadeFrame);
   const transition = ++S.radarTransition;
@@ -2061,6 +2076,7 @@ function crossfadeRadarLayers(nextLayer, prevLayer, instant = false) {
     S.radarLayers.forEach(layer => {
       if (layer !== nextLayer) layer.setOpacity(0);
     });
+    if (!S.animInterval) pruneRadarLayers(nextLayer);
     return;
   }
 
@@ -2084,6 +2100,7 @@ function crossfadeRadarLayers(nextLayer, prevLayer, instant = false) {
     S.radarLayers.forEach(layer => {
       if (layer !== nextLayer) layer.setOpacity(0);
     });
+    if (!S.animInterval) pruneRadarLayers(nextLayer);
   };
 
   S.radarFadeFrame = requestAnimationFrame(step);
@@ -2168,6 +2185,9 @@ function startRadarAnimation() {
   btn.classList.add('stop');
   progress.classList.add('visible');
   updateRadarProgress(S.radarIdx);
+  // On bufferise toutes les frames pour une lecture fluide (l'utilisateur ne
+  // pan/zoom pas pendant l'animation, le surcoût est donc justifié ici).
+  preloadRadarLayers();
   S.animInterval = setInterval(() => {
     showRadarFrame((S.radarIdx + 1) % S.radarFrames.length);
   }, 450);
@@ -2176,6 +2196,8 @@ function startRadarAnimation() {
 function stopRadarAnimation(resetProgress = true) {
   if (S.animInterval) clearInterval(S.animInterval);
   S.animInterval = null;
+  // Repos : on libère les frames bufferisées, on ne garde que la courante.
+  if (S.radarLayer) pruneRadarLayers(S.radarLayer);
   const progress = document.getElementById('radar-progress');
   const btn = document.getElementById('anim-btn');
   btn.innerHTML = '▶&nbsp; Animer';
@@ -3686,10 +3708,18 @@ function applyWeatherEffect(effect) {
 ;(function() {
   const cv  = document.getElementById('atmo-canvas');
   const ctx = cv.getContext('2d');
-  let W, H;
+  let W, H, glow;
   const pts = [];
 
-  function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+  // Le dégradé est statique : on le (re)calcule seulement au resize, pas à
+  // chaque frame (la recréation + l'échantillonnage par pixel coûtaient cher).
+  function resize() {
+    W = cv.width = innerWidth; H = cv.height = innerHeight;
+    glow = ctx.createRadialGradient(W*.78, H*.06, 0, W*.78, H*.06, W*.55);
+    glow.addColorStop(0,  'rgba(2,136,209,0.05)');
+    glow.addColorStop(.6, 'rgba(1,87,155,0.02)');
+    glow.addColorStop(1,  'transparent');
+  }
   resize();
   window.addEventListener('resize', resize);
 
@@ -3700,14 +3730,18 @@ function applyWeatherEffect(effect) {
     a: 0.015+Math.random()*.04,
   });
 
-  (function draw() {
+  // Dérive très lente (~7 px/s) : 30 fps est visuellement identique à 60 fps
+  // mais divise par deux le travail de dessin plein écran.
+  const FRAME_MS = 1000 / 30;
+  let last = 0, raf = null;
+
+  function draw(ts) {
+    raf = requestAnimationFrame(draw);
+    if (ts - last < FRAME_MS) return;
+    last = ts;
+
     ctx.clearRect(0,0,W,H);
-    // Subtle top-right aurora glow
-    const g = ctx.createRadialGradient(W*.78, H*.06, 0, W*.78, H*.06, W*.55);
-    g.addColorStop(0,  'rgba(2,136,209,0.05)');
-    g.addColorStop(.6, 'rgba(1,87,155,0.02)');
-    g.addColorStop(1,  'transparent');
-    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
 
     pts.forEach(p => {
       p.x += p.vx; p.y += p.vy;
@@ -3718,8 +3752,13 @@ function applyWeatherEffect(effect) {
       ctx.fillStyle = `rgba(79,195,247,${p.a})`;
       ctx.fill();
     });
-    requestAnimationFrame(draw);
-  })();
+  }
+
+  function start() { if (raf == null) { last = 0; raf = requestAnimationFrame(draw); } }
+  function stop()  { if (raf != null) { cancelAnimationFrame(raf); raf = null; } }
+  // Inutile d'animer un fond invisible quand l'onglet est masqué.
+  document.addEventListener('visibilitychange', () => { document.hidden ? stop() : start(); });
+  start();
 })();
 
 // ──────────────────────────────────────────────────────────────────
