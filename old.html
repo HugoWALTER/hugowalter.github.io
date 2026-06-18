@@ -534,7 +534,6 @@
     .city-temp-row {
       display: flex; align-items: center; gap: 18px;
       padding: 10px 20px 16px;
-      flex-wrap: wrap;
     }
     .city-temp-right { display: flex; flex-direction: column; gap: 3px; }
     .city-cond-label { font-size: 1rem; font-weight: 500; }
@@ -761,54 +760,6 @@
     .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0; color: var(--txt2); line-height: 1.25; }
     .stat-value { font-family: var(--fd); font-size: 1.35rem; font-weight: 700; }
     .stat-sub   { font-size: 0.67rem; color: var(--txt2); }
-
-    /* ══════════════════════════════════════════════════════════════
-       PRESSION ATMOSPHÉRIQUE
-    ══════════════════════════════════════════════════════════════ */
-    .pressure-body { padding: 12px 20px 18px; }
-    .pressure-value-row { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
-    .pressure-number { font-family: var(--fd); font-size: 2.6rem; font-weight: 800; line-height: 1; }
-    .pressure-unit   { font-size: 0.85rem; color: var(--txt2); font-weight: 500; margin-left: 2px; }
-    .pressure-trend {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 4px 11px; border-radius: 20px; font-size: 0.74rem; font-weight: 600;
-      border: 1px solid var(--border2);
-    }
-    .pressure-note {
-      font-size: 0.74rem; color: var(--txt2); line-height: 1.45;
-      padding: 10px 12px; border-radius: var(--radius-sm);
-      background: var(--surface2); border: 1px solid var(--border);
-      margin-bottom: 14px;
-    }
-    .pressure-chart-box { height: 130px; }
-    .pressure-sub-row {
-      display: flex; gap: 16px; margin-top: 12px; padding-top: 12px;
-      border-top: 1px solid var(--border); flex-wrap: wrap;
-    }
-    .pressure-sub-item { font-size: 0.71rem; color: var(--txt2); display: flex; align-items: center; gap: 5px; }
-    .pressure-sub-item strong { color: var(--txt); font-weight: 600; }
-
-    /* ══════════════════════════════════════════════════════════════
-       PHASE LUNAIRE
-    ══════════════════════════════════════════════════════════════ */
-    .moon-body { padding: 10px 20px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; }
-    .moon-icon { font-size: 3.4rem; line-height: 1; margin-bottom: 6px; filter: drop-shadow(0 0 18px rgba(232,234,242,0.12)); }
-    .moon-phase-name { font-family: var(--fd); font-size: 1.05rem; font-weight: 700; margin-bottom: 2px; }
-    .moon-illum { font-size: 0.74rem; color: var(--txt2); margin-bottom: 16px; }
-    .moon-info-grid { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-    .moon-info-row {
-      display: flex; align-items: center; gap: 9px;
-      padding: 8px 12px; border-radius: var(--radius-sm);
-      background: var(--surface2); border: 1px solid var(--border);
-      font-size: 0.74rem; color: var(--txt2); text-align: left;
-    }
-    .moon-info-row .moon-info-icon { font-size: 1rem; flex-shrink: 0; }
-    .moon-info-row strong { color: var(--txt); font-weight: 600; margin-left: auto; white-space: nowrap; }
-
-    @media (max-width: 700px) {
-      .pressure-number { font-size: 2.1rem; }
-      .moon-icon { font-size: 2.8rem; }
-    }
 
     /* ══════════════════════════════════════════════════════════════
        SKELETON LOADING
@@ -1272,42 +1223,6 @@
         <div class="skel skel-line"></div>
         <div class="skel skel-line"></div>
       </div>
-    </div>
-
-    <!-- PRESSION & LUNE -->
-    <div class="charts-section" id="section-extra">
-
-      <!-- PRESSION ATMOSPHÉRIQUE -->
-      <div class="card pressure-card" id="pressure-card">
-        <div class="card-header">
-          <span class="card-title">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            Pression atmosphérique
-          </span>
-          <span id="pressure-updated" style="font-size:.68rem;color:var(--txt2)">Niveau de la mer · Open-Meteo</span>
-        </div>
-        <div class="pressure-body" id="pressure-body">
-          <div class="skel skel-line" style="width:50%;height:42px"></div>
-          <div class="skel skel-line" style="width:80%;height:14px;margin-top:14px"></div>
-          <div class="skel skel-line" style="width:100%;height:110px;margin-top:10px"></div>
-        </div>
-      </div>
-
-      <!-- PHASE LUNAIRE -->
-      <div class="card moon-card" id="moon-card">
-        <div class="card-header">
-          <span class="card-title">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            Phase lunaire
-          </span>
-          <span style="font-size:.68rem;color:var(--txt2)">Calcul astronomique</span>
-        </div>
-        <div class="moon-body" id="moon-body">
-          <div class="skel" style="width:64px;height:64px;border-radius:50%"></div>
-          <div class="skel skel-line" style="width:70%;height:14px;margin-top:14px"></div>
-        </div>
-      </div>
-
     </div>
 
     <!-- STAT CARDS -->
@@ -2096,8 +2011,8 @@ document.getElementById('anim-btn').addEventListener('click', function() {
 async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,visibility`
-    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration`
+    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover`
+    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max`
     + `&current_weather=true`
     + `&forecast_days=16`
     + `&timezone=auto`;
@@ -2974,44 +2889,6 @@ function renderStats(d) {
     }
   }
 
-  // ── Point de rosée (confort hygrométrique, échelle NOAA) ────────
-  const dewNow = nowIdxStat >= 0 ? Math.round(d.hourly.dewpoint_2m[nowIdxStat]) : null;
-  function dewComfort(v) {
-    if (v === null) return { txt:'N/A', color:'var(--txt2)' };
-    if (v < 10) return { txt:'Sec, confortable', color:'#4caf50' };
-    if (v < 16) return { txt:'Agréable',         color:'#8bc34a' };
-    if (v < 18) return { txt:'Un peu humide',     color:'#fdd835' };
-    if (v < 21) return { txt:'Moite, inconfortable', color:'#ff9800' };
-    if (v < 24) return { txt:'Très moite',        color:'#f44336' };
-    return              { txt:'Oppressant',        color:'#9c27b0' };
-  }
-  const dewC = dewComfort(dewNow);
-
-  // ── Visibilité (m → km) ──────────────────────────────────────
-  const visNowM = nowIdxStat >= 0 ? d.hourly.visibility?.[nowIdxStat] : null;
-  const visKm = visNowM != null ? (visNowM/1000) : null;
-  function visLabel(km) {
-    if (km === null) return { txt:'N/A', color:'var(--txt2)' };
-    if (km < 1)  return { txt:'Brouillard dense', color:'#f44336' };
-    if (km < 4)  return { txt:'Brume',             color:'#ff9800' };
-    if (km < 10) return { txt:'Bonne',             color:'#fdd835' };
-    return              { txt:'Excellente',         color:'#4caf50' };
-  }
-  const visL = visLabel(visKm !== null ? Math.round(visKm*10)/10 : null);
-
-  // ── Rafales de vent max (aujourd'hui) ───────────────────────────
-  const todayHourIdxs = d.hourly.time
-    .map((t,idx)=>({t,idx}))
-    .filter(o => o.t.startsWith(d.daily.time[0] || TODAY_STR))
-    .map(o => o.idx);
-  const gustsToday = todayHourIdxs.map(idx => d.hourly.windgusts_10m?.[idx]).filter(v => v != null);
-  const gustMax = gustsToday.length ? Math.round(Math.max(...gustsToday)) : null;
-
-  // ── Durée du jour ────────────────────────────────────────────
-  const daylightSec = d.daily.daylight_duration?.[i];
-  const daylightH = daylightSec != null ? Math.floor(daylightSec/3600) : null;
-  const daylightM = daylightSec != null ? Math.round((daylightSec%3600)/60) : null;
-
   const stats = [
     { icon:'🔆', label:'Indice UV',
       value: `<span style="color:${uv.color};font-weight:700">${uvDisplay}</span>`,
@@ -3025,16 +2902,6 @@ function renderStats(d) {
     { icon:'🌡', label:'Ressenti actuel',     value:`${feelsLikeStat}°`, sub:'Température ressentie' },
     { icon:'📅', label:'Moy. semaine proch.', value:`${nwAvg}°`,               sub:'T° max moyenne J+7→14' },
     { icon:'🌦', label:'Jours de pluie',      value:`${rainDays} / 7`,         sub:'7 prochains jours' },
-    { icon:'💧', label:'Point de rosée',
-      value: dewNow !== null ? `<span style="color:${dewC.color};font-weight:700">${dewNow}°</span>` : '--',
-      sub: dewC.txt },
-    { icon:'👁', label:'Visibilité',
-      value: visKm !== null ? `${visKm.toFixed(1)} km` : '--',
-      sub: visL.txt },
-    { icon:'🌬', label:'Rafales max',         value: gustMax !== null ? `${gustMax} km/h` : '--', sub:'Pic du jour' },
-    { icon:'⏱', label:'Durée du jour',
-      value: daylightH !== null ? `${daylightH}h${String(daylightM).padStart(2,'0')}` : '--',
-      sub: 'Lever → coucher du soleil' },
   ];
 
   document.getElementById('stats-section').innerHTML = stats.map((s,idx) => `
@@ -3044,204 +2911,6 @@ function renderStats(d) {
       <div class="stat-value">${s.value}</div>
       <div class="stat-sub">${s.sub}</div>
     </div>`).join('');
-}
-
-// ──────────────────────────────────────────────────────────────────
-// PRESSION ATMOSPHÉRIQUE — valeur, tendance 3h et mini-graphique 24h
-// ──────────────────────────────────────────────────────────────────
-let _pressureChart = null;
-
-function renderPressureCard(d) {
-  const hi = d.hourly;
-  const series = hi.pressure_msl ?? hi.surface_pressure;
-  if (!series) { return; }
-
-  const curKey = currentHourKey(d);
-  let nowIdx = hi.time.indexOf(curKey);
-  if (nowIdx < 0) nowIdx = 0;
-
-  const pNow = Math.round(series[nowIdx]);
-
-  // Tendance : écart sur les 3 dernières heures (seuil météo standard ≈ 1 hPa/3h)
-  const refIdx = Math.max(0, nowIdx - 3);
-  const pRef = series[refIdx];
-  const delta = pRef != null ? +(series[nowIdx] - pRef).toFixed(1) : 0;
-
-  let trend;
-  if (delta >= 1)       trend = { icon:'↗', txt:`En hausse (+${delta.toFixed(1)} hPa/3h)`, color:'#4caf50' };
-  else if (delta <= -1)  trend = { icon:'↘', txt:`En baisse (${delta.toFixed(1)} hPa/3h)`,  color:'#f44336' };
-  else                    trend = { icon:'→', txt:'Stable',                                   color:'var(--txt2)' };
-
-  // Interprétation à partir de la pression absolue (référence 1013,25 hPa = pression standard)
-  let note;
-  if (pNow >= 1022) {
-    note = `Système anticyclonique (${pNow} hPa) — temps généralement calme et stable attendu.`;
-  } else if (pNow >= 1009) {
-    note = `Pression proche de la normale saisonnière (${pNow} hPa, référence 1013 hPa).`;
-  } else if (pNow >= 995) {
-    note = `Système dépressionnaire modéré (${pNow} hPa) — temps potentiellement instable.`;
-  } else {
-    note = `Dépression marquée (${pNow} hPa) — risque accru de vent fort et précipitations.`;
-  }
-  if (delta <= -3) note += ' Chute rapide : surveillez l\'évolution, signe possible de dégradation imminente.';
-  if (delta >= 3)  note += ' Hausse rapide : amélioration du temps probable dans les prochaines heures.';
-
-  const body = document.getElementById('pressure-body');
-  body.innerHTML = `
-    <div class="pressure-value-row">
-      <div class="pressure-number">${pNow}<span class="pressure-unit">hPa</span></div>
-      <div class="pressure-trend" style="color:${trend.color};border-color:${trend.color}55">
-        <span>${trend.icon}</span><span>${trend.txt}</span>
-      </div>
-    </div>
-    <div class="pressure-note">${note}</div>
-    <div class="pressure-chart-box"><canvas id="pressure-chart-canvas"></canvas></div>
-    <div class="pressure-sub-row">
-      <span class="pressure-sub-item">📏 Réf. niveau mer : <strong>1013 hPa</strong></span>
-      <span class="pressure-sub-item">🕐 Mesuré : <strong>${new Date(hi.time[nowIdx]+':00').toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</strong></span>
-    </div>`;
-
-  buildPressureChart(d, series, nowIdx);
-}
-
-function buildPressureChart(d, series, nowIdx) {
-  const hi = d.hourly;
-  const span = 12; // heures avant/après "maintenant"
-  const startIdx = Math.max(0, nowIdx - span);
-  const endIdx   = Math.min(hi.time.length, nowIdx + span);
-
-  const labels = [], values = [], pointColors = [], pointRadii = [];
-  for (let i = startIdx; i < endIdx; i++) {
-    const dt = new Date(hi.time[i] + ':00');
-    labels.push(dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }));
-    values.push(series[i] != null ? +series[i].toFixed(1) : null);
-    const isNow = i === nowIdx;
-    pointColors.push(isNow ? '#4fc3f7' : 'rgba(79,195,247,0)');
-    pointRadii.push(isNow ? 4 : 0);
-  }
-
-  if (_pressureChart) { _pressureChart.destroy(); _pressureChart = null; }
-  const ctx = document.getElementById('pressure-chart-canvas');
-  if (!ctx) return;
-
-  const gridColor = 'rgba(255,255,255,0.05)';
-  const tickColor = '#8990ae';
-  const tickFont  = { family: 'Inter', size: 9 };
-
-  _pressureChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Pression (hPa)',
-        data: values,
-        borderColor: '#4fc3f7',
-        backgroundColor: 'rgba(79,195,247,0.08)',
-        fill: true, tension: 0.35,
-        borderWidth: 2,
-        pointBackgroundColor: pointColors,
-        pointBorderColor: pointColors,
-        pointRadius: pointRadii,
-        pointHoverRadius: 4,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(7,9,15,0.96)',
-          borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
-          titleColor: '#e8eaf2', bodyColor: '#8990ae',
-          titleFont: { family: 'Inter', size: 11 },
-          bodyFont:  { family: 'Inter', size: 10 },
-          padding: 9, cornerRadius: 8,
-          callbacks: { label: ctx2 => `${ctx2.parsed.y} hPa` },
-        },
-      },
-      scales: {
-        x: {
-          ticks: {
-            color: tickColor, font: tickFont, maxRotation: 0, maxTicksLimit: 6,
-            callback(val, idx) { return idx % 3 === 0 ? this.getLabelForValue(val) : ''; },
-          },
-          grid: { display: false },
-        },
-        y: {
-          ticks: { color: tickColor, font: tickFont, callback: v => v + ' hPa' },
-          grid: { color: gridColor },
-        },
-      },
-    },
-  });
-}
-
-// ──────────────────────────────────────────────────────────────────
-// PHASE LUNAIRE — calcul astronomique (algorithme synodique standard)
-// Référence : nouvelle lune du 6 janvier 2000 à 18:14 UTC (JD 2451550.26),
-// durée du mois synodique moyen = 29.530588853 jours.
-// Aucun appel réseau requis — calcul déterministe, fiable à ~1h près.
-// ──────────────────────────────────────────────────────────────────
-const SYNODIC_MONTH = 29.530588853;
-const KNOWN_NEW_MOON_JD = 2451550.26;
-
-function toJulianDay(date) {
-  return date.getTime() / 86400000 + 2440587.5;
-}
-
-function moonAgeDays(date) {
-  const jd = toJulianDay(date);
-  let age = (jd - KNOWN_NEW_MOON_JD) % SYNODIC_MONTH;
-  if (age < 0) age += SYNODIC_MONTH;
-  return age;
-}
-
-function moonPhaseInfo(date) {
-  const age = moonAgeDays(date);
-  const frac = age / SYNODIC_MONTH;
-  const illumination = Math.round((1 - Math.cos(2 * Math.PI * frac)) / 2 * 100);
-
-  const phases = [
-    { max: 1.84566,  name: 'Nouvelle lune',        icon: '🌑' },
-    { max: 5.53699,  name: 'Premier croissant',     icon: '🌒' },
-    { max: 9.22831,  name: 'Premier quartier',      icon: '🌓' },
-    { max: 12.91963, name: 'Lune gibbeuse croissante', icon: '🌔' },
-    { max: 16.61096, name: 'Pleine lune',            icon: '🌕' },
-    { max: 20.30228, name: 'Lune gibbeuse décroissante', icon: '🌖' },
-    { max: 23.99361, name: 'Dernier quartier',       icon: '🌗' },
-    { max: 27.68493, name: 'Dernier croissant',      icon: '🌘' },
-    { max: SYNODIC_MONTH, name: 'Nouvelle lune',     icon: '🌑' },
-  ];
-  const ph = phases.find(p => age < p.max) || phases[phases.length-1];
-
-  return { age, illumination, name: ph.name, icon: ph.icon };
-}
-
-// Prochaine date où l'âge de la lune atteint targetAge (0 = nouvelle lune, SYNODIC_MONTH/2 = pleine lune)
-function nextMoonEvent(date, targetAge) {
-  const age = moonAgeDays(date);
-  let daysUntil = targetAge - age;
-  if (daysUntil <= 0) daysUntil += SYNODIC_MONTH;
-  return new Date(date.getTime() + daysUntil * 86400000);
-}
-
-function renderMoonCard() {
-  const now = new Date();
-  const info = moonPhaseInfo(now);
-  const nextFull = nextMoonEvent(now, SYNODIC_MONTH / 2);
-  const nextNew  = nextMoonEvent(now, 0);
-
-  const fmtDate = dt => dt.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' });
-
-  document.getElementById('moon-body').innerHTML = `
-    <div class="moon-icon">${info.icon}</div>
-    <div class="moon-phase-name">${info.name}</div>
-    <div class="moon-illum">${info.illumination}% illuminée · jour ${Math.round(info.age)} du cycle</div>
-    <div class="moon-info-grid">
-      <div class="moon-info-row"><span class="moon-info-icon">🌕</span> Prochaine pleine lune <strong>${fmtDate(nextFull)}</strong></div>
-      <div class="moon-info-row"><span class="moon-info-icon">🌑</span> Prochaine nouvelle lune <strong>${fmtDate(nextNew)}</strong></div>
-    </div>`;
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -3389,13 +3058,10 @@ async function loadAll() {
     renderHourly(wData);
     buildChart(wData);
     renderStats(wData);
-    renderPressureCard(wData);
   } catch(err) {
     console.error('Erreur chargement météo:', err);
     document.getElementById('today-skeleton').innerHTML =
       '<div style="padding:20px;color:var(--txt2);font-size:.85rem">⚠️ Données temporairement indisponibles. Vérifiez votre connexion.</div>';
-    document.getElementById('pressure-body').innerHTML =
-      '<div style="padding:10px 0;color:var(--txt2);font-size:.8rem">⚠️ Données de pression indisponibles.</div>';
     return;
   }
 
@@ -3445,7 +3111,6 @@ try {
 } catch(e) { /* localStorage unavailable or corrupt — use default Paris */ }
 
 applyWeatherEffect('cloud'); // default while loading
-renderMoonCard(); // calcul local, ne dépend d'aucun appel réseau
 loadAll();
 loadRadar();
 setInterval(loadRadar, 600000); // Refresh radar every 10 min
