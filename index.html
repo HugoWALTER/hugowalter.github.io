@@ -312,9 +312,8 @@
     .search-section { position: relative; }
     .search-bar {
       display: flex; align-items: center; gap: 12px;
-      background: var(--surface2); border: 1px solid var(--border2);
+      background: rgba(28,32,44,0.6); border: 1px solid var(--border2);
       border-radius: 50px; padding: 13px 20px;
-      backdrop-filter: var(--blur);
       transition: border-color .2s, box-shadow .2s;
     }
     .search-bar:focus-within {
@@ -335,7 +334,7 @@
     }
     .search-suggestions {
       position: absolute; top: calc(100% + 8px); left: 0; right: 0;
-      background: rgba(10,13,22,0.98); backdrop-filter: var(--blur);
+      background: rgba(10,13,22,0.98);
       border: 1px solid var(--border2); border-radius: var(--radius);
       overflow: hidden; z-index: 300; display: none;
       max-height: min(420px, 70vh); overflow-y: auto;
@@ -379,12 +378,15 @@
        CARDS
     ══════════════════════════════════════════════════════════════ */
     .card {
-      background: var(--surface); border: 1px solid var(--border);
+      background: rgba(22,24,30,0.60); border: 1px solid var(--border);
       border-radius: var(--radius);
-      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       overflow: hidden; transition: border-color .2s;
     }
     .card:hover { border-color: var(--border2); }
+    /* Perf : pas de backdrop-filter sur les cartes (11+ éléments au scroll). Le
+       fond derrière est quasi uniforme et sombre, le flou n'apportait rien de
+       visible mais recalculait à chaque frame. Léger fond opaque pour garder le
+       relief sans flou. */
     .card-header {
       min-height: 48px;
       padding: 16px 20px 12px;
@@ -436,7 +438,7 @@
       scroll-margin-top: 80px;
     }
     /* Map takes all remaining height inside the flex radar-card */
-    #map-container { flex: 1; min-height: 320px; position: relative; overflow: hidden; }
+    #map-container { flex: 1; min-height: 320px; position: relative; overflow: hidden; contain: paint; }
     #map {
       position: absolute; inset: 0;
       background: #0a0e18 !important;
@@ -475,7 +477,7 @@
 
     .map-legend {
       position: absolute; bottom: 12px; right: 12px;
-      background: rgba(7,9,15,0.88); backdrop-filter: blur(10px);
+      background: rgba(7,9,15,0.94);
       border: 1px solid var(--border2); border-radius: var(--radius-sm);
       padding: 10px 14px; z-index: 1000;
     }
@@ -534,6 +536,7 @@
     .city-temp-row {
       display: flex; align-items: center; gap: 18px;
       padding: 10px 20px 16px;
+      flex-wrap: wrap;
     }
     .city-temp-right { display: flex; flex-direction: column; gap: 3px; }
     .city-cond-label { font-size: 1rem; font-weight: 500; }
@@ -760,6 +763,140 @@
     .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0; color: var(--txt2); line-height: 1.25; }
     .stat-value { font-family: var(--fd); font-size: 1.35rem; font-weight: 700; }
     .stat-sub   { font-size: 0.67rem; color: var(--txt2); }
+
+    /* ══════════════════════════════════════════════════════════════
+       PRESSION ATMOSPHÉRIQUE
+    ══════════════════════════════════════════════════════════════ */
+    .pressure-body { padding: 12px 20px 18px; }
+    .pressure-value-row { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+    .pressure-number { font-family: var(--fd); font-size: 2.6rem; font-weight: 800; line-height: 1; }
+    .pressure-unit   { font-size: 0.85rem; color: var(--txt2); font-weight: 500; margin-left: 2px; }
+    .pressure-trend {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 11px; border-radius: 20px; font-size: 0.74rem; font-weight: 600;
+      border: 1px solid var(--border2);
+    }
+    .pressure-note {
+      font-size: 0.74rem; color: var(--txt2); line-height: 1.45;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      background: var(--surface2); border: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+    .pressure-chart-box { height: 130px; }
+    .pressure-sub-row {
+      display: flex; gap: 16px; margin-top: 12px; padding-top: 12px;
+      border-top: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .pressure-sub-item { font-size: 0.71rem; color: var(--txt2); display: flex; align-items: center; gap: 5px; }
+    .pressure-sub-item strong { color: var(--txt); font-weight: 600; }
+
+    /* ══════════════════════════════════════════════════════════════
+       PHASE LUNAIRE
+    ══════════════════════════════════════════════════════════════ */
+    .moon-body { padding: 10px 20px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .moon-icon { font-size: 3.4rem; line-height: 1; margin-bottom: 6px; filter: drop-shadow(0 0 18px rgba(232,234,242,0.12)); }
+    .moon-phase-name { font-family: var(--fd); font-size: 1.05rem; font-weight: 700; margin-bottom: 2px; }
+    .moon-illum { font-size: 0.74rem; color: var(--txt2); margin-bottom: 16px; }
+    .moon-info-grid { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    .moon-info-row {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 12px; border-radius: var(--radius-sm);
+      background: var(--surface2); border: 1px solid var(--border);
+      font-size: 0.74rem; color: var(--txt2); text-align: left;
+    }
+    .moon-info-row .moon-info-icon { font-size: 1rem; flex-shrink: 0; }
+    .moon-info-row strong { color: var(--txt); font-weight: 600; margin-left: auto; white-space: nowrap; }
+
+    @media (max-width: 700px) {
+      .pressure-number { font-size: 2.1rem; }
+      .moon-icon { font-size: 2.8rem; }
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       BAROMÈTRE (jauge analogique dans la card pression)
+    ══════════════════════════════════════════════════════════════ */
+    .pressure-top {
+      display: flex; align-items: center; gap: 22px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .barometer { flex-shrink: 0; width: 180px; }
+    .barometer svg { width: 100%; height: auto; display: block; overflow: visible; }
+    .barometer .baro-needle { transition: transform 1s cubic-bezier(.34,1.25,.45,1); transform-box: fill-box; transform-origin: 50% 100%; }
+    .pressure-readout { flex: 1; min-width: 150px; }
+
+    /* ══════════════════════════════════════════════════════════════
+       TEMPÉRATURE DE L'EAU (villes côtières)
+    ══════════════════════════════════════════════════════════════ */
+    .water-body { padding: 16px 20px 20px; display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+    .water-main { display: flex; align-items: center; gap: 16px; }
+    .water-ring {
+      width: 86px; height: 86px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+      font-family: var(--fd); font-weight: 800; line-height: 1;
+      border: 3px solid var(--accent);
+      background: radial-gradient(circle at 50% 35%, rgba(79,195,247,0.18), rgba(79,195,247,0.04));
+      box-shadow: 0 0 22px rgba(79,195,247,0.18);
+    }
+    .water-ring .water-deg { font-size: 1.9rem; }
+    .water-ring .water-unit { font-size: 0.7rem; color: var(--txt2); margin-top: 2px; }
+    .water-comfort-name { font-family: var(--fd); font-size: 1.05rem; font-weight: 700; }
+    .water-comfort-sub  { font-size: 0.74rem; color: var(--txt2); margin-top: 2px; max-width: 220px; line-height: 1.4; }
+    .water-sub-grid {
+      flex: 1; min-width: 200px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .water-sub-item {
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      background: var(--surface2); border: 1px solid var(--border);
+    }
+    .water-sub-item .wsi-label { font-size: 0.64rem; text-transform: uppercase; color: var(--txt2); letter-spacing: 0; }
+    .water-sub-item .wsi-value { font-family: var(--fd); font-size: 1.05rem; font-weight: 700; margin-top: 3px; }
+    @media (max-width: 560px) {
+      .water-sub-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       ALERTE CANICULE / FORTE CHALEUR
+    ══════════════════════════════════════════════════════════════ */
+    .heatwave-banner {
+      border-radius: var(--radius); margin-bottom: 20px; overflow: hidden;
+      border: 1px solid; padding: 16px 20px;
+      background: linear-gradient(135deg, rgba(255,87,34,0.14), rgba(255,183,77,0.06));
+      animation: hwGlow 3.5s ease-in-out infinite;
+    }
+    .heatwave-banner.level-severe { border-color: rgba(244,67,54,0.55); background: linear-gradient(135deg, rgba(244,67,54,0.20), rgba(255,87,34,0.07)); }
+    .heatwave-banner.level-high   { border-color: rgba(255,112,67,0.5);  }
+    .heatwave-banner.level-warn   { border-color: rgba(255,183,77,0.45); background: linear-gradient(135deg, rgba(255,183,77,0.13), rgba(255,213,79,0.05)); }
+    @keyframes hwGlow {
+      0%,100% { box-shadow: 0 0 0 rgba(255,87,34,0); }
+      50%     { box-shadow: 0 0 26px rgba(255,112,67,0.22); }
+    }
+    .hw-head { display: flex; align-items: center; gap: 12px; }
+    .hw-icon { font-size: 1.9rem; line-height: 1; flex-shrink: 0; }
+    .hw-title { font-family: var(--fd); font-size: 1.05rem; font-weight: 800; color: var(--txt); }
+    .hw-sub   { font-size: 0.76rem; color: var(--txt2); margin-top: 1px; }
+    .hw-badge {
+      margin-left: auto; font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      padding: 4px 11px; border-radius: 20px; white-space: nowrap;
+      border: 1px solid currentColor;
+    }
+    .hw-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px;
+    }
+    .hw-stat {
+      background: rgba(0,0,0,0.18); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 12px;
+    }
+    .hw-stat .hws-label { font-size: 0.64rem; text-transform: uppercase; color: var(--txt2); letter-spacing: 0; display: flex; align-items: center; gap: 5px; }
+    .hw-stat .hws-value { font-family: var(--fd); font-size: 1.25rem; font-weight: 800; margin-top: 4px; }
+    .hw-stat .hws-sub   { font-size: 0.64rem; color: var(--txt2); margin-top: 1px; }
+    .hw-advice {
+      margin-top: 13px; font-size: 0.76rem; color: var(--txt); line-height: 1.5;
+      display: flex; flex-wrap: wrap; gap: 8px 18px;
+    }
+    .hw-advice span { display: inline-flex; align-items: center; gap: 6px; }
+    @media (max-width: 700px) {
+      .hw-grid { grid-template-columns: repeat(2, 1fr); }
+      .hw-badge { margin-left: 0; }
+    }
 
     /* ══════════════════════════════════════════════════════════════
        SKELETON LOADING
@@ -1000,6 +1137,9 @@
       <div class="search-suggestions" id="search-suggestions"></div>
     </div>
 
+    <!-- ALERTE CANICULE / FORTE CHALEUR (affichée seulement en période chaude) -->
+    <div class="heatwave-banner" id="heatwave-banner" style="display:none"></div>
+
     <!-- MAIN GRID -->
     <div class="main-grid" id="section-radar">
 
@@ -1223,6 +1363,54 @@
         <div class="skel skel-line"></div>
         <div class="skel skel-line"></div>
       </div>
+    </div>
+
+    <!-- TEMPÉRATURE DE L'EAU (villes côtières uniquement) -->
+    <div class="card water-card" id="water-card" style="display:none">
+      <div class="card-header">
+        <span class="card-title">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 6c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 12c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M2 18c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"/></svg>
+          Température de l'eau
+        </span>
+        <span id="water-updated" style="font-size:.68rem;color:var(--txt2)">Surface de la mer · Open-Meteo</span>
+      </div>
+      <div class="water-body" id="water-body"></div>
+    </div>
+
+    <!-- PRESSION & LUNE -->
+    <div class="charts-section" id="section-extra">
+
+      <!-- PRESSION ATMOSPHÉRIQUE -->
+      <div class="card pressure-card" id="pressure-card">
+        <div class="card-header">
+          <span class="card-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            Pression atmosphérique
+          </span>
+          <span id="pressure-updated" style="font-size:.68rem;color:var(--txt2)">Niveau de la mer · Open-Meteo</span>
+        </div>
+        <div class="pressure-body" id="pressure-body">
+          <div class="skel skel-line" style="width:50%;height:42px"></div>
+          <div class="skel skel-line" style="width:80%;height:14px;margin-top:14px"></div>
+          <div class="skel skel-line" style="width:100%;height:110px;margin-top:10px"></div>
+        </div>
+      </div>
+
+      <!-- PHASE LUNAIRE -->
+      <div class="card moon-card" id="moon-card">
+        <div class="card-header">
+          <span class="card-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            Phase lunaire
+          </span>
+          <span style="font-size:.68rem;color:var(--txt2)">Calcul astronomique</span>
+        </div>
+        <div class="moon-body" id="moon-body">
+          <div class="skel" style="width:64px;height:64px;border-radius:50%"></div>
+          <div class="skel skel-line" style="width:70%;height:14px;margin-top:14px"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- STAT CARDS -->
@@ -1737,6 +1925,7 @@ const map = L.map('map', {
   dragging: true,
   touchZoom: true,
   tap: true,
+  preferCanvas: true, // marqueur vectoriel rendu sur canvas (moins de DOM/SVG)
 });
 const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors', maxZoom: 18,
@@ -1777,7 +1966,9 @@ async function loadRadar() {
     S.radarFrames = [...past, ...cast];
     S._pastCount  = past.length;
     buildTimeline(past.length);
-    preloadRadarLayers();
+    // Pas de préchargement de toutes les frames ici : on ne garde sur la carte
+    // que la frame courante au repos (pan/zoom fluides). Les autres couches
+    // sont créées à la demande, et préchargées seulement pendant l'animation.
 
     // Show the most recent past frame (last past index), or first available frame.
     showRadarFrame(Math.max(0, past.length - 1), { instant: true });
@@ -1863,6 +2054,16 @@ function preloadRadarLayers() {
   });
 }
 
+// Retire de la carte toutes les couches radar sauf celle à conserver. Appelé
+// au repos (hors animation) pour ne garder qu'une seule couche sur la carte.
+function pruneRadarLayers(keepLayer) {
+  S.radarLayers.forEach((layer, idx) => {
+    if (layer === keepLayer) return;
+    try { map.removeLayer(layer); } catch(e){}
+    S.radarLayers.delete(idx);
+  });
+}
+
 function crossfadeRadarLayers(nextLayer, prevLayer, instant = false) {
   if (S.radarFadeFrame) cancelAnimationFrame(S.radarFadeFrame);
   const transition = ++S.radarTransition;
@@ -1875,6 +2076,7 @@ function crossfadeRadarLayers(nextLayer, prevLayer, instant = false) {
     S.radarLayers.forEach(layer => {
       if (layer !== nextLayer) layer.setOpacity(0);
     });
+    if (!S.animInterval) pruneRadarLayers(nextLayer);
     return;
   }
 
@@ -1898,6 +2100,7 @@ function crossfadeRadarLayers(nextLayer, prevLayer, instant = false) {
     S.radarLayers.forEach(layer => {
       if (layer !== nextLayer) layer.setOpacity(0);
     });
+    if (!S.animInterval) pruneRadarLayers(nextLayer);
   };
 
   S.radarFadeFrame = requestAnimationFrame(step);
@@ -1982,6 +2185,9 @@ function startRadarAnimation() {
   btn.classList.add('stop');
   progress.classList.add('visible');
   updateRadarProgress(S.radarIdx);
+  // On bufferise toutes les frames pour une lecture fluide (l'utilisateur ne
+  // pan/zoom pas pendant l'animation, le surcoût est donc justifié ici).
+  preloadRadarLayers();
   S.animInterval = setInterval(() => {
     showRadarFrame((S.radarIdx + 1) % S.radarFrames.length);
   }, 450);
@@ -1990,6 +2196,8 @@ function startRadarAnimation() {
 function stopRadarAnimation(resetProgress = true) {
   if (S.animInterval) clearInterval(S.animInterval);
   S.animInterval = null;
+  // Repos : on libère les frames bufferisées, on ne garde que la courante.
+  if (S.radarLayer) pruneRadarLayers(S.radarLayer);
   const progress = document.getElementById('radar-progress');
   const btn = document.getElementById('anim-btn');
   btn.innerHTML = '▶&nbsp; Animer';
@@ -2011,8 +2219,8 @@ document.getElementById('anim-btn').addEventListener('click', function() {
 async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover`
-    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max`
+    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,visibility`
+    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration`
     + `&current_weather=true`
     + `&forecast_days=16`
     + `&timezone=auto`;
@@ -2028,6 +2236,20 @@ async function fetchAQI() {
     + `&timezone=auto&forecast_days=1`;
   const r = await fetch(u);
   if (!r.ok) throw new Error('AQI ' + r.status);
+  return r.json();
+}
+
+// Modèle marin Open-Meteo : ne renvoie des valeurs que pour les points proches
+// de la mer. Pour une ville intérieure, sea_surface_temperature vaut null —
+// ce qui nous sert de détecteur « ville côtière » (aucune liste codée en dur).
+async function fetchMarine() {
+  const u = `https://marine-api.open-meteo.com/v1/marine`
+    + `?latitude=${S.lat}&longitude=${S.lon}`
+    + `&hourly=sea_surface_temperature`
+    + `&daily=sea_surface_temperature_max,sea_surface_temperature_min`
+    + `&timezone=auto&forecast_days=2`;
+  const r = await fetch(u);
+  if (!r.ok) throw new Error('Marine ' + r.status);
   return r.json();
 }
 
@@ -2889,6 +3111,44 @@ function renderStats(d) {
     }
   }
 
+  // ── Point de rosée (confort hygrométrique, échelle NOAA) ────────
+  const dewNow = nowIdxStat >= 0 ? Math.round(d.hourly.dewpoint_2m[nowIdxStat]) : null;
+  function dewComfort(v) {
+    if (v === null) return { txt:'N/A', color:'var(--txt2)' };
+    if (v < 10) return { txt:'Sec, confortable', color:'#4caf50' };
+    if (v < 16) return { txt:'Agréable',         color:'#8bc34a' };
+    if (v < 18) return { txt:'Un peu humide',     color:'#fdd835' };
+    if (v < 21) return { txt:'Moite, inconfortable', color:'#ff9800' };
+    if (v < 24) return { txt:'Très moite',        color:'#f44336' };
+    return              { txt:'Oppressant',        color:'#9c27b0' };
+  }
+  const dewC = dewComfort(dewNow);
+
+  // ── Visibilité (m → km) ──────────────────────────────────────
+  const visNowM = nowIdxStat >= 0 ? d.hourly.visibility?.[nowIdxStat] : null;
+  const visKm = visNowM != null ? (visNowM/1000) : null;
+  function visLabel(km) {
+    if (km === null) return { txt:'N/A', color:'var(--txt2)' };
+    if (km < 1)  return { txt:'Brouillard dense', color:'#f44336' };
+    if (km < 4)  return { txt:'Brume',             color:'#ff9800' };
+    if (km < 10) return { txt:'Bonne',             color:'#fdd835' };
+    return              { txt:'Excellente',         color:'#4caf50' };
+  }
+  const visL = visLabel(visKm !== null ? Math.round(visKm*10)/10 : null);
+
+  // ── Rafales de vent max (aujourd'hui) ───────────────────────────
+  const todayHourIdxs = d.hourly.time
+    .map((t,idx)=>({t,idx}))
+    .filter(o => o.t.startsWith(d.daily.time[0] || TODAY_STR))
+    .map(o => o.idx);
+  const gustsToday = todayHourIdxs.map(idx => d.hourly.windgusts_10m?.[idx]).filter(v => v != null);
+  const gustMax = gustsToday.length ? Math.round(Math.max(...gustsToday)) : null;
+
+  // ── Durée du jour ────────────────────────────────────────────
+  const daylightSec = d.daily.daylight_duration?.[i];
+  const daylightH = daylightSec != null ? Math.floor(daylightSec/3600) : null;
+  const daylightM = daylightSec != null ? Math.round((daylightSec%3600)/60) : null;
+
   const stats = [
     { icon:'🔆', label:'Indice UV',
       value: `<span style="color:${uv.color};font-weight:700">${uvDisplay}</span>`,
@@ -2902,6 +3162,16 @@ function renderStats(d) {
     { icon:'🌡', label:'Ressenti actuel',     value:`${feelsLikeStat}°`, sub:'Température ressentie' },
     { icon:'📅', label:'Moy. semaine proch.', value:`${nwAvg}°`,               sub:'T° max moyenne J+7→14' },
     { icon:'🌦', label:'Jours de pluie',      value:`${rainDays} / 7`,         sub:'7 prochains jours' },
+    { icon:'💧', label:'Point de rosée',
+      value: dewNow !== null ? `<span style="color:${dewC.color};font-weight:700">${dewNow}°</span>` : '--',
+      sub: dewC.txt },
+    { icon:'👁', label:'Visibilité',
+      value: visKm !== null ? `${visKm.toFixed(1)} km` : '--',
+      sub: visL.txt },
+    { icon:'🌬', label:'Rafales max',         value: gustMax !== null ? `${gustMax} km/h` : '--', sub:'Pic du jour' },
+    { icon:'⏱', label:'Durée du jour',
+      value: daylightH !== null ? `${daylightH}h${String(daylightM).padStart(2,'0')}` : '--',
+      sub: 'Lever → coucher du soleil' },
   ];
 
   document.getElementById('stats-section').innerHTML = stats.map((s,idx) => `
@@ -2911,6 +3181,446 @@ function renderStats(d) {
       <div class="stat-value">${s.value}</div>
       <div class="stat-sub">${s.sub}</div>
     </div>`).join('');
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PRESSION ATMOSPHÉRIQUE — valeur, tendance 3h et mini-graphique 24h
+// ──────────────────────────────────────────────────────────────────
+let _pressureChart = null;
+
+function renderPressureCard(d) {
+  const hi = d.hourly;
+  const series = hi.pressure_msl ?? hi.surface_pressure;
+  if (!series) { return; }
+
+  const curKey = currentHourKey(d);
+  let nowIdx = hi.time.indexOf(curKey);
+  if (nowIdx < 0) nowIdx = 0;
+
+  const pNow = Math.round(series[nowIdx]);
+
+  // Tendance : écart sur les 3 dernières heures (seuil météo standard ≈ 1 hPa/3h)
+  const refIdx = Math.max(0, nowIdx - 3);
+  const pRef = series[refIdx];
+  const delta = pRef != null ? +(series[nowIdx] - pRef).toFixed(1) : 0;
+
+  let trend;
+  if (delta >= 1)       trend = { icon:'↗', txt:`En hausse (+${delta.toFixed(1)} hPa/3h)`, color:'#4caf50' };
+  else if (delta <= -1)  trend = { icon:'↘', txt:`En baisse (${delta.toFixed(1)} hPa/3h)`,  color:'#f44336' };
+  else                    trend = { icon:'→', txt:'Stable',                                   color:'var(--txt2)' };
+
+  // Interprétation à partir de la pression absolue (référence 1013,25 hPa = pression standard)
+  let note;
+  if (pNow >= 1022) {
+    note = `Système anticyclonique (${pNow} hPa) — temps généralement calme et stable attendu.`;
+  } else if (pNow >= 1009) {
+    note = `Pression proche de la normale saisonnière (${pNow} hPa, référence 1013 hPa).`;
+  } else if (pNow >= 995) {
+    note = `Système dépressionnaire modéré (${pNow} hPa) — temps potentiellement instable.`;
+  } else {
+    note = `Dépression marquée (${pNow} hPa) — risque accru de vent fort et précipitations.`;
+  }
+  if (delta <= -3) note += ' Chute rapide : surveillez l\'évolution, signe possible de dégradation imminente.';
+  if (delta >= 3)  note += ' Hausse rapide : amélioration du temps probable dans les prochaines heures.';
+
+  const zone = baroZone(pNow);
+
+  const body = document.getElementById('pressure-body');
+  body.innerHTML = `
+    <div class="pressure-top">
+      <div class="barometer">${buildBarometerSVG(pNow)}</div>
+      <div class="pressure-readout">
+        <div class="pressure-value-row">
+          <div class="pressure-number">${pNow}<span class="pressure-unit">hPa</span></div>
+          <div class="pressure-trend" style="color:${trend.color};border-color:${trend.color}55">
+            <span>${trend.icon}</span><span>${trend.txt}</span>
+          </div>
+        </div>
+        <div class="pressure-note">${note}</div>
+      </div>
+    </div>
+    <div class="pressure-chart-box"><canvas id="pressure-chart-canvas"></canvas></div>
+    <div class="pressure-sub-row">
+      <span class="pressure-sub-item">🧭 Baromètre : <strong style="color:${zone.color}">${zone.label}</strong></span>
+      <span class="pressure-sub-item">📏 Réf. niveau mer : <strong>1013 hPa</strong></span>
+      <span class="pressure-sub-item">🕐 Mesuré : <strong>${new Date(hi.time[nowIdx]+':00').toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</strong></span>
+    </div>`;
+
+  // Animation de l'aiguille : on part de la verticale puis on tourne vers la valeur.
+  const needle = body.querySelector('.baro-needle');
+  if (needle) {
+    const target = needle.getAttribute('data-deg');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      needle.style.transform = `rotate(${target}deg)`;
+    }));
+  }
+
+  buildPressureChart(d, series, nowIdx);
+}
+
+// Mot du cadran selon la pression (lexique des baromètres anéroïdes classiques)
+function baroZone(p) {
+  if (p < 985)  return { label:'Tempête',    color:'#f44336' };
+  if (p < 1000) return { label:'Pluie',      color:'#ff9800' };
+  if (p < 1015) return { label:'Variable',   color:'#fdd835' };
+  if (p < 1035) return { label:'Beau temps', color:'#4caf50' };
+  return                 { label:'Très sec',  color:'#4fc3f7' };
+}
+
+// Jauge analogique : demi-cercle 960→1060 hPa, 5 zones colorées et une aiguille.
+function buildBarometerSVG(p) {
+  const R = 82, cx = 100, cy = 100;
+  const clamp = v => Math.max(960, Math.min(1060, v));
+  const ptAt = (val, r) => {
+    const a = Math.PI * (1 - (clamp(val) - 960) / 100); // 960 → π (gauche), 1060 → 0 (droite)
+    return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
+  };
+  const arc = (p1, p2, color) => {
+    const [x1, y1] = ptAt(p1, R), [x2, y2] = ptAt(p2, R);
+    return `<path d="M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${R} ${R} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${color}" stroke-width="13"/>`;
+  };
+  const zones = [
+    [960, 985, '#f44336'], [985, 1000, '#ff9800'], [1000, 1015, '#fdd835'],
+    [1015, 1035, '#4caf50'], [1035, 1060, '#4fc3f7'],
+  ];
+  const arcs = zones.map(z => arc(z[0], z[1], z[2])).join('');
+  const tick = val => {
+    const [tx, ty] = ptAt(val, R + 11);
+    return `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="#8990ae" font-size="8" text-anchor="middle" dominant-baseline="middle" font-family="Inter">${val}</text>`;
+  };
+  const needleDeg = (90 - 180 * (1 - (clamp(p) - 960) / 100)).toFixed(1);
+  return `
+  <svg viewBox="0 -2 200 120" role="img" aria-label="Baromètre ${Math.round(p)} hPa">
+    ${arcs}
+    ${tick(960)}${tick(1013)}${tick(1060)}
+    <g class="baro-needle" data-deg="${needleDeg}" style="transform: rotate(0deg)">
+      <path d="M 100 100 L 96.5 100 L 100 ${cy - (R - 16)} L 103.5 100 Z" fill="var(--txt)"/>
+    </g>
+    <circle cx="100" cy="100" r="6" fill="var(--txt)"/>
+    <circle cx="100" cy="100" r="2.5" fill="var(--bg)"/>
+  </svg>`;
+}
+
+function buildPressureChart(d, series, nowIdx) {
+  const hi = d.hourly;
+  const span = 12; // heures avant/après "maintenant"
+  const startIdx = Math.max(0, nowIdx - span);
+  const endIdx   = Math.min(hi.time.length, nowIdx + span);
+
+  const labels = [], values = [], pointColors = [], pointRadii = [];
+  for (let i = startIdx; i < endIdx; i++) {
+    const dt = new Date(hi.time[i] + ':00');
+    labels.push(dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }));
+    values.push(series[i] != null ? +series[i].toFixed(1) : null);
+    const isNow = i === nowIdx;
+    pointColors.push(isNow ? '#4fc3f7' : 'rgba(79,195,247,0)');
+    pointRadii.push(isNow ? 4 : 0);
+  }
+
+  if (_pressureChart) { _pressureChart.destroy(); _pressureChart = null; }
+  const ctx = document.getElementById('pressure-chart-canvas');
+  if (!ctx) return;
+
+  const gridColor = 'rgba(255,255,255,0.05)';
+  const tickColor = '#8990ae';
+  const tickFont  = { family: 'Inter', size: 9 };
+
+  _pressureChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Pression (hPa)',
+        data: values,
+        borderColor: '#4fc3f7',
+        backgroundColor: 'rgba(79,195,247,0.08)',
+        fill: true, tension: 0.35,
+        borderWidth: 2,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        pointRadius: pointRadii,
+        pointHoverRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(7,9,15,0.96)',
+          borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          titleColor: '#e8eaf2', bodyColor: '#8990ae',
+          titleFont: { family: 'Inter', size: 11 },
+          bodyFont:  { family: 'Inter', size: 10 },
+          padding: 9, cornerRadius: 8,
+          callbacks: { label: ctx2 => `${ctx2.parsed.y} hPa` },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: tickColor, font: tickFont, maxRotation: 0, maxTicksLimit: 6,
+            callback(val, idx) { return idx % 3 === 0 ? this.getLabelForValue(val) : ''; },
+          },
+          grid: { display: false },
+        },
+        y: {
+          ticks: { color: tickColor, font: tickFont, callback: v => v + ' hPa' },
+          grid: { color: gridColor },
+        },
+      },
+    },
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PHASE LUNAIRE — calcul astronomique (algorithme synodique standard)
+// Référence : nouvelle lune du 6 janvier 2000 à 18:14 UTC (JD 2451550.26),
+// durée du mois synodique moyen = 29.530588853 jours.
+// Aucun appel réseau requis — calcul déterministe, fiable à ~1h près.
+// ──────────────────────────────────────────────────────────────────
+const SYNODIC_MONTH = 29.530588853;
+const KNOWN_NEW_MOON_JD = 2451550.26;
+
+function toJulianDay(date) {
+  return date.getTime() / 86400000 + 2440587.5;
+}
+
+function moonAgeDays(date) {
+  const jd = toJulianDay(date);
+  let age = (jd - KNOWN_NEW_MOON_JD) % SYNODIC_MONTH;
+  if (age < 0) age += SYNODIC_MONTH;
+  return age;
+}
+
+function moonPhaseInfo(date) {
+  const age = moonAgeDays(date);
+  const frac = age / SYNODIC_MONTH;
+  const illumination = Math.round((1 - Math.cos(2 * Math.PI * frac)) / 2 * 100);
+
+  const phases = [
+    { max: 1.84566,  name: 'Nouvelle lune',        icon: '🌑' },
+    { max: 5.53699,  name: 'Premier croissant',     icon: '🌒' },
+    { max: 9.22831,  name: 'Premier quartier',      icon: '🌓' },
+    { max: 12.91963, name: 'Lune gibbeuse croissante', icon: '🌔' },
+    { max: 16.61096, name: 'Pleine lune',            icon: '🌕' },
+    { max: 20.30228, name: 'Lune gibbeuse décroissante', icon: '🌖' },
+    { max: 23.99361, name: 'Dernier quartier',       icon: '🌗' },
+    { max: 27.68493, name: 'Dernier croissant',      icon: '🌘' },
+    { max: SYNODIC_MONTH, name: 'Nouvelle lune',     icon: '🌑' },
+  ];
+  const ph = phases.find(p => age < p.max) || phases[phases.length-1];
+
+  return { age, illumination, name: ph.name, icon: ph.icon };
+}
+
+// Prochaine date où l'âge de la lune atteint targetAge (0 = nouvelle lune, SYNODIC_MONTH/2 = pleine lune)
+function nextMoonEvent(date, targetAge) {
+  const age = moonAgeDays(date);
+  let daysUntil = targetAge - age;
+  if (daysUntil <= 0) daysUntil += SYNODIC_MONTH;
+  return new Date(date.getTime() + daysUntil * 86400000);
+}
+
+function renderMoonCard() {
+  const now = new Date();
+  const info = moonPhaseInfo(now);
+  const nextFull = nextMoonEvent(now, SYNODIC_MONTH / 2);
+  const nextNew  = nextMoonEvent(now, 0);
+
+  const fmtDate = dt => dt.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' });
+
+  document.getElementById('moon-body').innerHTML = `
+    <div class="moon-icon">${info.icon}</div>
+    <div class="moon-phase-name">${info.name}</div>
+    <div class="moon-illum">${info.illumination}% illuminée · jour ${Math.round(info.age)} du cycle</div>
+    <div class="moon-info-grid">
+      <div class="moon-info-row"><span class="moon-info-icon">🌕</span> Prochaine pleine lune <strong>${fmtDate(nextFull)}</strong></div>
+      <div class="moon-info-row"><span class="moon-info-icon">🌑</span> Prochaine nouvelle lune <strong>${fmtDate(nextNew)}</strong></div>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// TEMPÉRATURE DE L'EAU — modèle marin Open-Meteo.
+// Affichée uniquement pour les villes côtières (SST non nulle).
+// ──────────────────────────────────────────────────────────────────
+function waterComfort(t) {
+  if (t < 12) return { name:'Glaciale',     icon:'🥶', color:'#4fc3f7', advice:'Baignade déconseillée — risque de choc thermique.' };
+  if (t < 18) return { name:'Froide',       icon:'🧊', color:'#4dd0e1', advice:'Combinaison conseillée, baignade brève.' };
+  if (t < 21) return { name:'Fraîche',      icon:'💧', color:'#26c6da', advice:'Vivifiante — entrée progressive recommandée.' };
+  if (t < 24) return { name:'Agréable',     icon:'🏊', color:'#4caf50', advice:'Bonne température pour la baignade.' };
+  if (t < 27) return { name:'Chaude',       icon:'😎', color:'#ffb74d', advice:'Baignade très confortable.' };
+  return                { name:'Très chaude', icon:'🔥', color:'#ff7043', advice:'Eau très chaude — hydratez-vous bien.' };
+}
+
+function renderWaterCard(marine) {
+  const card = document.getElementById('water-card');
+  const hi = marine && marine.hourly;
+  const series = hi && hi.sea_surface_temperature;
+  // Détecteur « ville côtière » : au moins une valeur SST exploitable.
+  const valid = Array.isArray(series) && series.some(v => v != null && isFinite(v));
+  if (!valid) { card.style.display = 'none'; return; }
+
+  // Index courant : heure actuelle si présente, sinon première valeur connue.
+  const nowKey = S.forecast ? currentHourKey(S.forecast) : null;
+  let idx = nowKey ? hi.time.indexOf(nowKey) : -1;
+  if (idx < 0 || series[idx] == null) idx = series.findIndex(v => v != null);
+  const sst = series[idx];
+
+  const c   = waterComfort(sst);
+  const day = marine.daily || {};
+  const tMax = day.sea_surface_temperature_max && day.sea_surface_temperature_max[0];
+  const tMin = day.sea_surface_temperature_min && day.sea_surface_temperature_min[0];
+
+  const fmtT = v => (v != null && isFinite(v)) ? `${(+v).toFixed(1)}°` : '--';
+
+  // Écart eau / air : utile avant la baignade (choc thermique si l'air est
+  // bien plus chaud que l'eau). Air = température courante de la prévision.
+  const air = S.forecast && S.forecast.current_weather && S.forecast.current_weather.temperature;
+  const hasAir = air != null && isFinite(air);
+  const diff = hasAir ? sst - air : null;
+  const diffTxt = diff != null ? `${diff >= 0 ? '+' : '−'}${Math.abs(Math.round(diff))}°` : '--';
+  const airTxt = hasAir ? `Air ${Math.round(air)}°` : 'Air indisponible';
+
+  document.getElementById('water-body').innerHTML = `
+    <div class="water-main">
+      <div class="water-ring" style="border-color:${c.color};box-shadow:0 0 22px ${c.color}33">
+        <span class="water-deg" style="color:${c.color}">${Math.round(sst)}°</span>
+        <span class="water-unit">°C</span>
+      </div>
+      <div>
+        <div class="water-comfort-name" style="color:${c.color}">${c.icon} ${c.name}</div>
+        <div class="water-comfort-sub">${c.advice}</div>
+      </div>
+    </div>
+    <div class="water-sub-grid">
+      <div class="water-sub-item"><div class="wsi-label">🌡 Actuelle</div><div class="wsi-value">${fmtT(sst)}</div></div>
+      <div class="water-sub-item"><div class="wsi-label">📊 Min / Max jour</div><div class="wsi-value">${fmtT(tMin)} / ${fmtT(tMax)}</div></div>
+      <div class="water-sub-item"><div class="wsi-label">🆚 Eau vs air</div><div class="wsi-value">${diffTxt}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2)">${airTxt}</div></div>
+    </div>`;
+  card.style.display = '';
+}
+
+// ──────────────────────────────────────────────────────────────────
+// ALERTE CANICULE / FORTE CHALEUR
+// Indicateurs spécifiques aux épisodes chauds : pic de chaleur, ressenti,
+// nuits tropicales, fenêtre horaire à risque + conseils sanitaires.
+// Seuils heuristiques (repère jour Tmax + nuit Tmin) — pas les seuils
+// départementaux officiels de Météo-France.
+// ──────────────────────────────────────────────────────────────────
+function renderHeatwave(d) {
+  const banner = document.getElementById('heatwave-banner');
+  const dly = d.daily;
+  if (!dly || !dly.temperature_2m_max) { banner.style.display = 'none'; return; }
+
+  const HOT = 32, NIGHT = 20;
+  const N = Math.min(10, dly.time.length);
+  const tmax = dly.temperature_2m_max, tmin = dly.temperature_2m_min;
+  const appMax = dly.apparent_temperature_max || [];
+
+  let peak = -99, peakIdx = 0, hotDays = 0, tropicalNights = 0, feelsPeak = -99;
+  for (let i = 0; i < N; i++) {
+    if (tmax[i] != null && tmax[i] > peak) { peak = tmax[i]; peakIdx = i; }
+    if (tmax[i] != null && tmax[i] >= HOT) hotDays++;
+    if (tmin[i] != null && tmin[i] >= NIGHT) tropicalNights++;
+    if (appMax[i] != null && appMax[i] > feelsPeak) feelsPeak = appMax[i];
+  }
+  // Plus longue série consécutive de jours ≥ HOT
+  let run = 0, bestRun = 0;
+  for (let i = 0; i < N; i++) {
+    if (tmax[i] != null && tmax[i] >= HOT) { run++; if (run > bestRun) bestRun = run; }
+    else run = 0;
+  }
+
+  // Pas d'épisode chaud notable → bannière masquée.
+  if (peak < 31 && tropicalNights === 0) { banner.style.display = 'none'; return; }
+
+  let level, levelTxt, icon, headline;
+  if (bestRun >= 3 && peak >= 35) {
+    level = 'level-severe'; levelTxt = 'Canicule'; icon = '🥵';
+    headline = `Épisode caniculaire : ${bestRun} jours consécutifs ≥ ${HOT}°C attendus.`;
+  } else if (bestRun >= 3 && peak >= 33) {
+    level = 'level-high'; levelTxt = 'Canicule probable'; icon = '🥵';
+    headline = `Forte chaleur durable : ${bestRun} jours consécutifs ≥ ${HOT}°C.`;
+  } else if (peak >= 32) {
+    level = 'level-high'; levelTxt = 'Forte chaleur'; icon = '🌡️';
+    headline = `Pic de chaleur attendu jusqu'à ${Math.round(peak)}°C.`;
+  } else {
+    level = 'level-warn'; levelTxt = 'Nuits chaudes'; icon = '🌙';
+    headline = `Chaleur nocturne marquée — ${tropicalNights} nuit(s) tropicale(s) à venir.`;
+  }
+
+  // Libellé du jour de pic
+  const peakDayLabel = peakIdx === 0 ? "aujourd'hui"
+    : peakIdx === 1 ? 'demain'
+    : new Date(dly.time[peakIdx] + 'T12:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'short' });
+
+  // Fenêtre horaire à risque : bloc contigu autour de l'heure la plus chaude
+  // du jour de pic (évite qu'une heure de nuit isolée élargisse la plage).
+  // Seuil de danger ≥ 33°C ressenti ; repli sur ≥ 30°C si rien ne l'atteint.
+  const peakDate = dly.time[peakIdx];
+  const ht = d.hourly.time;
+  const happ = d.hourly.apparent_temperature || d.hourly.temperature_2m;
+  const dayIdx = [];
+  for (let i = 0; i < ht.length; i++) if (ht[i].startsWith(peakDate)) dayIdx.push(i);
+  const contiguousWindow = thr => {
+    if (!dayIdx.length) return null;
+    // heure la plus chaude du jour
+    let hotI = dayIdx[0];
+    for (const i of dayIdx) if ((happ[i] ?? -99) > (happ[hotI] ?? -99)) hotI = i;
+    if ((happ[hotI] ?? -99) < thr) return null;
+    let lo = hotI, hi = hotI;
+    while (dayIdx.includes(lo - 1) && (happ[lo - 1] ?? -99) >= thr) lo--;
+    while (dayIdx.includes(hi + 1) && (happ[hi + 1] ?? -99) >= thr) hi++;
+    return { f: +ht[lo].slice(11, 13), l: +ht[hi].slice(11, 13), count: hi - lo + 1 };
+  };
+  let rw = contiguousWindow(33);
+  let riskThr = 33;
+  if (!rw) { rw = contiguousWindow(30); riskThr = 30; }
+  const riskWindow = !rw ? '—'
+    : rw.count >= 20 ? 'Toute la journée'
+    : `${rw.f}h–${rw.l + 1}h`;
+
+  const stat = (label, value, sub) => `
+    <div class="hw-stat">
+      <div class="hws-label">${label}</div>
+      <div class="hws-value">${value}</div>
+      <div class="hws-sub">${sub}</div>
+    </div>`;
+
+  const advice = level === 'level-severe' || level === 'level-high'
+    ? [
+        ['💧', 'Buvez régulièrement sans attendre la soif'],
+        ['🏠', 'Gardez votre logement frais (volets fermés le jour)'],
+        ['🕛', 'Évitez efforts et sorties entre 12h et 16h'],
+        ['👵', "Prenez des nouvelles des personnes vulnérables"],
+      ]
+    : [
+        ['💧', 'Pensez à bien vous hydrater'],
+        ['🌙', 'Aérez la nuit et tôt le matin'],
+      ];
+
+  banner.className = `heatwave-banner ${level}`;
+  banner.innerHTML = `
+    <div class="hw-head">
+      <span class="hw-icon">${icon}</span>
+      <div>
+        <div class="hw-title">${levelTxt} — ${S.city}</div>
+        <div class="hw-sub">${headline}</div>
+      </div>
+      <span class="hw-badge">Vigilance chaleur</span>
+    </div>
+    <div class="hw-grid">
+      ${stat('🌡 Pic de chaleur', `${Math.round(peak)}°`, `Maximum ${peakDayLabel}`)}
+      ${stat('🥵 Ressenti max', feelsPeak > -99 ? `${Math.round(feelsPeak)}°` : '--', 'Température ressentie')}
+      ${stat('🌙 Nuits tropicales', `${tropicalNights}`, `Nuit ≥ ${NIGHT}°C`)}
+      ${stat('⏰ Heures à risque', riskWindow, `Jour de pic · ressenti ≥ ${riskThr}°C`)}
+    </div>
+    <div class="hw-advice">
+      ${advice.map(a => `<span>${a[0]} ${a[1]}</span>`).join('')}
+    </div>`;
+  banner.style.display = '';
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -2998,10 +3708,18 @@ function applyWeatherEffect(effect) {
 ;(function() {
   const cv  = document.getElementById('atmo-canvas');
   const ctx = cv.getContext('2d');
-  let W, H;
+  let W, H, glow;
   const pts = [];
 
-  function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+  // Le dégradé est statique : on le (re)calcule seulement au resize, pas à
+  // chaque frame (la recréation + l'échantillonnage par pixel coûtaient cher).
+  function resize() {
+    W = cv.width = innerWidth; H = cv.height = innerHeight;
+    glow = ctx.createRadialGradient(W*.78, H*.06, 0, W*.78, H*.06, W*.55);
+    glow.addColorStop(0,  'rgba(2,136,209,0.05)');
+    glow.addColorStop(.6, 'rgba(1,87,155,0.02)');
+    glow.addColorStop(1,  'transparent');
+  }
   resize();
   window.addEventListener('resize', resize);
 
@@ -3012,14 +3730,18 @@ function applyWeatherEffect(effect) {
     a: 0.015+Math.random()*.04,
   });
 
-  (function draw() {
+  // Dérive très lente (~7 px/s) : 30 fps est visuellement identique à 60 fps
+  // mais divise par deux le travail de dessin plein écran.
+  const FRAME_MS = 1000 / 30;
+  let last = 0, raf = null;
+
+  function draw(ts) {
+    raf = requestAnimationFrame(draw);
+    if (ts - last < FRAME_MS) return;
+    last = ts;
+
     ctx.clearRect(0,0,W,H);
-    // Subtle top-right aurora glow
-    const g = ctx.createRadialGradient(W*.78, H*.06, 0, W*.78, H*.06, W*.55);
-    g.addColorStop(0,  'rgba(2,136,209,0.05)');
-    g.addColorStop(.6, 'rgba(1,87,155,0.02)');
-    g.addColorStop(1,  'transparent');
-    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
 
     pts.forEach(p => {
       p.x += p.vx; p.y += p.vy;
@@ -3030,8 +3752,13 @@ function applyWeatherEffect(effect) {
       ctx.fillStyle = `rgba(79,195,247,${p.a})`;
       ctx.fill();
     });
-    requestAnimationFrame(draw);
-  })();
+  }
+
+  function start() { if (raf == null) { last = 0; raf = requestAnimationFrame(draw); } }
+  function stop()  { if (raf != null) { cancelAnimationFrame(raf); raf = null; } }
+  // Inutile d'animer un fond invisible quand l'onglet est masqué.
+  document.addEventListener('visibilitychange', () => { document.hidden ? stop() : start(); });
+  start();
 })();
 
 // ──────────────────────────────────────────────────────────────────
@@ -3058,23 +3785,25 @@ async function loadAll() {
     renderHourly(wData);
     buildChart(wData);
     renderStats(wData);
+    renderPressureCard(wData);
+    renderHeatwave(wData);
   } catch(err) {
     console.error('Erreur chargement météo:', err);
     document.getElementById('today-skeleton').innerHTML =
       '<div style="padding:20px;color:var(--txt2);font-size:.85rem">⚠️ Données temporairement indisponibles. Vérifiez votre connexion.</div>';
+    document.getElementById('pressure-body').innerHTML =
+      '<div style="padding:10px 0;color:var(--txt2);font-size:.8rem">⚠️ Données de pression indisponibles.</div>';
     return;
   }
 
-  try {
-    const aData = await fetchAQI();
-    S.aqi = aData;
-    renderAQI(aData);
-    renderPollen(aData);
-  } catch(err) {
-    console.error('Erreur chargement qualité air:', err);
-    renderAQIUnavailable();
-    renderPollenUnavailable();
-  }
+  // Qualité de l'air et données marines sont indépendantes — chargées en parallèle.
+  fetchAQI()
+    .then(aData => { S.aqi = aData; renderAQI(aData); renderPollen(aData); })
+    .catch(err => { console.error('Erreur chargement qualité air:', err); renderAQIUnavailable(); renderPollenUnavailable(); });
+
+  fetchMarine()
+    .then(renderWaterCard)
+    .catch(err => { console.error('Erreur chargement données marines:', err); renderWaterCard(null); });
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -3111,6 +3840,7 @@ try {
 } catch(e) { /* localStorage unavailable or corrupt — use default Paris */ }
 
 applyWeatherEffect('cloud'); // default while loading
+renderMoonCard(); // calcul local, ne dépend d'aucun appel réseau
 loadAll();
 loadRadar();
 setInterval(loadRadar, 600000); // Refresh radar every 10 min
