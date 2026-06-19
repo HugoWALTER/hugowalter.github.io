@@ -759,7 +759,7 @@
       min-height: 118px;
     }
     .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-    .stat-icon  { font-size: 1.25rem; }
+    .stat-icon  { font-size: 1.25rem; min-height: 1.5rem; display:flex; align-items:center; justify-content:center; }
     .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0; color: var(--txt2); line-height: 1.25; }
     .stat-value { font-family: var(--fd); font-size: 1.35rem; font-weight: 700; }
     .stat-sub   { font-size: 0.67rem; color: var(--txt2); }
@@ -836,8 +836,8 @@
       background: radial-gradient(circle at 50% 35%, rgba(79,195,247,0.18), rgba(79,195,247,0.04));
       box-shadow: 0 0 22px rgba(79,195,247,0.18);
     }
-    .water-ring .water-deg { font-size: 1.9rem; }
-    .water-ring .water-unit { font-size: 0.7rem; color: var(--txt2); margin-top: 2px; }
+    .water-ring .water-deg { font-size: 2.1rem; line-height: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
+    .water-ring .water-unit { display: none; }
     .water-comfort-name { font-family: var(--fd); font-size: 1.05rem; font-weight: 700; }
     .water-comfort-sub  { font-size: 0.74rem; color: var(--txt2); margin-top: 2px; max-width: 220px; line-height: 1.4; }
     .water-sub-grid {
@@ -969,7 +969,14 @@
        RESPONSIVE
     ══════════════════════════════════════════════════════════════ */
     @media (max-width: 1100px) {
-      .main-grid { grid-template-columns: 1fr; }
+      .main-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+      }
+      /* Reset row spans — en colonne unique tout s'empile naturellement */
+      .left-col  { grid-column: 1; grid-row: auto; }
+      .right-col { grid-column: 1; grid-row: auto; }
+      .radar-inline-chart { grid-column: 1; grid-row: auto; }
       .charts-section { grid-template-columns: 1fr; }
       .stats-section { grid-template-columns: repeat(2,1fr); }
       /* On tablets, left-col loses its flex:1 stretch — give radar a fixed height */
@@ -1066,6 +1073,38 @@
       .city-cond-label { font-size: 0.88rem; }
       .hour-slot { width: 46px; }
       .timeline-btn { padding: 4px 7px; font-size: 0.62rem; }
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       LANDSCAPE MOBILE (ex: iPhone en mode horizontal)
+       La largeur dépasse 600px donc les règles @max-600 ne
+       s'appliquent pas, mais la hauteur est < 500px.
+       On empêche le radar de gonfler à l'infini et on passe en
+       layout flex colonne comme sur mobile portrait.
+    ══════════════════════════════════════════════════════════════ */
+    @media (max-height: 500px) and (orientation: landscape) {
+      /* Layout en colonne unique, même comportement que mobile portrait */
+      .main-grid {
+        display: flex; flex-direction: column; gap: 14px;
+      }
+      .left-col        { order: 1; flex-direction: column; gap: 14px; }
+      .right-col       { order: 2; gap: 14px; }
+      .radar-inline-chart { order: 3; }
+
+      /* Hauteur radar raisonnée : on ne peut pas prendre 68vw de hauteur
+         car l'écran est peu haut. On fixe une hauteur en vh. */
+      #map-container { height: 55vmin; min-height: 220px; max-height: 380px; }
+      .radar-card { flex: none; }
+
+      /* Réduire les paddings pour gagner de la place verticale */
+      main { padding-top: 10px; padding-bottom: 16px; gap: 12px; }
+      .card-header { min-height: 38px; padding: 10px 16px 8px; }
+      .city-hero { padding: 10px 16px 6px; }
+      .city-name { font-size: 1.3rem; }
+      .city-temp-big { font-size: 2.4rem; }
+      .city-temp-row { padding: 6px 16px 10px; }
+      .day-slot { padding: 10px 8px; }
+      .day-slot-temp { font-size: 1.2rem; }
     }
   </style>
 </head>
@@ -2220,7 +2259,7 @@ async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
     + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,visibility`
-    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration`
+    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration,sunshine_duration`
     + `&current_weather=true`
     + `&forecast_days=16`
     + `&timezone=auto`;
@@ -2245,7 +2284,7 @@ async function fetchAQI() {
 async function fetchMarine() {
   const u = `https://marine-api.open-meteo.com/v1/marine`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=sea_surface_temperature`
+    + `&hourly=sea_surface_temperature,ocean_current_velocity,ocean_current_direction`
     + `&daily=sea_surface_temperature_max,sea_surface_temperature_min`
     + `&timezone=auto&forecast_days=2`;
   const r = await fetch(u);
@@ -3069,6 +3108,18 @@ function renderStats(d) {
   const nwSlice = d.daily.temperature_2m_max.slice(7,14);
   const nwAvg   = nwSlice.length ? Math.round(nwSlice.reduce((a,b)=>a+b,0)/nwSlice.length) : '--';
 
+  // ── Humidité relative actuelle ────────────────────────────────────
+  const humNow = nowIdxStat >= 0 ? Math.round(d.hourly.relativehumidity_2m[nowIdxStat]) : null;
+  function humLabel(v) {
+    if (v === null) return { txt:'N/A', color:'var(--txt2)' };
+    if (v < 30) return { txt:'Très sec',    color:'#ff9800' };
+    if (v < 50) return { txt:'Confortable', color:'#4caf50' };
+    if (v < 70) return { txt:'Modérée',     color:'#8bc34a' };
+    if (v < 85) return { txt:'Élevée',      color:'#fdd835' };
+    return            { txt:'Très élevée',  color:'#4fc3f7' };
+  }
+  const humL = humLabel(humNow);
+
   // ── Indice UV ──────────────────────────────────────────────────
   const uvMax = d.daily.uv_index_max?.[i] ?? null;
   // UV hourly : valeur à l'heure courante
@@ -3111,19 +3162,6 @@ function renderStats(d) {
     }
   }
 
-  // ── Point de rosée (confort hygrométrique, échelle NOAA) ────────
-  const dewNow = nowIdxStat >= 0 ? Math.round(d.hourly.dewpoint_2m[nowIdxStat]) : null;
-  function dewComfort(v) {
-    if (v === null) return { txt:'N/A', color:'var(--txt2)' };
-    if (v < 10) return { txt:'Sec, confortable', color:'#4caf50' };
-    if (v < 16) return { txt:'Agréable',         color:'#8bc34a' };
-    if (v < 18) return { txt:'Un peu humide',     color:'#fdd835' };
-    if (v < 21) return { txt:'Moite, inconfortable', color:'#ff9800' };
-    if (v < 24) return { txt:'Très moite',        color:'#f44336' };
-    return              { txt:'Oppressant',        color:'#9c27b0' };
-  }
-  const dewC = dewComfort(dewNow);
-
   // ── Visibilité (m → km) ──────────────────────────────────────
   const visNowM = nowIdxStat >= 0 ? d.hourly.visibility?.[nowIdxStat] : null;
   const visKm = visNowM != null ? (visNowM/1000) : null;
@@ -3149,6 +3187,21 @@ function renderStats(d) {
   const daylightH = daylightSec != null ? Math.floor(daylightSec/3600) : null;
   const daylightM = daylightSec != null ? Math.round((daylightSec%3600)/60) : null;
 
+  // ── Ensoleillement du jour ───────────────────────────────────
+  const sunshineSec = d.daily.sunshine_duration?.[i];
+  const sunshineH = sunshineSec != null ? Math.floor(sunshineSec / 3600) : null;
+  const sunshineM = sunshineSec != null ? Math.round((sunshineSec % 3600) / 60) : null;
+  const sunshinePct = (sunshineSec != null && daylightSec)
+    ? Math.round((sunshineSec / daylightSec) * 100) : null;
+
+  // Icône manche à air (SVG inline)
+  const windsockSVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle">
+    <line x1="5" y1="3" x2="5" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    <polygon points="5,5 19,7 16,12 5,14" fill="currentColor" opacity="0.25" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+    <line x1="5" y1="5" x2="19" y2="7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="5" y1="14" x2="16" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>`;
+
   const stats = [
     { icon:'🔆', label:'Indice UV',
       value: `<span style="color:${uv.color};font-weight:700">${uvDisplay}</span>`,
@@ -3161,14 +3214,16 @@ function renderStats(d) {
     { icon:'💨', label:'Vent maximum',        value:`${wMax} km/h`,            sub:`Direction ${windDir(cw.winddirection)}` },
     { icon:'🌡', label:'Ressenti actuel',     value:`${feelsLikeStat}°`, sub:'Température ressentie' },
     { icon:'📅', label:'Moy. semaine proch.', value:`${nwAvg}°`,               sub:'T° max moyenne J+7→14' },
-    { icon:'🌦', label:'Jours de pluie',      value:`${rainDays} / 7`,         sub:'7 prochains jours' },
-    { icon:'💧', label:'Point de rosée',
-      value: dewNow !== null ? `<span style="color:${dewC.color};font-weight:700">${dewNow}°</span>` : '--',
-      sub: dewC.txt },
+    { icon:'☀️', label:'Ensoleillement',
+      value: sunshineH !== null ? `${sunshineH}h${String(sunshineM).padStart(2,'0')}` : '--',
+      sub: sunshinePct !== null ? `${sunshinePct}% du jour` : 'Durée d\'insolation' },
+    { icon:'💧', label:'Humidité relative',
+      value: humNow !== null ? `<span style="color:${humL.color};font-weight:700">${humNow}%</span>` : '--',
+      sub: humL.txt },
     { icon:'👁', label:'Visibilité',
       value: visKm !== null ? `${visKm.toFixed(1)} km` : '--',
       sub: visL.txt },
-    { icon:'🌬', label:'Rafales max',         value: gustMax !== null ? `${gustMax} km/h` : '--', sub:'Pic du jour' },
+    { icon: windsockSVG, label:'Rafales max', value: gustMax !== null ? `${gustMax} km/h` : '--', sub:'Pic du jour' },
     { icon:'⏱', label:'Durée du jour',
       value: daylightH !== null ? `${daylightH}h${String(daylightM).padStart(2,'0')}` : '--',
       sub: 'Lever → coucher du soleil' },
@@ -3483,6 +3538,18 @@ function renderWaterCard(marine) {
   const diffTxt = diff != null ? `${diff >= 0 ? '+' : '−'}${Math.abs(Math.round(diff))}°` : '--';
   const airTxt = hasAir ? `Air ${Math.round(air)}°` : 'Air indisponible';
 
+  // ── Courant marin ─────────────────────────────────────────────────
+  const ocVel = hi.ocean_current_velocity?.[idx];
+  const ocDir = hi.ocean_current_direction?.[idx];
+  function compassDir(deg) {
+    if (deg == null || !isFinite(deg)) return null;
+    return ['N','NE','E','SE','S','SO','O','NO'][Math.round(deg / 45) % 8];
+  }
+  const ocVelKmh = ocVel != null ? (ocVel * 3.6).toFixed(2) : null;
+  const ocDirLabel = compassDir(ocDir);
+  const currentVal = ocVelKmh != null ? `${ocVelKmh} km/h` : '--';
+  const currentSub = ocDirLabel ? `Direction ${ocDirLabel}` : 'Courant de surface';
+
   document.getElementById('water-body').innerHTML = `
     <div class="water-main">
       <div class="water-ring" style="border-color:${c.color};box-shadow:0 0 22px ${c.color}33">
@@ -3495,7 +3562,7 @@ function renderWaterCard(marine) {
       </div>
     </div>
     <div class="water-sub-grid">
-      <div class="water-sub-item"><div class="wsi-label">🌡 Actuelle</div><div class="wsi-value">${fmtT(sst)}</div></div>
+      <div class="water-sub-item"><div class="wsi-label">🌊 Courant marin</div><div class="wsi-value">${currentVal}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2);margin-top:2px">${currentSub}</div></div>
       <div class="water-sub-item"><div class="wsi-label">📊 Min / Max jour</div><div class="wsi-value">${fmtT(tMin)} / ${fmtT(tMax)}</div></div>
       <div class="water-sub-item"><div class="wsi-label">🆚 Eau vs air</div><div class="wsi-value">${diffTxt}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2)">${airTxt}</div></div>
     </div>`;
