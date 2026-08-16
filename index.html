@@ -286,7 +286,10 @@
       border: 1px solid var(--border2); background: var(--surface2);
       font-size: 0.74rem; color: var(--accent); font-weight: 500;
       display: flex; align-items: center; gap: 6px;
+      cursor: pointer; transition: border-color .15s, background .15s;
     }
+    .header-pill:hover  { border-color: var(--accent); background: var(--surface2); }
+    .header-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .header-weather-badge {
       font-size: 0.74rem; color: var(--txt2);
       display: flex; align-items: center; gap: 6px;
@@ -1010,11 +1013,36 @@
       .main-grid, .charts-section { gap: 14px; }
       /* left-col: stacked, no stretching needed */
       .left-col { gap: 14px; flex-direction: column; }
-      /* On mobile: single-column flex. Order: radar → right-col → chart */
-      .main-grid { display: flex; flex-direction: column; gap: 14px; }
-      .left-col        { order: 1; }
-      .right-col       { order: 2; }
-      .radar-inline-chart { order: 3; display: block; }
+
+      /* On mobile, toutes les cards sont "aplaties" dans une seule colonne
+         flex (<main>) pour pouvoir les réordonner librement, indépendamment
+         de leur emplacement dans la grille desktop. .main-grid, .left-col
+         et .right-col passent en display:contents (ils disparaissent de
+         l'arbre de rendu) : leurs enfants deviennent directement des
+         éléments flex de <main>, qui a déjà un gap de 14px — identique aux
+         gaps imbriqués précédents, donc aucun changement visuel d'espacement.
+         Ordre voulu en mobile :
+         recherche → alerte canicule → aujourd'hui → demain →
+         heure par heure (48h) → température & précipitations →
+         prévisions 7 jours → radar → qualité de l'air/pollen/eau →
+         pression/lune → statistiques */
+      .main-grid { display: contents; }
+      .left-col  { display: contents; }
+      .right-col { display: contents; }
+
+      .search-section      { order: 1; }
+      .heatwave-banner      { order: 2; }
+      .today-card             { order: 3; }
+      .tomorrow-card            { order: 4; }
+      #section-hourly             { order: 5; }
+      .radar-inline-chart          { order: 6; display: block; }
+      .week-card                     { order: 7; }
+      .radar-card                     { order: 8; } /* radar descendu sous les prévisions */
+      #section-charts                 { order: 9; }
+      .pollen-card                     { order: 9; } /* pas dans #section-charts : même order, suit dans le flux */
+      .water-card                       { order: 9; } /* idem, garde sa place juste après le pollen */
+      #section-extra                      { order: 10; }
+      #stats-section                        { order: 11; }
       .card-title { font-size: 0.69rem; }
       .radar-timeline { padding: 0 12px 10px; scroll-padding: 12px; }
       .timeline-btn { padding: 4px 8px; font-size: 0.65rem; }
@@ -1180,13 +1208,13 @@
     <div class="heatwave-banner" id="heatwave-banner" style="display:none"></div>
 
     <!-- MAIN GRID -->
-    <div class="main-grid" id="section-radar">
+    <div class="main-grid">
 
       <!-- ── LEFT COLUMN: RADAR + CHART ── -->
       <div class="left-col">
 
         <!-- RADAR CARD -->
-        <div class="card radar-card">
+        <div class="card radar-card" id="section-radar">
           <div class="card-header">
             <span class="card-title">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1l2.1-2.1M17 7l2.1-2.1"/></svg>
@@ -1503,6 +1531,7 @@ const S = {
   animInterval: null,
   cityMarker: null,
   weatherEffect: 'cloud',
+  showTide: false, // passe à true si la ville est côtière (détecté via fetchMarine)
 };
 
 // ──────────────────────────────────────────────────────────────────
@@ -3495,6 +3524,55 @@ function nextMoonEvent(date, targetAge) {
   return new Date(date.getTime() + daysUntil * 86400000);
 }
 
+// ──────────────────────────────────────────────────────────────────
+// COEFFICIENT DE MARÉE — approximation astronomique locale.
+// ⚠️ Valeur INDICATIVE, non-officielle : le vrai coefficient SHOM dépend
+// de constantes harmoniques propres à chaque port. Ici on ne modélise
+// que les deux effets dominants, valables pour l'ensemble du littoral
+// français (le coefficient est une notion nationale, pas locale) :
+//
+//   1) Cycle vive-eau / morte-eau : la marée est forte à la nouvelle ET
+//      à la pleine lune (syzygies, Soleil et Lune alignés), faible aux
+//      premier/dernier quartiers (quadratures). Période = 1/2 mois
+//      synodique, d'où l'angle doublé.
+//   2) Distance Terre-Lune : la Lune attire plus fort au périgée (proche)
+//      qu'à l'apogée (loin) — modélisé via le mois anomalistique.
+//      Référence : périgée du 10 janvier 2001 08:59 UTC, 357 132 km
+//      (Espenak/Meeus, astropixels.com).
+//
+// Une syzygie qui coïncide avec un périgée donne les plus forts
+// coefficients (jusqu'à 120, "marées de vives-eaux exceptionnelles") ;
+// une quadrature proche de l'apogée donne les plus faibles (jusqu'à 20).
+// ──────────────────────────────────────────────────────────────────
+const ANOMALISTIC_MONTH  = 27.55455;             // périgée à périgée (jours)
+const KNOWN_PERIGEE_JD   = 2451919.874306;        // 2001-01-10 08:59 UTC
+
+function tideCoefficientApprox(date) {
+  const jd = toJulianDay(date);
+
+  // Syzygie : +1 à la nouvelle/pleine lune, -1 aux quartiers.
+  const phaseAngle = 2 * Math.PI * moonAgeDays(date) / SYNODIC_MONTH;
+  const syzygy = Math.cos(2 * phaseAngle);
+
+  // Périgée : +1 au périgée, -1 à l'apogée.
+  let anomAge = (jd - KNOWN_PERIGEE_JD) % ANOMALISTIC_MONTH;
+  if (anomAge < 0) anomAge += ANOMALISTIC_MONTH;
+  const perigee = Math.cos(2 * Math.PI * anomAge / ANOMALISTIC_MONTH);
+
+  // Coefficient moyen 70 ± 42 (cycle vive-eau/morte-eau), avec un bonus de
+  // ±8 quand le périgée renforce une syzygie déjà marquée. Bornes réalistes
+  // 20-120 conformes à l'échelle officielle française.
+  const coef = 70 + 42 * syzygy + 8 * perigee * Math.max(syzygy, 0);
+  return Math.round(Math.min(120, Math.max(20, coef)));
+}
+
+function tideCoefficientLevel(coef) {
+  if (coef >= 100) return { label: 'Grande marée',   color: '#f44336' };
+  if (coef >= 70)  return { label: 'Marée moyenne+',  color: '#ffb74d' };
+  if (coef >= 45)  return { label: 'Marée moyenne',   color: '#4fc3f7' };
+  return                  { label: 'Marée faible',    color: '#81d4fa' };
+}
+
 function renderMoonCard() {
   const now = new Date();
   const info = moonPhaseInfo(now);
@@ -3503,6 +3581,29 @@ function renderMoonCard() {
 
   const fmtDate = dt => dt.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' });
 
+  // Coefficient de marée : uniquement pertinent pour une ville côtière
+  // (détectée via fetchMarine — voir renderWaterCard). Recalculé à chaque
+  // rendu de la carte lune, aucun appel réseau nécessaire.
+  let tideHtml = '';
+  if (S.showTide) {
+    const coefToday    = tideCoefficientApprox(now);
+    const coefTomorrow = tideCoefficientApprox(new Date(now.getTime() + 86400000));
+    const lvlToday    = tideCoefficientLevel(coefToday);
+    const lvlTomorrow = tideCoefficientLevel(coefTomorrow);
+    tideHtml = `
+      <div class="moon-info-row">
+        <span class="moon-info-icon">🌊</span> Coefficient de marée
+        <strong style="color:${lvlToday.color}">${coefToday}</strong>
+      </div>
+      <div class="moon-info-row">
+        <span class="moon-info-icon" style="opacity:.5">🌊</span> Demain
+        <strong style="color:${lvlTomorrow.color}">${coefTomorrow}</strong>
+      </div>
+      <div style="font-size:.64rem;color:var(--txt2);text-align:left;line-height:1.4;padding:0 2px">
+        ${lvlToday.label} · estimation locale, non-officielle
+      </div>`;
+  }
+
   document.getElementById('moon-body').innerHTML = `
     <div class="moon-icon">${info.icon}</div>
     <div class="moon-phase-name">${info.name}</div>
@@ -3510,6 +3611,7 @@ function renderMoonCard() {
     <div class="moon-info-grid">
       <div class="moon-info-row"><span class="moon-info-icon">🌕</span> Prochaine pleine lune <strong>${fmtDate(nextFull)}</strong></div>
       <div class="moon-info-row"><span class="moon-info-icon">🌑</span> Prochaine nouvelle lune <strong>${fmtDate(nextNew)}</strong></div>
+      ${tideHtml}
     </div>`;
 }
 
@@ -3532,6 +3634,11 @@ function renderWaterCard(marine) {
   const series = hi && hi.sea_surface_temperature;
   // Détecteur « ville côtière » : au moins une valeur SST exploitable.
   const valid = Array.isArray(series) && series.some(v => v != null && isFinite(v));
+  // Le coefficient de marée n'a de sens que pour une ville côtière — on
+  // ré-affiche la carte lune pour refléter cette détection (masqué par
+  // défaut, donc pas de flash visible si la ville est finalement côtière).
+  S.showTide = valid;
+  renderMoonCard();
   if (!valid) { card.style.display = 'none'; return; }
 
   // Index courant : heure actuelle si présente, sinon première valeur connue.
@@ -3983,6 +4090,50 @@ setInterval(loadRadar, 600000); // Refresh radar every 10 min
     // Fallback for browsers without ResizeObserver
     window.addEventListener('resize', fix, { passive: true });
   }
+})();
+
+// ──────────────────────────────────────────────────────────────────
+// HEADER CITY PILL — clic (ou Entrée/Espace au clavier) : remonte en
+// haut de page si nécessaire, puis place le focus dans la barre de
+// recherche pour permettre à l'utilisateur de changer de ville.
+// ──────────────────────────────────────────────────────────────────
+(function() {
+  const cityBtn      = document.querySelector('.header-pill');
+  const searchInput  = document.getElementById('search-input');
+  if (!cityBtn || !searchInput) return;
+
+  cityBtn.setAttribute('role', 'button');
+  cityBtn.setAttribute('tabindex', '0');
+  cityBtn.setAttribute('aria-label', 'Changer de ville — aller à la recherche');
+
+  function focusSearch() {
+    searchInput.focus({ preventScroll: true });
+  }
+
+  function goToSearch() {
+    if (window.scrollY > 0) {
+      // Remonte en haut avant de donner le focus, pour éviter que le
+      // navigateur ne fasse un saut brutal en amenant le champ dans le
+      // viewport pendant l'animation de scroll.
+      if ('onscrollend' in window) {
+        window.addEventListener('scrollend', focusSearch, { once: true });
+      } else {
+        // Fallback pour les navigateurs sans l'événement 'scrollend'
+        setTimeout(focusSearch, 450);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      focusSearch();
+    }
+  }
+
+  cityBtn.addEventListener('click', goToSearch);
+  cityBtn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      goToSearch();
+    }
+  });
 })();
 
 // ──────────────────────────────────────────────────────────────────
