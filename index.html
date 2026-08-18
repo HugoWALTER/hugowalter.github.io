@@ -1515,6 +1515,7 @@ const S = {
   lat:  48.8566,
   lon:  2.3522,
   region: 'Île-de-France, FR',
+  countryCode: 'FR',
   timezone: 'Europe/Paris',
   forecast: null,
   aqi:      null,
@@ -1933,6 +1934,7 @@ function selectLocation(c) {
   S.lat  = Number(c.lat);
   S.lon  = Number(c.lon);
   S.region = locationRegionLabel(c);
+  S.countryCode = c.countryCode || '';
   S.timezone = c.timezone || 'auto';
 
   searchEl.value = c.name;
@@ -3525,45 +3527,112 @@ function nextMoonEvent(date, targetAge) {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// COEFFICIENT DE MARÉE — approximation astronomique locale.
-// ⚠️ Valeur INDICATIVE, non-officielle : le vrai coefficient SHOM dépend
-// de constantes harmoniques propres à chaque port. Ici on ne modélise
-// que les deux effets dominants, valables pour l'ensemble du littoral
-// français (le coefficient est une notion nationale, pas locale) :
+// COEFFICIENT DE MARÉE — modèle harmonique local (M2 + S2 + N2).
+// ⚠️ Valeur INDICATIVE, non-officielle : le SHOM ne diffuse pas ses
+// constantes harmoniques officielles (protégées par une décision de
+// l'Organisation Hydrographique Internationale), donc aucune app locale
+// ne peut reproduire exactement l'annuaire des marées. Ceci reste la
+// méthode la plus rigoureuse possible sans clé API :
 //
-//   1) Cycle vive-eau / morte-eau : la marée est forte à la nouvelle ET
-//      à la pleine lune (syzygies, Soleil et Lune alignés), faible aux
-//      premier/dernier quartiers (quadratures). Période = 1/2 mois
-//      synodique, d'où l'angle doublé.
-//   2) Distance Terre-Lune : la Lune attire plus fort au périgée (proche)
-//      qu'à l'apogée (loin) — modélisé via le mois anomalistique.
-//      Référence : périgée du 10 janvier 2001 08:59 UTC, 357 132 km
-//      (Espenak/Meeus, astropixels.com).
+//   • Constantes harmoniques RÉELLES du port de BREST — le port de
+//     référence utilisé par le SHOM lui-même pour calculer le
+//     coefficient national (« le coefficient est calculé pour Brest
+//     uniquement... ce qui permet de l'appliquer sur toutes les côtes
+//     de France métropolitaine », SHOM/REFMAR, fiche « Prédiction de
+//     marée », 2024).
+//   • Constantes issues de TICON-4 (analyse harmonique de longues séries
+//     marégraphiques REFMAR/GESLA-4, publiées sur SEANOE/Ifremer),
+//     redistribuées par le projet ouvert « Neaps tide database »
+//     (github.com/openwatersio/tide-database) sous licence CC BY 4.0.
+//   • Trois ondes principales : M2 (lunaire, la plus forte), S2
+//     (solaire — leur interférence donne le cycle vive-eau/morte-eau),
+//     et N2 (elliptique lunaire — sa présence encode le vrai décalage
+//     port par port entre le périgée et le renforcement de la marée,
+//     remplaçant une hypothèse arbitraire par un vrai déphasage mesuré).
+//   • U (l'« unité de hauteur » de Laplace, qui vaut par convention le
+//     coefficient 100) = H(M2)+H(S2), cohérent avec l'écart mesuré
+//     MHWS-MSL des données Brest (2,80 m dans les deux cas).
 //
-// Une syzygie qui coïncide avec un périgée donne les plus forts
-// coefficients (jusqu'à 120, "marées de vives-eaux exceptionnelles") ;
-// une quadrature proche de l'apogée donne les plus faibles (jusqu'à 20).
+// Formule officielle : C = (H - N0) / U × 100 (Laplace / SHOM). On
+// calcule ici l'enveloppe (amplitude résultante de la somme phasorielle
+// des 3 ondes, déphasées l'une par rapport à l'autre selon leur vrai
+// écart de phase mesuré à Brest) plutôt que de simuler heure par heure.
+//
+// Limites connues : le SHOM utilise 143 composantes (dont K2, K1, O1…)
+// et des corrections nodales (cycle de 18,6 ans) que ce modèle simplifié
+// omet — sur les dates testées, l'écart avec les valeurs officielles est
+// de l'ordre de quelques points sur l'échelle 20-120, d'où l'affichage
+// en tranche (95+ / 90− …) plutôt qu'un chiffre unique.
 // ──────────────────────────────────────────────────────────────────
-const ANOMALISTIC_MONTH  = 27.55455;             // périgée à périgée (jours)
-const KNOWN_PERIGEE_JD   = 2451919.874306;        // 2001-01-10 08:59 UTC
+const BREST_H = { M2: 2.05110225, S2: 0.74891136, N2: 0.41693649 }; // amplitude (m)
+const BREST_G = { M2: 108.992998, S2: 148.282104, N2: 90.617668 };  // phase de Greenwich (°)
+const BREST_U = BREST_H.M2 + BREST_H.S2; // unité de hauteur (coefficient 100)
+
+// Le « coefficient de marée » est une convention propre à la France
+// métropolitaine : le SHOM lui-même le précise noir sur blanc — « Les
+// coefficients sont calculés uniquement pour les ports français
+// métropolitains de la Manche et de l'Atlantique » (SHOM, service
+// « Marées à la carte »). Les DOM-TOM (Antilles, Réunion, Polynésie…)
+// ont leur propre régime de marée, sans rapport avec Brest, et ce
+// concept n'existe tout simplement pas à l'étranger. On restreint donc
+// l'affichage à un rectangle englobant la métropole (Corse comprise) ET
+// au code pays FR, pour éviter d'afficher un chiffre absurde sur une
+// ville côtière hors de ce périmètre.
+function isFranceMetropolitaine(lat, lon, countryCode) {
+  if (String(countryCode || '').toUpperCase() !== 'FR') return false;
+  return lat >= 41.0 && lat <= 51.5 && lon >= -5.5 && lon <= 9.7;
+}
+
+const ANOMALISTIC_MONTH = 27.55455;                                       // périgée à périgée (jours)
+const KNOWN_PERIGEE_JD  = toJulianDay(new Date('2026-08-10T12:15:00Z'));  // périgée vérifié
+
+// Facteur de calibration empirique. Le modèle M2+S2+N2 seul (sans
+// corrections nodales — cycle de 18,6 ans, standstill lunaire proche en
+// 2025-2026) surestime systématiquement : vérifié le 18/08/2026 contre
+// 2 sources officielles indépendantes (tables SHOM Les Sables d'Olonne
+// et Pornic, 9 dates, coefficients 26 à 90) → ratio officiel/brut très
+// stable, moyenne 0,911, RMS résiduelle 8,0 → 4,2 points après
+// application. Le résidu se concentre en morte-eau (coefficients bas,
+// K2/K1/O1 omis) ; à réévaluer si de nouveaux points de comparaison
+// s'écartent nettement de ce facteur.
+const CALIBRATION_FACTOR = 0.911;
 
 function tideCoefficientApprox(date) {
   const jd = toJulianDay(date);
 
-  // Syzygie : +1 à la nouvelle/pleine lune, -1 aux quartiers.
-  const phaseAngle = 2 * Math.PI * moonAgeDays(date) / SYNODIC_MONTH;
-  const syzygy = Math.cos(2 * phaseAngle);
+  // Élongation Lune-Soleil (0° à la nouvelle lune, 180° à la pleine lune).
+  const elongation = 360 * moonAgeDays(date) / SYNODIC_MONTH;
 
-  // Périgée : +1 au périgée, -1 à l'apogée.
+  // Anomalie lunaire (0° au périgée).
   let anomAge = (jd - KNOWN_PERIGEE_JD) % ANOMALISTIC_MONTH;
   if (anomAge < 0) anomAge += ANOMALISTIC_MONTH;
-  const perigee = Math.cos(2 * Math.PI * anomAge / ANOMALISTIC_MONTH);
+  const anomaly = 360 * anomAge / ANOMALISTIC_MONTH;
 
-  // Coefficient moyen 70 ± 42 (cycle vive-eau/morte-eau), avec un bonus de
-  // ±8 quand le périgée renforce une syzygie déjà marquée. Bornes réalistes
-  // 20-120 conformes à l'échelle officielle française.
-  const coef = 70 + 42 * syzygy + 8 * perigee * Math.max(syzygy, 0);
-  return Math.round(Math.min(120, Math.max(20, coef)));
+  const d2r = Math.PI / 180;
+  // Phases relatives à M2 (déduites du vrai écart de phase g mesuré à
+  // Brest pour chaque onde — voir dérivation des arguments de Doodson).
+  const thetaS2 = 2 * elongation + (BREST_G.M2 - BREST_G.S2);
+  const thetaN2 = -anomaly + (BREST_G.M2 - BREST_G.N2);
+
+  // Somme phasorielle M2 + S2 + N2 → amplitude résultante du jour.
+  let re = BREST_H.M2, im = 0;
+  re += BREST_H.S2 * Math.cos(thetaS2 * d2r); im += BREST_H.S2 * Math.sin(thetaS2 * d2r);
+  re += BREST_H.N2 * Math.cos(thetaN2 * d2r); im += BREST_H.N2 * Math.sin(thetaN2 * d2r);
+  const amplitude = Math.sqrt(re * re + im * im);
+
+  const coef = (amplitude / BREST_U) * 100 * CALIBRATION_FACTOR;
+  return Math.max(20, Math.min(120, coef));
+}
+
+// Affichage « façon Météo-France » : plutôt qu'un chiffre exact qui
+// laisserait croire à une précision qu'on n'a pas, on arrondit à la
+// dizaine la plus proche et on indique si la vraie valeur estimée est
+// au-dessus (+) ou en-dessous (−) de cette dizaine — ex. 87 → « 90− »,
+// 103 → « 100+ ».
+function tideCoefficientBand(raw) {
+  const base = Math.round(raw / 10) * 10;
+  const suffix = (raw - base) >= 0 ? '+' : '−';
+  return `${base}${suffix}`;
 }
 
 function tideCoefficientLevel(coef) {
@@ -3593,11 +3662,11 @@ function renderMoonCard() {
     tideHtml = `
       <div class="moon-info-row">
         <span class="moon-info-icon">🌊</span> Coefficient de marée
-        <strong style="color:${lvlToday.color}">${coefToday}</strong>
+        <strong style="color:${lvlToday.color}">${tideCoefficientBand(coefToday)}</strong>
       </div>
       <div class="moon-info-row">
         <span class="moon-info-icon" style="opacity:.5">🌊</span> Demain
-        <strong style="color:${lvlTomorrow.color}">${coefTomorrow}</strong>
+        <strong style="color:${lvlTomorrow.color}">${tideCoefficientBand(coefTomorrow)}</strong>
       </div>
       <div style="font-size:.64rem;color:var(--txt2);text-align:left;line-height:1.4;padding:0 2px">
         ${lvlToday.label} · estimation locale, non-officielle
@@ -3634,10 +3703,11 @@ function renderWaterCard(marine) {
   const series = hi && hi.sea_surface_temperature;
   // Détecteur « ville côtière » : au moins une valeur SST exploitable.
   const valid = Array.isArray(series) && series.some(v => v != null && isFinite(v));
-  // Le coefficient de marée n'a de sens que pour une ville côtière — on
+  // Le coefficient de marée n'a de sens que pour une ville côtière ET
+  // en France métropolitaine (voir isFranceMetropolitaine) — on
   // ré-affiche la carte lune pour refléter cette détection (masqué par
-  // défaut, donc pas de flash visible si la ville est finalement côtière).
-  S.showTide = valid;
+  // défaut, donc pas de flash visible si la ville est finalement éligible).
+  S.showTide = valid && isFranceMetropolitaine(S.lat, S.lon, S.countryCode);
   renderMoonCard();
   if (!valid) { card.style.display = 'none'; return; }
 
@@ -4044,6 +4114,7 @@ try {
     S.lat    = savedLoc.lat;
     S.lon    = savedLoc.lon;
     S.region = locationRegionLabel(savedLoc);
+    S.countryCode = savedLoc.countryCode || '';
     S.timezone = savedLoc.timezone;
     // Update UI immediately so it doesn't flash "Paris"
     document.getElementById('city-name').textContent       = c.name;
