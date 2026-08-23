@@ -857,21 +857,9 @@
     }
 
     /* ══════════════════════════════════════════════════════════════
-       ALERTE CANICULE / FORTE CHALEUR
+       ALERTE CANICULE / FORTE CHALEUR — contenu du panneau déplié
+       (le conteneur extérieur utilise désormais .alert-compact)
     ══════════════════════════════════════════════════════════════ */
-    .heatwave-banner {
-      border-radius: var(--radius); margin-bottom: 20px; overflow: hidden;
-      border: 1px solid; padding: 16px 20px;
-      background: linear-gradient(135deg, rgba(255,87,34,0.14), rgba(255,183,77,0.06));
-      animation: hwGlow 3.5s ease-in-out infinite;
-    }
-    .heatwave-banner.level-severe { border-color: rgba(244,67,54,0.55); background: linear-gradient(135deg, rgba(244,67,54,0.20), rgba(255,87,34,0.07)); }
-    .heatwave-banner.level-high   { border-color: rgba(255,112,67,0.5);  }
-    .heatwave-banner.level-warn   { border-color: rgba(255,183,77,0.45); background: linear-gradient(135deg, rgba(255,183,77,0.13), rgba(255,213,79,0.05)); }
-    @keyframes hwGlow {
-      0%,100% { box-shadow: 0 0 0 rgba(255,87,34,0); }
-      50%     { box-shadow: 0 0 26px rgba(255,112,67,0.22); }
-    }
     .hw-head { display: flex; align-items: center; gap: 12px; }
     .hw-icon { font-size: 1.9rem; line-height: 1; flex-shrink: 0; }
     .hw-title { font-family: var(--fd); font-size: 1.05rem; font-weight: 800; color: var(--txt); }
@@ -902,6 +890,50 @@
     }
 
     /* ══════════════════════════════════════════════════════════════
+       ALERTES (canicule + vigilance) — bandeau compact, dépliable au
+       clic, composant partagé par les deux. Une ligne fermée par
+       défaut ; le détail (grille de stats + conseils) ne s'affiche
+       qu'à la demande, pour rester léger sur mobile même quand les
+       deux alertes sont actives en même temps.
+    ══════════════════════════════════════════════════════════════ */
+    .alert-compact {
+      border-radius: var(--radius-sm); border: 1px solid rgba(255,183,77,0.4);
+      background: rgba(255,183,77,0.07); margin-bottom: 10px; overflow: hidden;
+    }
+    .alert-compact.level-high   { border-color: rgba(255,112,67,0.5);  background: rgba(255,112,67,0.09); }
+    .alert-compact.level-severe { border-color: rgba(244,67,54,0.55); background: rgba(244,67,54,0.11); }
+
+    .alert-chip {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; cursor: pointer; user-select: none;
+    }
+    .alert-chip .alert-icon  { font-size: 1.05rem; flex-shrink: 0; }
+    .alert-chip .alert-text  { flex: 1; min-width: 0; }
+    .alert-chip .alert-title {
+      font-weight: 700; font-size: 0.8rem; color: var(--txt);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .alert-chip .alert-sub {
+      font-size: 0.66rem; color: var(--txt2); margin-top: 1px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .alert-chevron {
+      font-size: 0.62rem; color: var(--txt2); flex-shrink: 0;
+      transition: transform .2s ease;
+    }
+    .alert-chip.expanded .alert-chevron { transform: rotate(180deg); }
+
+    .alert-details { max-height: 0; overflow: hidden; transition: max-height .25s ease; }
+    .alert-details.expanded { max-height: 520px; }
+    .alert-details-inner {
+      padding: 2px 14px 14px; border-top: 1px solid rgba(255,255,255,0.08); margin: 0 0 0;
+    }
+    .alert-details-inner .hw-grid { margin-top: 12px; }
+    @media (max-width: 700px) {
+      .alert-details-inner .hw-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ══════════════════════════════════════════════════════════════
        SKELETON LOADING
     ══════════════════════════════════════════════════════════════ */
     .skel {
@@ -912,6 +944,23 @@
     }
     @keyframes shimmer { to { background-position: -200% 0; } }
     .skel-line { height: 12px; margin-bottom: 8px; }
+
+    /* Squelette du chip vigilance — occupe la même place qu'un chip
+       résolu, affiché dès qu'on sait qu'un appel vigilance va être tenté,
+       pour que la canicule (rendue en synchrone, donc plus rapide) ne
+       semble jamais « passer devant » alors que l'ordre voulu est
+       vigilance d'abord. Remplacé ou effondré dès que la vraie réponse
+       arrive (alerte réelle, ou disparition si rien à signaler). */
+    .alert-skel {
+      display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+      border-radius: var(--radius-sm); border: 1px solid var(--border);
+      margin-bottom: 10px;
+    }
+    .alert-skel .skel { flex-shrink: 0; }
+    .alert-skel .skel-icon  { width: 18px; height: 18px; border-radius: 5px; }
+    .alert-skel .skel-lines { flex: 1; min-width: 0; }
+    .alert-skel .skel-line  { margin-bottom: 5px; }
+    .alert-skel .skel-line:last-child { margin-bottom: 0; width: 55%; }
 
     /* ══════════════════════════════════════════════════════════════
        FOOTER
@@ -1031,18 +1080,19 @@
       .right-col { display: contents; }
 
       .search-section      { order: 1; }
-      .heatwave-banner      { order: 2; }
-      .today-card             { order: 3; }
-      .tomorrow-card            { order: 4; }
-      #section-hourly             { order: 5; }
-      .radar-inline-chart          { order: 6; display: block; }
-      .week-card                     { order: 7; }
-      .radar-card                     { order: 8; } /* radar descendu sous les prévisions */
-      #section-charts                 { order: 9; }
-      .pollen-card                     { order: 9; } /* pas dans #section-charts : même order, suit dans le flux */
-      .water-card                       { order: 9; } /* idem, garde sa place juste après le pollen */
-      #section-extra                      { order: 10; }
-      #stats-section                        { order: 11; }
+      #vigilance-banner      { order: 2; } /* vigilance officielle, source prioritaire */
+      #heatwave-banner      { order: 3; } /* canicule, estimation maison, juste en dessous */
+      .today-card              { order: 4; }
+      .tomorrow-card             { order: 5; }
+      #section-hourly              { order: 6; }
+      .radar-inline-chart           { order: 7; display: block; }
+      .week-card                      { order: 8; }
+      .radar-card                      { order: 9; } /* radar descendu sous les prévisions */
+      #section-charts                   { order: 10; }
+      .pollen-card                       { order: 10; } /* pas dans #section-charts : même order, suit dans le flux */
+      .water-card                         { order: 10; } /* idem, garde sa place juste après le pollen */
+      #section-extra                        { order: 11; }
+      #stats-section                          { order: 12; }
       .card-title { font-size: 0.69rem; }
       .radar-timeline { padding: 0 12px 10px; scroll-padding: 12px; }
       .timeline-btn { padding: 4px 8px; font-size: 0.65rem; }
@@ -1204,8 +1254,13 @@
       <div class="search-suggestions" id="search-suggestions"></div>
     </div>
 
-    <!-- ALERTE CANICULE / FORTE CHALEUR (affichée seulement en période chaude) -->
-    <div class="heatwave-banner" id="heatwave-banner" style="display:none"></div>
+    <!-- VIGILANCE MÉTÉO-FRANCE OFFICIELLE — dropdown compact, en premier
+         car source officielle (France métropolitaine uniquement) -->
+    <div class="alert-compact" id="vigilance-banner" style="display:none"></div>
+
+    <!-- ALERTE CANICULE / FORTE CHALEUR — dropdown compact, estimation
+         maison, affichée sous la vigilance officielle -->
+    <div class="alert-compact" id="heatwave-banner" style="display:none"></div>
 
     <!-- MAIN GRID -->
     <div class="main-grid">
@@ -1516,6 +1571,7 @@ const S = {
   lon:  2.3522,
   region: 'Île-de-France, FR',
   countryCode: 'FR',
+  departmentCode: '75', // résolu à la volée via géocodage inverse (voir resolveDepartmentCode)
   timezone: 'Europe/Paris',
   forecast: null,
   aqi:      null,
@@ -2312,6 +2368,44 @@ async function fetchAQI() {
 // Modèle marin Open-Meteo : ne renvoie des valeurs que pour les points proches
 // de la mer. Pour une ville intérieure, sea_surface_temperature vaut null —
 // ce qui nous sert de détecteur « ville côtière » (aucune liste codée en dur).
+// ──────────────────────────────────────────────────────────────────
+// DÉPARTEMENT (pour la vigilance) — géocodage inverse via Géoplateforme
+// (IGN), gratuit et sans clé, CORS activé. Succède à l'ancienne API
+// api-adresse.data.gouv.fr, décommissionnée en janvier 2026 ; même
+// schéma de réponse (rétrocompatible), notamment le champ `context`
+// au format "44, Loire-Atlantique, Pays de la Loire".
+// ──────────────────────────────────────────────────────────────────
+async function resolveDepartmentCode(lat, lon) {
+  const u = `https://data.geopf.fr/geocodage/reverse/?lon=${lon}&lat=${lat}&limit=1`;
+  const r = await fetch(u);
+  if (!r.ok) throw new Error('Geocodage ' + r.status);
+  const j = await r.json();
+  const context = j.features?.[0]?.properties?.context;
+  if (!context) return null;
+  return context.split(',')[0].trim(); // "44, Loire-Atlantique, ..." → "44"
+}
+
+// ──────────────────────────────────────────────────────────────────
+// VIGILANCE MÉTÉO-FRANCE (officielle) — le portail direct de Météo-
+// France (portail-api.meteofrance.fr) exige une clé. On utilise donc
+// une redistribution ouverte et gratuite de la même donnée officielle,
+// hébergée sur une plateforme Opendatasoft/Huwise (CORS activé, accès
+// anonyme), mise à jour quotidiennement. Couvre les départements
+// métropolitains et leurs littoraux (vagues-submersion incluses) — pas
+// les DOM-TOM, qui ont leur propre dispositif.
+// Schéma réel vérifié : { domain_id, echeance, phenomenon, color,
+// begin_time, end_time, product_datetime, ... }
+// ──────────────────────────────────────────────────────────────────
+async function fetchVigilance(departmentCode) {
+  const base = 'https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets';
+  const where = encodeURIComponent(`domain_id="${departmentCode}"`);
+  const u = `${base}/weatherref-france-vigilance-meteo-departement/records?where=${where}&limit=20`;
+  const r = await fetch(u);
+  if (!r.ok) throw new Error('Vigilance ' + r.status);
+  const j = await r.json();
+  return j.results || [];
+}
+
 async function fetchMarine() {
   const u = `https://marine-api.open-meteo.com/v1/marine`
     + `?latitude=${S.lat}&longitude=${S.lon}`
@@ -3770,6 +3864,177 @@ function renderWaterCard(marine) {
 // Seuils heuristiques (repère jour Tmax + nuit Tmin) — pas les seuils
 // départementaux officiels de Météo-France.
 // ──────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────
+// VIGILANCE MÉTÉO-FRANCE — rendu de la bannière officielle.
+// Distincte de la bannière "Vigilance chaleur" au-dessus, qui est un
+// indicateur maison calculé depuis les prévisions Open-Meteo. Celle-ci
+// reflète l'alerte gouvernementale réelle, tous phénomènes confondus —
+// même habillage visuel (classes .heatwave-banner/.hw-*) pour rester
+// cohérent, positionnée juste en dessous.
+// ──────────────────────────────────────────────────────────────────
+const VIGILANCE_SEVERITY = { vert: 0, jaune: 1, orange: 2, rouge: 3 };
+const VIGILANCE_ICONS = {
+  vent: '💨', pluie: '🌧️', 'pluie-inondation': '🌧️', orages: '⛈️',
+  crues: '🌊', neige: '❄️', 'neige-verglas': '❄️', avalanches: '🏔️',
+  canicule: '🥵', 'grand-froid': '🥶', 'grand_froid': '🥶',
+  submersion: '🌊', 'vagues-submersion': '🌊',
+};
+const VIGILANCE_LABELS = {
+  jaune: 'Vigilance jaune', orange: 'Vigilance orange', rouge: 'Vigilance rouge',
+};
+// Un conseil concis par phénomène, dans l'esprit des recommandations
+// officielles Météo-France/gouvernementales (générique, pas de seuil
+// chiffré propre au département — on n'a pas cette donnée ici).
+const VIGILANCE_ADVICE = {
+  vent: 'Rangez ou fixez les objets sensibles au vent, évitez les zones boisées ou exposées',
+  pluie: 'Limitez vos déplacements, ne vous engagez pas sur une route inondée',
+  'pluie-inondation': 'Limitez vos déplacements, ne vous engagez pas sur une route inondée',
+  orages: 'Évitez les activités extérieures, abritez-vous en cas de foudre',
+  crues: 'Ne vous approchez pas des cours d\'eau, surveillez la montée des eaux',
+  neige: 'Limitez vos déplacements, équipez votre véhicule',
+  'neige-verglas': 'Limitez vos déplacements, équipez votre véhicule',
+  avalanches: 'Ne vous engagez pas hors-piste, respectez les fermetures',
+  canicule: 'Hydratez-vous régulièrement, évitez les efforts entre 12h et 16h',
+  'grand-froid': 'Couvrez-vous bien, limitez le temps passé dehors',
+  'grand_froid': 'Couvrez-vous bien, limitez le temps passé dehors',
+  submersion: 'Éloignez-vous du littoral, ne vous approchez pas des digues',
+  'vagues-submersion': 'Éloignez-vous du littoral, ne vous approchez pas des digues',
+};
+
+// Attache le comportement déplier/replier à un chip + panneau de détails.
+// Partagé par la bannière canicule et la bannière vigilance.
+// ──────────────────────────────────────────────────────────────────
+// SYNCHRO D'AFFICHAGE DES BANNIÈRES D'ALERTE — la canicule ne dépend
+// que d'un seul appel réseau (rapide) alors que la vigilance en
+// enchaîne deux (géocodage puis vigilance officielle). Sans coordonner,
+// la canicule s'affiche seule en premier, puis la vigilance apparaît
+// après coup et repousse tout le contenu déjà lu (layout shift gênant).
+// On retarde donc la révélation de la canicule jusqu'à ce que le sort
+// de la vigilance soit connu — affichée, masquée ou en échec — avec un
+// filet de sécurité si elle traîne anormalement.
+// ──────────────────────────────────────────────────────────────────
+const _alertGate = { vigilanceSettled: false, pendingReveal: null, timeoutId: null };
+
+function armAlertGateTimeout() {
+  clearTimeout(_alertGate.timeoutId);
+  _alertGate.vigilanceSettled = false;
+  _alertGate.timeoutId = setTimeout(() => {
+    if (!_alertGate.vigilanceSettled) { _alertGate.vigilanceSettled = true; tryRevealHeatwave(); }
+  }, 3000);
+}
+
+function markVigilanceSettled() {
+  _alertGate.vigilanceSettled = true;
+  clearTimeout(_alertGate.timeoutId);
+  tryRevealHeatwave();
+}
+
+function tryRevealHeatwave() {
+  if (_alertGate.vigilanceSettled && _alertGate.pendingReveal) {
+    _alertGate.pendingReveal();
+    _alertGate.pendingReveal = null;
+  }
+}
+
+function wireAlertToggle(chipId, detailsId) {
+  const chip = document.getElementById(chipId);
+  const details = document.getElementById(detailsId);
+  if (!chip || !details) return;
+  const toggle = () => {
+    const open = chip.classList.toggle('expanded');
+    details.classList.toggle('expanded', open);
+    chip.setAttribute('aria-expanded', String(open));
+  };
+  chip.addEventListener('click', toggle);
+  chip.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+  });
+}
+
+function renderVigilance(records) {
+  const banner = document.getElementById('vigilance-banner');
+  if (!banner) return;
+  if (!records || !records.length) { banner.style.display = 'none'; markVigilanceSettled(); return; }
+
+  const byEcheance = { J: [], J1: [] };
+  for (const rec of records) {
+    if (byEcheance[rec.echeance]) byEcheance[rec.echeance].push(rec);
+  }
+  const maxOf = list => list.reduce((m, r) => Math.max(m, VIGILANCE_SEVERITY[r.color] ?? 0), 0);
+  const sevToday    = maxOf(byEcheance.J);
+  const sevTomorrow = maxOf(byEcheance.J1);
+
+  // Rien de notable (jaune ou plus) ni aujourd'hui ni demain → masquée.
+  if (sevToday === 0 && sevTomorrow === 0) { banner.style.display = 'none'; markVigilanceSettled(); return; }
+
+  const isToday  = sevToday > 0;
+  const dayList  = isToday ? byEcheance.J : byEcheance.J1;
+  const daySev   = isToday ? sevToday : sevTomorrow;
+  const dayColor = Object.keys(VIGILANCE_SEVERITY).find(k => VIGILANCE_SEVERITY[k] === daySev);
+  const triggers = dayList.filter(r => VIGILANCE_SEVERITY[r.color] === daySev);
+  const uniquePhenomena = [...new Set(triggers.map(r => r.phenomenon))];
+
+  const icon  = uniquePhenomena.slice(0, 3).map(p => VIGILANCE_ICONS[p] || '⚠️').join(' ');
+  const names = uniquePhenomena.map(p => p.charAt(0).toUpperCase() + p.slice(1).replace(/[-_]/g, ' ')).join(', ');
+  const whenLabel = isToday ? "aujourd'hui" : 'demain';
+
+  // Période : fenêtre horaire englobant tous les phénomènes déclencheurs.
+  const fmtH = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+  const begins = triggers.map(r => r.begin_time).filter(Boolean).sort();
+  const ends   = triggers.map(r => r.end_time).filter(Boolean).sort();
+  const period = (begins.length && ends.length) ? `${fmtH(begins[0])}–${fmtH(ends[ends.length - 1])}` : 'Toute la journée';
+
+  // Tendance J+1 par rapport au niveau affiché.
+  let trendValue, trendSub;
+  if (isToday) {
+    if (sevTomorrow > sevToday)      { trendValue = '↗️ Aggravation'; trendSub = VIGILANCE_LABELS[Object.keys(VIGILANCE_SEVERITY).find(k => VIGILANCE_SEVERITY[k] === sevTomorrow)] || 'Vigilance verte'; }
+    else if (sevTomorrow < sevToday) { trendValue = '↘️ Amélioration'; trendSub = sevTomorrow > 0 ? VIGILANCE_LABELS[Object.keys(VIGILANCE_SEVERITY).find(k => VIGILANCE_SEVERITY[k] === sevTomorrow)] : 'Vigilance verte'; }
+    else                              { trendValue = '→ Stable'; trendSub = 'Même niveau demain'; }
+  } else {
+    trendValue = '—'; trendSub = "Rien de notable aujourd'hui";
+  }
+
+  const stat = (label, value, sub) => `
+    <div class="hw-stat">
+      <div class="hws-label">${label}</div>
+      <div class="hws-value">${value}</div>
+      <div class="hws-sub">${sub}</div>
+    </div>`;
+
+  const advice = uniquePhenomena
+    .map(p => [VIGILANCE_ICONS[p] || '⚠️', VIGILANCE_ADVICE[p]])
+    .filter(a => a[1])
+    .slice(0, 4);
+
+  const level = daySev >= 3 ? 'level-severe' : daySev >= 2 ? 'level-high' : 'level-warn';
+  banner.className = `alert-compact ${level}`;
+  banner.innerHTML = `
+    <div class="alert-chip" id="vig-chip" role="button" tabindex="0" aria-expanded="false">
+      <span class="alert-icon">${icon}</span>
+      <div class="alert-text">
+        <div class="alert-title">${VIGILANCE_LABELS[dayColor]} — ${names}</div>
+        <div class="alert-sub">${whenLabel} · ${period} · ${S.city}</div>
+      </div>
+      <span class="alert-chevron">▼</span>
+    </div>
+    <div class="alert-details" id="vig-details">
+      <div class="alert-details-inner">
+        <div class="hw-grid">
+          ${stat('⚠️ Phénomène(s)', names, `${uniquePhenomena.length} risque${uniquePhenomena.length > 1 ? 's' : ''} au niveau ${dayColor}`)}
+          ${stat('🎨 Niveau', dayColor.charAt(0).toUpperCase() + dayColor.slice(1), 'Échelle officielle Météo-France')}
+          ${stat('🕐 Période', period, `Vigilance ${whenLabel}`)}
+          ${stat('📅 Demain', trendValue, trendSub)}
+        </div>
+        <div class="hw-advice">
+          ${advice.map(a => `<span>${a[0]} ${a[1]}</span>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  banner.style.display = '';
+  wireAlertToggle('vig-chip', 'vig-details');
+  markVigilanceSettled();
+}
+
 function renderHeatwave(d) {
   const banner = document.getElementById('heatwave-banner');
   const dly = d.daily;
@@ -3887,26 +4152,35 @@ function renderHeatwave(d) {
         ['🌙', 'Aérez la nuit et tôt le matin'],
       ];
 
-  banner.className = `heatwave-banner ${level}`;
+  banner.className = `alert-compact ${level}`;
   banner.innerHTML = `
-    <div class="hw-head">
-      <span class="hw-icon">${icon}</span>
-      <div>
-        <div class="hw-title">${levelTxt} — ${S.city}</div>
-        <div class="hw-sub">${headline}</div>
+    <div class="alert-chip" id="hw-chip" role="button" tabindex="0" aria-expanded="false">
+      <span class="alert-icon">${icon}</span>
+      <div class="alert-text">
+        <div class="alert-title">${levelTxt} — ${S.city}</div>
+        <div class="alert-sub">${headline}</div>
       </div>
-      <span class="hw-badge">Vigilance chaleur</span>
+      <span class="alert-chevron">▼</span>
     </div>
-    <div class="hw-grid">
-      ${stat('🌡 Pic de chaleur', `${Math.round(peak)}°`, `Maximum ${peakDayLabel}`)}
-      ${stat('🥵 Ressenti max', feelsPeak > -99 ? `${Math.round(feelsPeak)}°` : '--', 'Température ressentie')}
-      ${stat('🌙 Nuits tropicales', `${tropicalNights}`, `Nuit ≥ ${NIGHT}°C`)}
-      ${stat('⏰ Heures à risque', riskWindow, `Jour de pic · ressenti ≥ ${riskThr}°C`)}
-    </div>
-    <div class="hw-advice">
-      ${advice.map(a => `<span>${a[0]} ${a[1]}</span>`).join('')}
+    <div class="alert-details" id="hw-details">
+      <div class="alert-details-inner">
+        <div class="hw-grid">
+          ${stat('🌡 Pic de chaleur', `${Math.round(peak)}°`, `Maximum ${peakDayLabel}`)}
+          ${stat('🥵 Ressenti max', feelsPeak > -99 ? `${Math.round(feelsPeak)}°` : '--', 'Température ressentie')}
+          ${stat('🌙 Nuits tropicales', `${tropicalNights}`, `Nuit ≥ ${NIGHT}°C`)}
+          ${stat('⏰ Heures à risque', riskWindow, `Jour de pic · ressenti ≥ ${riskThr}°C`)}
+        </div>
+        <div class="hw-advice">
+          ${advice.map(a => `<span>${a[0]} ${a[1]}</span>`).join('')}
+        </div>
+      </div>
     </div>`;
-  banner.style.display = '';
+  wireAlertToggle('hw-chip', 'hw-details');
+  // Contenu prêt, mais affichage différé tant que la vigilance (plus
+  // lente) n'a pas tranché — évite que la canicule s'affiche seule puis
+  // soit repoussée quand la vigilance apparaît juste au-dessus après coup.
+  _alertGate.pendingReveal = () => { banner.style.display = ''; };
+  tryRevealHeatwave();
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -4090,6 +4364,45 @@ async function loadAll() {
   fetchMarine()
     .then(renderWaterCard)
     .catch(err => { console.error('Erreur chargement données marines:', err); renderWaterCard(null); });
+
+  // Vigilance officielle Météo-France — France métropolitaine uniquement
+  // (voir isFranceMetropolitaine, déjà utilisé pour le coefficient de
+  // marée). Repli silencieux (bannière masquée) si le géocodage ou la
+  // vigilance échoue : ce n'est jamais l'app principale qui doit casser.
+  //
+  // On affiche un squelette DÈS MAINTENANT (avant le premier fetch) pour
+  // réserver la place au-dessus de la canicule : renderHeatwave() plus
+  // haut est synchrone donc quasi instantané, alors que la vigilance
+  // dépend de deux appels réseau enchaînés (géocodage puis vigilance).
+  // Sans ce squelette, la canicule apparaîtrait d'abord et la vigilance
+  // « sauterait » au-dessus d'elle une fois chargée — visuellement, on
+  // aurait l'impression que l'ordre voulu n'est pas respecté.
+  const vigilanceBanner = document.getElementById('vigilance-banner');
+  if (isFranceMetropolitaine(S.lat, S.lon, S.countryCode)) {
+    if (vigilanceBanner) {
+      vigilanceBanner.className = 'alert-skel';
+      vigilanceBanner.innerHTML = `
+        <div class="skel skel-icon"></div>
+        <div class="skel-lines">
+          <div class="skel skel-line"></div>
+          <div class="skel skel-line"></div>
+        </div>`;
+      vigilanceBanner.style.display = '';
+    }
+    resolveDepartmentCode(S.lat, S.lon)
+      .then(code => {
+        S.departmentCode = code;
+        if (!code) throw new Error('Département introuvable');
+        return fetchVigilance(code);
+      })
+      .then(renderVigilance)
+      .catch(err => {
+        console.error('Vigilance indisponible:', err);
+        if (vigilanceBanner) vigilanceBanner.style.display = 'none';
+      });
+  } else if (vigilanceBanner) {
+    vigilanceBanner.style.display = 'none';
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────
