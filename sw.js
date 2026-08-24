@@ -4,7 +4,7 @@
 //             Network-first pour les APIs météo
 // ──────────────────────────────────────────────────────────────────
 
-const CACHE_NAME   = 'weatherradar-v10';
+const CACHE_NAME   = 'weatherradar-v11';
 const OFFLINE_PAGE = '/';
 
 // Assets à mettre en cache immédiatement à l'installation
@@ -27,7 +27,7 @@ const API_ORIGINS = [
   'nominatim.openstreetmap.org',
   'data.geopf.fr',                   // Géocodage inverse (département, pour la vigilance)
   'public.opendatasoft.com',         // Vigilance Météo-France — donnée de sécurité,
-                                      // ne doit JAMAIS être servie depuis un cache obsolète
+// ne doit JAMAIS être servie depuis un cache obsolète
 ];
 
 // Bibliothèques JS/CSS versionnées (CDN) : cache-first, comme les polices —

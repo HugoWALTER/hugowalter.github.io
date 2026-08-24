@@ -884,6 +884,11 @@
       display: flex; flex-wrap: wrap; gap: 8px 18px;
     }
     .hw-advice span { display: inline-flex; align-items: center; gap: 6px; }
+    .alert-source-link {
+      display: inline-block; margin-top: 10px; font-size: 0.68rem;
+      color: var(--accent); text-decoration: none; opacity: 0.85;
+    }
+    .alert-source-link:hover { opacity: 1; text-decoration: underline; }
     @media (max-width: 700px) {
       .hw-grid { grid-template-columns: repeat(2, 1fr); }
       .hw-badge { margin-left: 0; }
@@ -901,7 +906,11 @@
       background: rgba(255,183,77,0.07); margin-bottom: 10px; overflow: hidden;
     }
     .alert-compact.level-high   { border-color: rgba(255,112,67,0.5);  background: rgba(255,112,67,0.09); }
-    .alert-compact.level-severe { border-color: rgba(244,67,54,0.55); background: rgba(244,67,54,0.11); }
+    .alert-compact.level-severe { border-color: rgba(244,67,54,0.55); background: rgba(244,67,54,0.11); animation: alertPulseSevere 2.2s ease-in-out infinite; }
+    @keyframes alertPulseSevere {
+      0%,100% { box-shadow: 0 0 0 rgba(244,67,54,0); }
+      50%     { box-shadow: 0 0 16px rgba(244,67,54,0.35); }
+    }
 
     .alert-chip {
       display: flex; align-items: center; gap: 10px;
@@ -2375,9 +2384,22 @@ async function fetchAQI() {
 // schéma de réponse (rétrocompatible), notamment le champ `context`
 // au format "44, Loire-Atlantique, Pays de la Loire".
 // ──────────────────────────────────────────────────────────────────
+// Fetch avec timeout — pour les appels dont un blocage réseau laisserait
+// une UI bloquée (ex. le squelette vigilance ne doit jamais rester figé
+// indéfiniment). N'affecte pas les autres fetch() de l'app.
+async function fetchWithTimeout(url, ms = 8000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function resolveDepartmentCode(lat, lon) {
   const u = `https://data.geopf.fr/geocodage/reverse/?lon=${lon}&lat=${lat}&limit=1`;
-  const r = await fetch(u);
+  const r = await fetchWithTimeout(u);
   if (!r.ok) throw new Error('Geocodage ' + r.status);
   const j = await r.json();
   const context = j.features?.[0]?.properties?.context;
@@ -2400,7 +2422,7 @@ async function fetchVigilance(departmentCode) {
   const base = 'https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets';
   const where = encodeURIComponent(`domain_id="${departmentCode}"`);
   const u = `${base}/weatherref-france-vigilance-meteo-departement/records?where=${where}&limit=20`;
-  const r = await fetch(u);
+  const r = await fetchWithTimeout(u);
   if (!r.ok) throw new Error('Vigilance ' + r.status);
   const j = await r.json();
   return j.results || [];
@@ -3984,12 +4006,27 @@ function renderVigilance(records) {
   const ends   = triggers.map(r => r.end_time).filter(Boolean).sort();
   const period = (begins.length && ends.length) ? `${fmtH(begins[0])}–${fmtH(ends[ends.length - 1])}` : 'Toute la journée';
 
-  // Tendance J+1 par rapport au niveau affiché.
+  // Tendance J+1 : sensible au NIVEAU mais aussi au PHÉNOMÈNE. À niveau
+  // égal, un risque qui change de nature (ex. vent → orages) n'est pas
+  // vraiment "stable" pour l'utilisateur, même si la couleur ne bouge pas.
+  const tomorrowTriggers = byEcheance.J1.filter(r => VIGILANCE_SEVERITY[r.color] === sevTomorrow);
+  const tomorrowPhenomena = new Set(tomorrowTriggers.map(r => r.phenomenon));
+  const samePhenomena = uniquePhenomena.length === tomorrowPhenomena.size
+    && uniquePhenomena.every(p => tomorrowPhenomena.has(p));
+
   let trendValue, trendSub;
   if (isToday) {
-    if (sevTomorrow > sevToday)      { trendValue = '↗️ Aggravation'; trendSub = VIGILANCE_LABELS[Object.keys(VIGILANCE_SEVERITY).find(k => VIGILANCE_SEVERITY[k] === sevTomorrow)] || 'Vigilance verte'; }
-    else if (sevTomorrow < sevToday) { trendValue = '↘️ Amélioration'; trendSub = sevTomorrow > 0 ? VIGILANCE_LABELS[Object.keys(VIGILANCE_SEVERITY).find(k => VIGILANCE_SEVERITY[k] === sevTomorrow)] : 'Vigilance verte'; }
-    else                              { trendValue = '→ Stable'; trendSub = 'Même niveau demain'; }
+    const tomorrowColor = Object.keys(VIGILANCE_SEVERITY).find(k => VIGILANCE_SEVERITY[k] === sevTomorrow);
+    if (sevTomorrow > sevToday) {
+      trendValue = '↗️ Aggravation'; trendSub = VIGILANCE_LABELS[tomorrowColor] || 'Vigilance verte';
+    } else if (sevTomorrow < sevToday) {
+      trendValue = '↘️ Amélioration'; trendSub = sevTomorrow > 0 ? VIGILANCE_LABELS[tomorrowColor] : 'Vigilance verte';
+    } else if (!samePhenomena && sevTomorrow > 0) {
+      const tomorrowNames = [...tomorrowPhenomena].map(p => p.charAt(0).toUpperCase() + p.slice(1).replace(/[-_]/g, ' ')).join(', ');
+      trendValue = '⇄ Autre risque'; trendSub = `Même niveau, ${tomorrowNames} demain`;
+    } else {
+      trendValue = '→ Stable'; trendSub = 'Même risque demain';
+    }
   } else {
     trendValue = '—'; trendSub = "Rien de notable aujourd'hui";
   }
@@ -4028,6 +4065,9 @@ function renderVigilance(records) {
         <div class="hw-advice">
           ${advice.map(a => `<span>${a[0]} ${a[1]}</span>`).join('')}
         </div>
+        <a class="alert-source-link" href="https://vigilance.meteofrance.fr/" target="_blank" rel="noopener">
+          Voir la carte officielle sur vigilance.meteofrance.fr ↗
+        </a>
       </div>
     </div>`;
   banner.style.display = '';
@@ -4324,6 +4364,47 @@ function applyWeatherEffect(effect) {
 // ──────────────────────────────────────────────────────────────────
 // LOAD ALL DATA
 // ──────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────
+// CACHE DÉPARTEMENT — le département d'une position ne change jamais :
+// on l'enregistre une fois pour toutes (clé = lat/lon arrondis à 0,01°,
+// ~1km, largement suffisant face à la taille d'un département) pour ne
+// plus jamais re-solliciter le géocodage sur une ville déjà visitée.
+// ──────────────────────────────────────────────────────────────────
+function deptCacheKey(lat, lon) { return `${lat.toFixed(2)},${lon.toFixed(2)}`; }
+
+function getCachedDepartmentCode(lat, lon) {
+  try {
+    const cache = JSON.parse(localStorage.getItem('wr_dept_cache') || '{}');
+    return cache[deptCacheKey(lat, lon)] || null;
+  } catch (e) { return null; }
+}
+
+function setCachedDepartmentCode(lat, lon, code) {
+  try {
+    const cache = JSON.parse(localStorage.getItem('wr_dept_cache') || '{}');
+    cache[deptCacheKey(lat, lon)] = code;
+    const keys = Object.keys(cache);
+    if (keys.length > 40) delete cache[keys[0]]; // reste petit, pas la peine de tout garder
+    localStorage.setItem('wr_dept_cache', JSON.stringify(cache));
+  } catch (e) {}
+}
+
+// Actualisation périodique de la vigilance — une donnée de sécurité ne
+// doit pas rester figée à ce qu'elle était au chargement de la page si
+// l'onglet reste ouvert plusieurs heures (le radar se rafraîchit déjà
+// toutes les 10 min, même logique ici). On annule tout intervalle
+// précédent pour ne pas en accumuler à chaque changement de ville.
+let vigilanceRefreshTimer = null;
+function scheduleVigilanceRefresh() {
+  if (vigilanceRefreshTimer) clearInterval(vigilanceRefreshTimer);
+  if (!S.departmentCode) return;
+  vigilanceRefreshTimer = setInterval(() => {
+    fetchVigilance(S.departmentCode)
+      .then(renderVigilance)
+      .catch(err => console.error('Actualisation vigilance échouée:', err));
+  }, 900000); // 15 min
+}
+
 async function loadAll() {
   updateMarker();
   document.getElementById('city-name').textContent    = S.city;
@@ -4333,6 +4414,43 @@ async function loadAll() {
   // Show skeleton
   document.getElementById('today-skeleton').style.display = 'block';
   document.getElementById('today-content').style.display  = 'none';
+
+  // Vigilance : on lance la résolution du département DÈS MAINTENANT, en
+  // parallèle du chargement météo (elle n'en dépend pas) — inutile de la
+  // faire attendre. Si on l'a déjà en cache pour cette ville (localStorage),
+  // on saute directement l'étape géocodage. Le squelette est affiché tout
+  // de suite pour réserver la place au-dessus de la canicule.
+  //
+  // armAlertGateTimeout() pose le filet de sécurité (3s) qui libère la
+  // canicule même si la vigilance ne répond jamais — sans cet appel, une
+  // ville hors de France ou un échec réseau bloquait la canicule pour de
+  // bon (porte jamais libérée). On l'arme dans tous les cas.
+  armAlertGateTimeout();
+  const vigilanceBanner = document.getElementById('vigilance-banner');
+  let departmentPromise = null;
+  if (isFranceMetropolitaine(S.lat, S.lon, S.countryCode)) {
+    if (vigilanceBanner) {
+      vigilanceBanner.className = 'alert-skel';
+      vigilanceBanner.innerHTML = `
+        <div class="skel skel-icon"></div>
+        <div class="skel-lines">
+          <div class="skel skel-line"></div>
+          <div class="skel skel-line"></div>
+        </div>`;
+      vigilanceBanner.style.display = '';
+    }
+    departmentPromise = (() => {
+      const cached = getCachedDepartmentCode(S.lat, S.lon);
+      if (cached) return Promise.resolve(cached);
+      return resolveDepartmentCode(S.lat, S.lon).then(code => {
+        if (code) setCachedDepartmentCode(S.lat, S.lon, code);
+        return code;
+      });
+    })().then(code => { S.departmentCode = code; return code; });
+  } else if (vigilanceBanner) {
+    vigilanceBanner.style.display = 'none';
+    markVigilanceSettled(); // rien à attendre hors de France : libère tout de suite
+  }
 
   try {
     const wData = await fetchWeather();
@@ -4365,43 +4483,22 @@ async function loadAll() {
     .then(renderWaterCard)
     .catch(err => { console.error('Erreur chargement données marines:', err); renderWaterCard(null); });
 
-  // Vigilance officielle Météo-France — France métropolitaine uniquement
-  // (voir isFranceMetropolitaine, déjà utilisé pour le coefficient de
-  // marée). Repli silencieux (bannière masquée) si le géocodage ou la
-  // vigilance échoue : ce n'est jamais l'app principale qui doit casser.
-  //
-  // On affiche un squelette DÈS MAINTENANT (avant le premier fetch) pour
-  // réserver la place au-dessus de la canicule : renderHeatwave() plus
-  // haut est synchrone donc quasi instantané, alors que la vigilance
-  // dépend de deux appels réseau enchaînés (géocodage puis vigilance).
-  // Sans ce squelette, la canicule apparaîtrait d'abord et la vigilance
-  // « sauterait » au-dessus d'elle une fois chargée — visuellement, on
-  // aurait l'impression que l'ordre voulu n'est pas respecté.
-  const vigilanceBanner = document.getElementById('vigilance-banner');
-  if (isFranceMetropolitaine(S.lat, S.lon, S.countryCode)) {
-    if (vigilanceBanner) {
-      vigilanceBanner.className = 'alert-skel';
-      vigilanceBanner.innerHTML = `
-        <div class="skel skel-icon"></div>
-        <div class="skel-lines">
-          <div class="skel skel-line"></div>
-          <div class="skel skel-line"></div>
-        </div>`;
-      vigilanceBanner.style.display = '';
-    }
-    resolveDepartmentCode(S.lat, S.lon)
+  // Vigilance officielle Météo-France — la résolution du département a
+  // déjà été lancée en parallèle tout en haut de la fonction (voir
+  // departmentPromise) ; on enchaîne simplement ici avec la vigilance
+  // elle-même, avec repli silencieux si quoi que ce soit échoue.
+  if (departmentPromise) {
+    departmentPromise
       .then(code => {
-        S.departmentCode = code;
         if (!code) throw new Error('Département introuvable');
         return fetchVigilance(code);
       })
-      .then(renderVigilance)
+      .then(records => { renderVigilance(records); scheduleVigilanceRefresh(); })
       .catch(err => {
         console.error('Vigilance indisponible:', err);
         if (vigilanceBanner) vigilanceBanner.style.display = 'none';
+        markVigilanceSettled(); // échec = sort connu, inutile d'attendre le filet de sécurité
       });
-  } else if (vigilanceBanner) {
-    vigilanceBanner.style.display = 'none';
   }
 }
 
