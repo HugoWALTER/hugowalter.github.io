@@ -200,6 +200,31 @@
       to   { transform: scale(1.12); opacity: 1; }
     }
 
+    /* ── Nuit claire (ciel dégagé/peu nuageux, is_day=0) ────────────
+       Remplace l'effet "sun" la nuit : sans ce correctif, un ciel
+       dégagé à 23h affichait quand même des rayons de soleil. Réutilise
+       la vraie phase lunaire déjà calculée ailleurs dans l'app plutôt
+       qu'un croissant générique. ── */
+    .night-moon-glow {
+      position: absolute; top: -160px; right: -160px;
+      width: 440px; height: 440px;
+      background: radial-gradient(circle, rgba(180,190,220,0.10) 0%, rgba(140,150,190,0.03) 50%, transparent 70%);
+      border-radius: 50%;
+      animation: pulse-glow 6s ease-in-out infinite alternate;
+    }
+    .stars { position: absolute; inset: 0; overflow: hidden; }
+    .star {
+      position: absolute; border-radius: 50%; background: #fff;
+      animation: star-twinkle ease-in-out infinite;
+    }
+    @keyframes star-twinkle {
+      0%, 100% { opacity: var(--star-min, 0.15); }
+      50%      { opacity: var(--star-max, 0.9); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .star { animation: none; opacity: 0.5; }
+    }
+
     /* ── Storm ───────────────────────────────────────────────────── */
     .thunder-flash {
       position: absolute; inset: 0;
@@ -953,6 +978,11 @@
     }
     @keyframes shimmer { to { background-position: -200% 0; } }
     .skel-line { height: 12px; margin-bottom: 8px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .skel { animation: none; }
+      .alert-compact.level-severe { animation: none; }
+    }
 
     /* Squelette du chip vigilance — occupe la même place qu'un chip
        résolu, affiché dès qu'on sait qu'un appel vigilance va être tenté,
@@ -2570,7 +2600,7 @@ function renderToday(d) {
   document.getElementById('today-skeleton').style.display = 'none';
   document.getElementById('today-content').style.display  = 'block';
 
-  applyWeatherEffect(info.effect);
+  applyWeatherEffect(cw.is_day === 0 && info.effect === 'sun' ? 'clear-night' : info.effect);
   buildInlineChart(d);
 }
 
@@ -4031,6 +4061,12 @@ function renderVigilance(records) {
     trendValue = '—'; trendSub = "Rien de notable aujourd'hui";
   }
 
+  // Heure du bulletin officiel (product_datetime), pas l'heure de
+  // récupération côté client — répond à "c'est frais ou périmé ?" sans
+  // avoir à ouvrir le détail.
+  const bulletinTime = records.find(r => r.product_datetime)?.product_datetime;
+  const bulletinLabel = bulletinTime ? ` · bulletin ${fmtH(bulletinTime)}` : '';
+
   const stat = (label, value, sub) => `
     <div class="hw-stat">
       <div class="hws-label">${label}</div>
@@ -4050,7 +4086,7 @@ function renderVigilance(records) {
       <span class="alert-icon">${icon}</span>
       <div class="alert-text">
         <div class="alert-title">${VIGILANCE_LABELS[dayColor]} — ${names}</div>
-        <div class="alert-sub">${whenLabel} · ${period} · ${S.city}</div>
+        <div class="alert-sub">${whenLabel} · ${period}${bulletinLabel} · ${S.city}</div>
       </div>
       <span class="alert-chevron">▼</span>
     </div>
@@ -4289,6 +4325,26 @@ function applyWeatherEffect(effect) {
     o.appendChild(Object.assign(document.createElement('div'), { className:'sun-ray' }));
     o.appendChild(Object.assign(document.createElement('div'), { className:'sun-glow' }));
     o.appendChild(Object.assign(document.createElement('div'), { className:'sun-haze' }));
+  }
+
+  if (effect === 'clear-night') {
+    o.appendChild(Object.assign(document.createElement('div'), { className:'night-moon-glow' }));
+    const starsWrap = Object.assign(document.createElement('div'), { className:'stars' });
+    for (let i = 0; i < 70; i++) {
+      const s = Object.assign(document.createElement('div'), { className:'star' });
+      const sz = 1 + Math.random() * 1.6;
+      Object.assign(s.style, {
+        left:   `${Math.random()*100}%`,
+        top:    `${Math.random()*55}%`, // partie haute du ciel, cohérent avec le halo lunaire en coin
+        width:  `${sz}px`, height: `${sz}px`,
+        animationDuration: `${2+Math.random()*3.5}s`,
+        animationDelay:    `${-(Math.random()*4)}s`,
+      });
+      s.style.setProperty('--star-min', (0.1 + Math.random()*0.15).toFixed(2));
+      s.style.setProperty('--star-max', (0.6 + Math.random()*0.4).toFixed(2));
+      starsWrap.appendChild(s);
+    }
+    o.appendChild(starsWrap);
   }
 
   if (effect === 'cloud') {
