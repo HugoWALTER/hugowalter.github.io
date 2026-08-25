@@ -225,6 +225,26 @@
       .star { animation: none; opacity: 0.5; }
     }
 
+    /* ── Vent (overlay, se superpose à l'effet en cours) ────────────
+       Se déclenche au-delà d'un seuil de vitesse, quel que soit le
+       ciel (soleil, nuit, nuageux, brouillard, pluie légère) — pas un
+       effet à part, un filet discret par-dessus. Volontairement absent
+       de l'orage/pluie forte/neige, où il n'ajouterait que du bruit
+       visuel à des effets déjà chargés. ── */
+    .wind-streaks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .wind-streak {
+      position: absolute; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+      animation: wind-blow linear infinite;
+    }
+    @keyframes wind-blow {
+      from { transform: translateX(-120px); }
+      to   { transform: translateX(calc(100vw + 120px)); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wind-streak { animation: none; display: none; }
+    }
+
     /* ── Storm ───────────────────────────────────────────────────── */
     .thunder-flash {
       position: absolute; inset: 0;
@@ -2461,8 +2481,8 @@ async function fetchVigilance(departmentCode) {
 async function fetchMarine() {
   const u = `https://marine-api.open-meteo.com/v1/marine`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=sea_surface_temperature,ocean_current_velocity,ocean_current_direction`
-    + `&daily=sea_surface_temperature_max,sea_surface_temperature_min`
+    + `&hourly=sea_surface_temperature,wave_height,wave_period,wave_direction`
+    + `&daily=sea_surface_temperature_max,sea_surface_temperature_min,wave_height_max`
     + `&timezone=auto&forecast_days=2`;
   const r = await fetch(u);
   if (!r.ok) throw new Error('Marine ' + r.status);
@@ -2600,7 +2620,7 @@ function renderToday(d) {
   document.getElementById('today-skeleton').style.display = 'none';
   document.getElementById('today-content').style.display  = 'block';
 
-  applyWeatherEffect(cw.is_day === 0 && info.effect === 'sun' ? 'clear-night' : info.effect);
+  applyWeatherEffect(cw.is_day === 0 && info.effect === 'sun' ? 'clear-night' : info.effect, cw.windspeed ?? 0);
   buildInlineChart(d);
 }
 
@@ -3878,17 +3898,35 @@ function renderWaterCard(marine) {
   const diffTxt = diff != null ? `${diff >= 0 ? '+' : '−'}${Math.abs(Math.round(diff))}°` : '--';
   const airTxt = hasAir ? `Air ${Math.round(air)}°` : 'Air indisponible';
 
-  // ── Courant marin ─────────────────────────────────────────────────
-  const ocVel = hi.ocean_current_velocity?.[idx];
-  const ocDir = hi.ocean_current_direction?.[idx];
+  // ── Demain ─────────────────────────────────────────────────────────
+  // Donnée simple et sans jargon pour un public général : l'eau sera-t-elle
+  // plus chaude ou plus froide demain ? Utilise le jour 2 de la prévision
+  // marine (forecast_days=2, déjà demandé) — aucun appel réseau en plus.
+  const tMaxTomorrow = day.sea_surface_temperature_max && day.sea_surface_temperature_max[1];
+  const hasTomorrow = tMaxTomorrow != null && isFinite(tMaxTomorrow);
+  const tomorrowVal = hasTomorrow ? fmtT(tMaxTomorrow) : '--';
+  let tomorrowSub = 'Indisponible';
+  if (hasTomorrow && tMax != null && isFinite(tMax)) {
+    const deltaTomorrow = tMaxTomorrow - tMax;
+    tomorrowSub = Math.abs(deltaTomorrow) < 0.3
+      ? 'Stable par rapport à aujourd\'hui'
+      : deltaTomorrow > 0 ? '↗️ Un peu plus chaude' : '↘️ Un peu plus fraîche';
+  }
+
   function compassDir(deg) {
     if (deg == null || !isFinite(deg)) return null;
     return ['N','NE','E','SE','S','SO','O','NO'][Math.round(deg / 45) % 8];
   }
-  const ocVelKmh = ocVel != null ? (ocVel * 3.6).toFixed(2) : null;
-  const ocDirLabel = compassDir(ocDir);
-  const currentVal = ocVelKmh != null ? `${ocVelKmh} km/h` : '--';
-  const currentSub = ocDirLabel ? `Direction ${ocDirLabel}` : 'Courant de surface';
+
+  // ── Houle ──────────────────────────────────────────────────────────
+  const waveH   = hi.wave_height?.[idx];
+  const waveP   = hi.wave_period?.[idx];
+  const waveDir = compassDir(hi.wave_direction?.[idx]);
+  const hasWave = waveH != null && isFinite(waveH);
+  const waveVal = hasWave ? `${waveH.toFixed(1)} m` : '--';
+  const waveSub = hasWave
+    ? [waveP != null ? `${Math.round(waveP)} s` : null, waveDir].filter(Boolean).join(' · ')
+    : 'Indisponible ici';
 
   document.getElementById('water-body').innerHTML = `
     <div class="water-main">
@@ -3902,9 +3940,10 @@ function renderWaterCard(marine) {
       </div>
     </div>
     <div class="water-sub-grid">
-      <div class="water-sub-item"><div class="wsi-label">🌊 Courant marin</div><div class="wsi-value">${currentVal}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2);margin-top:2px">${currentSub}</div></div>
+      <div class="water-sub-item"><div class="wsi-label">🌊 Houle</div><div class="wsi-value">${waveVal}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2);margin-top:2px">${waveSub}</div></div>
       <div class="water-sub-item"><div class="wsi-label">📊 Min / Max jour</div><div class="wsi-value">${fmtT(tMin)} / ${fmtT(tMax)}</div></div>
       <div class="water-sub-item"><div class="wsi-label">🆚 Eau vs air</div><div class="wsi-value">${diffTxt}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2)">${airTxt}</div></div>
+      <div class="water-sub-item"><div class="wsi-label">📅 Demain</div><div class="wsi-value">${tomorrowVal}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2)">${tomorrowSub}</div></div>
     </div>`;
   card.style.display = '';
 }
@@ -4266,7 +4305,7 @@ function clearEffects() {
   document.getElementById('weather-overlay').innerHTML = '';
 }
 
-function applyWeatherEffect(effect) {
+function applyWeatherEffect(effect, windSpeed = 0) {
   clearEffects();
   const o = document.getElementById('weather-overlay');
 
@@ -4355,6 +4394,26 @@ function applyWeatherEffect(effect) {
   if (effect === 'fog') {
     o.appendChild(Object.assign(document.createElement('div'), { className:'fog-layer' }));
     o.appendChild(Object.assign(document.createElement('div'), { className:'cloud-layer' }));
+  }
+
+  // Vent — overlay discret, ajouté par-dessus l'effet déjà posé ci-dessus.
+  // Volontairement pas mélangé à l'orage/pluie forte/neige (déjà chargés).
+  const WIND_THRESHOLD = 35; // km/h — à partir de là, le vent se voit/s'entend
+  if (windSpeed >= WIND_THRESHOLD && !['storm', 'heavyrain', 'snow'].includes(effect)) {
+    const n = Math.min(22, Math.round((windSpeed - WIND_THRESHOLD) / 4) + 6);
+    const wrap = Object.assign(document.createElement('div'), { className: 'wind-streaks' });
+    for (let i = 0; i < n; i++) {
+      const s = Object.assign(document.createElement('div'), { className: 'wind-streak' });
+      Object.assign(s.style, {
+        top:               `${Math.random() * 100}%`,
+        width:             `${40 + Math.random() * 90}px`,
+        opacity:           0.15 + Math.random() * 0.25,
+        animationDuration: `${1.2 + Math.random() * 1.6}s`,
+        animationDelay:    `${-(Math.random() * 3)}s`,
+      });
+      wrap.appendChild(s);
+    }
+    o.appendChild(wrap);
   }
 }
 
