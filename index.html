@@ -230,17 +230,42 @@
        ciel (soleil, nuit, nuageux, brouillard, pluie légère) — pas un
        effet à part, un filet discret par-dessus. Volontairement absent
        de l'orage/pluie forte/neige, où il n'ajouterait que du bruit
-       visuel à des effets déjà chargés. ── */
-    .wind-streaks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+       visuel à des effets déjà chargés.
+       Le blend "screen" fait que chaque trait s'éclaircit sur n'importe
+       quel fond (nuit, soleil, brouillard) au lieu de rester plaqué en
+       gris terne — c'est ce qui le rendait presque invisible avant. ── */
+    .wind-streaks {
+      position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+      mix-blend-mode: screen;
+    }
     .wind-streak {
-      position: absolute; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+      position: absolute; left: 0; top: 0;
+      border-radius: 4px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(199,224,255,0.9) 42%,
+        #ffffff 52%,
+        rgba(199,224,255,0.9) 62%,
+        transparent 100%);
+      filter: drop-shadow(0 0 5px rgba(170,205,255,0.65));
       animation: wind-blow linear infinite;
+      will-change: transform, opacity;
+    }
+    /* Rafale : trait plus court, plus vif, plus lumineux — pose une
+       seconde couche de lecture au-dessus du flux continu et plus doux. */
+    .wind-streak.is-gust {
+      border-radius: 2px;
+      filter: drop-shadow(0 0 9px rgba(200,225,255,0.85));
     }
     @keyframes wind-blow {
-      from { transform: translateX(-120px); }
-      to   { transform: translateX(calc(100vw + 120px)); }
+      0%   { transform: translateX(-16vw) scaleX(0.5); opacity: 0; }
+      12%  { opacity: var(--streak-op, 0.5); }
+      82%  { opacity: var(--streak-op, 0.5); }
+      100% { transform: translateX(116vw) scaleX(1.05); opacity: 0; }
     }
+    /* Vent inversé (composante ouest) : mêmes traits, sens miroir —
+       pas besoin d'un second jeu de keyframes. */
+    .wind-streaks.reverse .wind-streak { animation-direction: reverse; }
     @media (prefers-reduced-motion: reduce) {
       .wind-streak { animation: none; display: none; }
     }
@@ -889,7 +914,7 @@
     .water-comfort-name { font-family: var(--fd); font-size: 1.05rem; font-weight: 700; }
     .water-comfort-sub  { font-size: 0.74rem; color: var(--txt2); margin-top: 2px; max-width: 220px; line-height: 1.4; }
     .water-sub-grid {
-      flex: 1; min-width: 200px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      flex: 1; min-width: 200px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
     }
     .water-sub-item {
       padding: 10px 12px; border-radius: var(--radius-sm);
@@ -897,9 +922,6 @@
     }
     .water-sub-item .wsi-label { font-size: 0.64rem; text-transform: uppercase; color: var(--txt2); letter-spacing: 0; }
     .water-sub-item .wsi-value { font-family: var(--fd); font-size: 1.05rem; font-weight: 700; margin-top: 3px; }
-    @media (max-width: 560px) {
-      .water-sub-grid { grid-template-columns: repeat(2, 1fr); }
-    }
 
     /* ══════════════════════════════════════════════════════════════
        ALERTE CANICULE / FORTE CHALEUR — contenu du panneau déplié
@@ -1248,9 +1270,9 @@
 <body>
 
 <!-- Atmospheric background canvas -->
-<canvas id="atmo-canvas"></canvas>
+<canvas id="atmo-canvas" aria-hidden="true"></canvas>
 <!-- Weather effects overlay -->
-<div id="weather-overlay"></div>
+<div id="weather-overlay" aria-hidden="true"></div>
 
 <div class="app-shell">
 
@@ -2620,7 +2642,7 @@ function renderToday(d) {
   document.getElementById('today-skeleton').style.display = 'none';
   document.getElementById('today-content').style.display  = 'block';
 
-  applyWeatherEffect(cw.is_day === 0 && info.effect === 'sun' ? 'clear-night' : info.effect, cw.windspeed ?? 0);
+  applyWeatherEffect(cw.is_day === 0 && info.effect === 'sun' ? 'clear-night' : info.effect, cw.windspeed ?? 0, cw.winddirection);
   buildInlineChart(d);
 }
 
@@ -4305,7 +4327,7 @@ function clearEffects() {
   document.getElementById('weather-overlay').innerHTML = '';
 }
 
-function applyWeatherEffect(effect, windSpeed = 0) {
+function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null) {
   clearEffects();
   const o = document.getElementById('weather-overlay');
 
@@ -4400,17 +4422,38 @@ function applyWeatherEffect(effect, windSpeed = 0) {
   // Volontairement pas mélangé à l'orage/pluie forte/neige (déjà chargés).
   const WIND_THRESHOLD = 35; // km/h — à partir de là, le vent se voit/s'entend
   if (windSpeed >= WIND_THRESHOLD && !['storm', 'heavyrain', 'snow'].includes(effect)) {
-    const n = Math.min(22, Math.round((windSpeed - WIND_THRESHOLD) / 4) + 6);
+    // 0 au seuil, 1 vers 90 km/h — pilote le nombre de traits, leur
+    // vitesse, leur longueur et leur intensité lumineuse d'un seul geste.
+    const intensity = Math.min(1, (windSpeed - WIND_THRESHOLD) / 55);
+    const n = Math.round(11 + intensity * 15); // 11 → 26 traits
     const wrap = Object.assign(document.createElement('div'), { className: 'wind-streaks' });
+
+    // Sens de défilement à l'écran déduit de la direction météo réelle.
+    // windDirDeg = direction D'OÙ vient le vent ; le déplacement visuel
+    // va donc à l'opposé. On ne retient que la composante est/ouest —
+    // un vent plein nord ou plein sud garde le défilement par défaut
+    // (gauche → droite), qui reste le plus lisible.
+    if (typeof windDirDeg === 'number' && !Number.isNaN(windDirDeg)) {
+      const travelAngle = (windDirDeg + 180) % 360;
+      const eastward = Math.sin(travelAngle * Math.PI / 180);
+      if (eastward < -0.2) wrap.classList.add('reverse');
+    }
+
     for (let i = 0; i < n; i++) {
       const s = Object.assign(document.createElement('div'), { className: 'wind-streak' });
+      const isGust = Math.random() < 0.2 + intensity * 0.25;
+      if (isGust) s.classList.add('is-gust');
+      const len   = (isGust ? 85 : 46) + Math.random() * (65 + intensity * 85);
+      const dur   = Math.max(0.55, (isGust ? 0.75 : 1.5) - intensity * 0.6 + Math.random() * 0.55);
+      const op    = (isGust ? 0.45 : 0.28) + intensity * 0.28 + Math.random() * 0.12;
       Object.assign(s.style, {
         top:               `${Math.random() * 100}%`,
-        width:             `${40 + Math.random() * 90}px`,
-        opacity:           0.15 + Math.random() * 0.25,
-        animationDuration: `${1.2 + Math.random() * 1.6}s`,
+        width:             `${len}px`,
+        height:            isGust ? '2.5px' : '1.5px',
+        animationDuration: `${dur}s`,
         animationDelay:    `${-(Math.random() * 3)}s`,
       });
+      s.style.setProperty('--streak-op', op.toFixed(2));
       wrap.appendChild(s);
     }
     o.appendChild(wrap);
