@@ -3329,6 +3329,9 @@ function renderStats(d) {
 
   // ── Humidité relative actuelle ────────────────────────────────────
   const humNow = nowIdxStat >= 0 ? Math.round(d.hourly.relativehumidity_2m[nowIdxStat]) : null;
+  // Point de rosée : déjà présent dans la réponse API (dewpoint_2m), simplement
+  // jamais lu jusqu'ici. Même indice que humNow (même heure, même garde nowIdxStat).
+  const dewNow = nowIdxStat >= 0 ? Math.round(d.hourly.dewpoint_2m[nowIdxStat]) : null;
   function humLabel(v) {
     if (v === null) return { txt:'N/A', color:'var(--txt2)' };
     if (v < 30) return { txt:'Très sec',    color:'#ff9800' };
@@ -3455,7 +3458,7 @@ function renderStats(d) {
       sub: sunshinePct !== null ? `${sunshinePct}% du jour` : 'Durée d\'insolation' },
     { icon:'💧', label:'Humidité relative',
       value: humNow !== null ? `<span style="color:${humL.color};font-weight:700">${humNow}%</span>` : '--',
-      sub: humL.txt },
+      sub: dewNow !== null ? `${humL.txt} · Rosée ${dewNow}°` : humL.txt },
     { icon:'👁', label:'Visibilité',
       value: visKm !== null ? `${visKm.toFixed(1)} km` : '--',
       sub: visL.txt },
