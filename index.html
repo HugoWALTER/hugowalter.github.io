@@ -139,14 +139,14 @@
       background: radial-gradient(ellipse 60% 22% at 20% 15%, rgba(200,213,235,0.35) 0%, rgba(160,178,210,0.15) 50%, transparent 72%),
                   radial-gradient(ellipse 50% 18% at 70% 40%, rgba(190,205,230,0.28) 0%, rgba(150,168,202,0.12) 50%, transparent 72%),
                   radial-gradient(ellipse 70% 26% at 40% 70%, rgba(180,196,224,0.22) 0%, rgba(140,158,195,0.10) 50%, transparent 72%);
-      animation: drift-clouds 42s linear infinite;
+      animation: drift-clouds 11s linear infinite alternate;
     }
     .cloud-layer.layer2 {
       background: radial-gradient(ellipse 45% 17% at 8% 55%, rgba(185,200,228,0.22) 0%, rgba(150,168,202,0.09) 50%, transparent 70%),
                   radial-gradient(ellipse 55% 20% at 55% 18%, rgba(195,209,232,0.24) 0%, rgba(155,172,205,0.09) 50%, transparent 70%),
                   radial-gradient(ellipse 40% 16% at 88% 62%, rgba(175,192,222,0.19) 0%, transparent 70%);
-      animation-duration: 62s;
-      animation-direction: reverse;
+      animation-duration: 16s;
+      animation-direction: alternate-reverse;
       opacity: 0.8;
     }
     @keyframes drift-clouds {
@@ -155,21 +155,28 @@
     }
 
     /* ── Fog ─────────────────────────────────────────────────────── */
-    /* Se pose par-dessus .cloud-layer (déjà recalibrée ci-dessus) : les
-       alpha ici sont volontairement plus mesurés (~2,5x l'original,
-       pic combiné mesuré ~98/255) puisqu'elle s'ajoute à une couche déjà
-       visible plutôt que de porter tout l'effet seule. Dérive latérale
-       lente en plus de la pulsation — la version précédente ne faisait
-       que pulser sur place, ce qui se lisait à peine comme du brouillard. */
+    /* Se pose par-dessus .cloud-layer (déjà recalibrée ci-dessus). Une
+       vraie nappe plutôt qu'un voile diffus sur toute la hauteur : dense
+       dans le bas/milieu de l'écran, dégagé au-dessus — la version
+       précédente étalait la même densité du haut en bas, ce qui ne se
+       lisait pas comme "une couche de brouillard posée au sol" mais comme
+       un filtre uniforme. Alpha calibrés par mesure (pic combiné avec
+       .cloud-layer ~100/255). Dérive latérale lente en plus de la
+       pulsation — la version d'avant ne faisait que pulser sur place. */
     .fog-layer {
       position: absolute;
       width: 180%;
       height: 100%;
       top: 0; left: -40%;
-      background: linear-gradient(to bottom, rgba(195,210,235,0.15) 0%, rgba(170,185,215,0.10) 45%, transparent 85%),
-                  radial-gradient(ellipse 40% 30% at 20% 72%, rgba(205,218,238,0.10) 0%, transparent 70%),
-                  radial-gradient(ellipse 36% 26% at 62% 42%, rgba(198,212,234,0.09) 0%, transparent 70%),
-                  radial-gradient(ellipse 42% 28% at 88% 80%, rgba(190,205,230,0.08) 0%, transparent 70%);
+      background: linear-gradient(to bottom,
+                    transparent 0%, transparent 32%,
+                    rgba(170,185,215,0.08) 45%,
+                    rgba(190,205,230,0.16) 62%,
+                    rgba(198,213,236,0.21) 80%,
+                    rgba(198,213,236,0.19) 100%),
+                  radial-gradient(ellipse 46% 20% at 15% 76%, rgba(205,218,238,0.14) 0%, transparent 72%),
+                  radial-gradient(ellipse 40% 18% at 58% 66%, rgba(198,212,234,0.13) 0%, transparent 72%),
+                  radial-gradient(ellipse 48% 22% at 90% 84%, rgba(192,207,231,0.12) 0%, transparent 72%);
       animation: fog-drift 24s ease-in-out infinite alternate;
     }
     @keyframes fog-drift {
@@ -252,41 +259,44 @@
        effet à part, un filet discret par-dessus. Volontairement absent
        de l'orage/pluie forte/neige, où il n'ajouterait que du bruit
        visuel à des effets déjà chargés.
-       Le blend "screen" fait que chaque trait s'éclaircit sur n'importe
-       quel fond (nuit, soleil, brouillard) au lieu de rester plaqué en
-       gris terne — c'est ce qui le rendait presque invisible avant. ── */
-    .wind-streaks {
+       Un seul type d'élément (avant : des traits + des tourbillons en
+       accent) — un "wisp" en forme de volute allongée, calculé point
+       par point (coordonnées polaires, rayon qui se resserre plus vite
+       vers l'extrémité, forme étirée dans le sens du déplacement). Ça se
+       lit comme un vrai coup de vent plutôt qu'une spirale géométrique
+       ou un indicateur de chargement, et un seul type d'élément à l'écran
+       plutôt que deux, pour une scène plus calme à l'œil. L'intensité se
+       lit dans la vitesse, la taille et l'éclat de chaque volute plutôt
+       que dans leur nombre (toujours 2 à 4, jamais plus). */
+    .wind-fx {
       position: absolute; inset: 0; overflow: hidden; pointer-events: none;
       mix-blend-mode: screen;
     }
-    .wind-streak {
+    .wind-wisp {
       position: absolute; left: 0; top: 0;
-      border-radius: 4px;
-      background: linear-gradient(90deg,
-        transparent 0%,
-        rgba(199,224,255,0.9) 42%,
-        #ffffff 52%,
-        rgba(199,224,255,0.9) 62%,
-        transparent 100%);
-      filter: drop-shadow(0 0 5px rgba(170,205,255,0.65));
-      animation: wind-blow linear infinite;
+      animation: wind-wisp-drift linear infinite;
       will-change: transform, opacity;
     }
-    /* Rafale : trait plus court, plus vif, plus lumineux — pose une
-       seconde couche de lecture au-dessus du flux continu et plus doux. */
-    .wind-streak.is-gust {
-      border-radius: 2px;
-      filter: drop-shadow(0 0 9px rgba(200,225,255,0.85));
+    .wind-wisp-spin {
+      animation: wind-wisp-spin linear infinite;
     }
-    @keyframes wind-blow {
-      0%   { transform: translateX(-16vw) scaleX(0.5); opacity: 0; }
-      12%  { opacity: var(--streak-op, 0.5); }
-      82%  { opacity: var(--streak-op, 0.5); }
-      100% { transform: translateX(116vw) scaleX(1.05); opacity: 0; }
+    .wind-wisp svg {
+      display: block;
+      filter: drop-shadow(0 0 5px rgba(180,210,255,0.6));
     }
-    /* Vent inversé (composante ouest) : mêmes traits, sens miroir —
-       pas besoin d'un second jeu de keyframes. */
-    .wind-streaks.reverse .wind-streak { animation-direction: reverse; }
+    @keyframes wind-wisp-drift {
+      0%   { transform: translateX(-16vw) translateY(0); opacity: 0; }
+      10%  { opacity: var(--wisp-op, 0.6); }
+      85%  { opacity: var(--wisp-op, 0.6); }
+      100% { transform: translateX(116vw) translateY(var(--wisp-dy, 16px)); opacity: 0; }
+    }
+    @keyframes wind-wisp-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    /* Vent inversé (composante ouest) : même volute, sens miroir — pas
+       besoin d'un second jeu de keyframes. */
+    .wind-fx.reverse .wind-wisp { animation-direction: reverse; }
 
     /* ── Storm ───────────────────────────────────────────────────── */
     .thunder-flash {
@@ -319,7 +329,7 @@
     @media (prefers-reduced-motion: reduce) {
       .raindrop,
       .snowflake,
-      .wind-streak {
+      .wind-wisp {
         animation: none;
         display: none;
       }
@@ -3599,21 +3609,33 @@ function renderPressureCard(d) {
   else if (delta <= -1)  trend = { icon:'↘', txt:`En baisse (${delta.toFixed(1)} hPa/3h)`,  color:'#f44336' };
   else                    trend = { icon:'→', txt:'Stable',                                   color:'var(--txt2)' };
 
-  // Interprétation à partir de la pression absolue (référence 1013,25 hPa = pression standard)
+  // Interprétation à partir de la pression absolue (référence 1013,25 hPa = pression standard).
+  // Dérivée de baroZone() — même repère que le mot affiché sur le cadran,
+  // pour ne jamais raconter une histoire différente du mot juste à côté.
+  // Seuils croisés avec plusieurs sources concordantes (Météo-Contact,
+  // Netatmo, Meteo-Bleue, Guichet du Savoir) : 1015 hPa comme frontière
+  // anticyclone/variable revient systématiquement, c'est le repère le
+  // mieux corroboré de toute cette échelle.
+  const zone = baroZone(pNow);
   let note;
-  if (pNow >= 1022) {
-    note = `Système anticyclonique (${pNow} hPa) — temps généralement calme et stable attendu.`;
-  } else if (pNow >= 1009) {
-    note = `Pression proche de la normale saisonnière (${pNow} hPa, référence 1013 hPa).`;
-  } else if (pNow >= 995) {
-    note = `Système dépressionnaire modéré (${pNow} hPa) — temps potentiellement instable.`;
-  } else {
-    note = `Dépression marquée (${pNow} hPa) — risque accru de vent fort et précipitations.`;
+  switch (zone.key) {
+    case 'sec':
+      note = `Système anticyclonique marqué (${pNow} hPa) — temps calme, sec et généralement stable attendu.`;
+      break;
+    case 'beau':
+      note = `Pression anticyclonique (${pNow} hPa, référence 1013 hPa) — conditions stables et temps calme attendus.`;
+      break;
+    case 'variable':
+      note = `Pression proche de la normale saisonnière (${pNow} hPa, référence 1013 hPa) — temps variable, sans tendance marquée.`;
+      break;
+    case 'pluie':
+      note = `Système dépressionnaire modéré (${pNow} hPa) — temps potentiellement instable, pluie ou vent probable.`;
+      break;
+    default:
+      note = `Dépression marquée (${pNow} hPa) — risque accru de vent fort et de précipitations.`;
   }
   if (delta <= -3) note += ' Chute rapide : surveillez l\'évolution, signe possible de dégradation imminente.';
   if (delta >= 3)  note += ' Hausse rapide : amélioration du temps probable dans les prochaines heures.';
-
-  const zone = baroZone(pNow);
 
   const body = document.getElementById('pressure-body');
   body.innerHTML = `
@@ -3648,13 +3670,26 @@ function renderPressureCard(d) {
   buildPressureChart(d, series, nowIdx);
 }
 
-// Mot du cadran selon la pression (lexique des baromètres anéroïdes classiques)
+// Source unique des seuils/couleurs du baromètre — le mot du cadran, le
+// texte narratif (renderPressureCard) et les zones colorées de l'arc
+// (buildBarometerSVG) en dérivent tous les trois, pour qu'il n'existe
+// qu'un seul endroit à modifier si ces seuils changent un jour plutôt
+// que trois listes à resynchroniser à la main. Seuils vérifiés contre
+// plusieurs sources françaises concordantes — 960 et 1060 comme bornes
+// de l'échelle (Meteo-Bleue), 1015 hPa comme frontière anticyclone/
+// variable (Météo-Contact, Netatmo, Guichet du Savoir, entre autres) :
+// c'est le repère le mieux corroboré de toute cette échelle.
+const PRESSURE_ZONES = [
+  { min: 960,  max: 985,  key: 'tempete',  label: 'Tempête',    color: '#f44336' },
+  { min: 985,  max: 1000, key: 'pluie',    label: 'Pluie',      color: '#ff9800' },
+  { min: 1000, max: 1015, key: 'variable', label: 'Variable',   color: '#fdd835' },
+  { min: 1015, max: 1035, key: 'beau',     label: 'Beau temps', color: '#4caf50' },
+  { min: 1035, max: 1060, key: 'sec',      label: 'Très sec',   color: '#4fc3f7' },
+];
+
+// Mot du cadran selon la pression (lexique des baromètres anéroïdes classiques).
 function baroZone(p) {
-  if (p < 985)  return { label:'Tempête',    color:'#f44336' };
-  if (p < 1000) return { label:'Pluie',      color:'#ff9800' };
-  if (p < 1015) return { label:'Variable',   color:'#fdd835' };
-  if (p < 1035) return { label:'Beau temps', color:'#4caf50' };
-  return                 { label:'Très sec',  color:'#4fc3f7' };
+  return PRESSURE_ZONES.find(z => p < z.max) || PRESSURE_ZONES[PRESSURE_ZONES.length - 1];
 }
 
 // Jauge analogique : demi-cercle 960→1060 hPa, 5 zones colorées et une aiguille.
@@ -3669,20 +3704,26 @@ function buildBarometerSVG(p) {
     const [x1, y1] = ptAt(p1, R), [x2, y2] = ptAt(p2, R);
     return `<path d="M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${R} ${R} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${color}" stroke-width="13"/>`;
   };
-  const zones = [
-    [960, 985, '#f44336'], [985, 1000, '#ff9800'], [1000, 1015, '#fdd835'],
-    [1015, 1035, '#4caf50'], [1035, 1060, '#4fc3f7'],
-  ];
-  const arcs = zones.map(z => arc(z[0], z[1], z[2])).join('');
-  const tick = val => {
-    const [tx, ty] = ptAt(val, R + 11);
-    return `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="#8990ae" font-size="8" text-anchor="middle" dominant-baseline="middle" font-family="Inter">${val}</text>`;
+  const arcs = PRESSURE_ZONES.map(z => arc(z.min, z.max, z.color)).join('');
+  // Min/max (960, 1060) : ancrées en "start"/"end" pour que le texte
+  // s'étende vers l'intérieur du cadran plutôt que vers les bords du
+  // viewBox — avec un ancrage "middle" classique, ces deux étiquettes
+  // dépassaient du cadre et se retrouvaient à moitié tronquées, jusqu'à
+  // 3 unités hors-cadre côté 1060. La valeur médiane (1013) reste centrée
+  // en haut, où il y a largement la place.
+  const sideTick = (val, anchor) => {
+    const [tx, ty] = ptAt(val, R + 8);
+    return `<text x="${tx.toFixed(1)}" y="${(ty - 2).toFixed(1)}" fill="#8990ae" font-size="9.5" font-weight="600" text-anchor="${anchor}" dominant-baseline="middle" font-family="Inter">${val}</text>`;
+  };
+  const midTick = val => {
+    const [tx, ty] = ptAt(val, R + 13);
+    return `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="#8990ae" font-size="9.5" font-weight="600" text-anchor="middle" dominant-baseline="middle" font-family="Inter">${val}</text>`;
   };
   const needleDeg = (90 - 180 * (1 - (clamp(p) - 960) / 100)).toFixed(1);
   return `
-  <svg viewBox="0 -2 200 120" role="img" aria-label="Baromètre ${Math.round(p)} hPa">
+  <svg viewBox="0 -4 200 122" role="img" aria-label="Baromètre ${Math.round(p)} hPa">
     ${arcs}
-    ${tick(960)}${tick(1013)}${tick(1060)}
+    ${sideTick(960, 'start')}${midTick(1013)}${sideTick(1060, 'end')}
     <g class="baro-needle" data-deg="${needleDeg}" style="transform: rotate(0deg)">
       <path d="M 100 100 L 96.5 100 L 100 ${cy - (R - 16)} L 103.5 100 Z" fill="var(--txt)"/>
     </g>
@@ -3744,7 +3785,7 @@ function buildPressureChart(d, series, nowIdx) {
           titleFont: { family: 'Inter', size: 11 },
           bodyFont:  { family: 'Inter', size: 10 },
           padding: 9, cornerRadius: 8,
-          callbacks: { label: ctx2 => `${ctx2.parsed.y} hPa` },
+          callbacks: { label: ctx2 => `${(+ctx2.parsed.y).toFixed(1)} hPa` },
         },
       },
       scales: {
@@ -3756,7 +3797,7 @@ function buildPressureChart(d, series, nowIdx) {
           grid: { display: false },
         },
         y: {
-          ticks: { color: tickColor, font: tickFont, callback: v => v + ' hPa' },
+          ticks: { color: tickColor, font: tickFont, callback: v => (+v).toFixed(1) + ' hPa' },
           grid: { color: gridColor },
         },
       },
@@ -4020,18 +4061,24 @@ function renderWaterCard(marine) {
   const airTxt = hasAir ? `Air ${Math.round(air)}°` : 'Air indisponible';
 
   // ── Demain ─────────────────────────────────────────────────────────
-  // Donnée simple et sans jargon pour un public général : l'eau sera-t-elle
-  // plus chaude ou plus froide demain ? Utilise le jour 2 de la prévision
-  // marine (forecast_days=2, déjà demandé) — aucun appel réseau en plus.
-  const tMaxTomorrow = day.sea_surface_temperature_max && day.sea_surface_temperature_max[1];
-  const hasTomorrow = tMaxTomorrow != null && isFinite(tMaxTomorrow);
-  const tomorrowVal = hasTomorrow ? fmtT(tMaxTomorrow) : '--';
+  // La température de l'eau a une grande inertie thermique : le Tmax
+  // d'un jour à l'autre varie de quelques dixièmes de degré, donc cette
+  // case affichait presque toujours "Stable par rapport à aujourd'hui"
+  // — une donnée qui n'apprenait jamais rien. La hauteur de houle suit
+  // la météo (vent, dépressions) et bouge nettement d'un jour à l'autre :
+  // bien plus utile pour prévoir une sortie demain. wave_height_max
+  // (quotidien) était déjà demandé à l'API mais jamais lu (seul l'horaire
+  // wave_height, valeur du moment, servait) — aucun appel réseau en plus.
+  const waveHTomorrow = day.wave_height_max && day.wave_height_max[1];
+  const waveHToday    = day.wave_height_max && day.wave_height_max[0];
+  const hasTomorrow = waveHTomorrow != null && isFinite(waveHTomorrow);
+  const tomorrowVal = hasTomorrow ? `${waveHTomorrow.toFixed(1)} m` : '--';
   let tomorrowSub = 'Indisponible';
-  if (hasTomorrow && tMax != null && isFinite(tMax)) {
-    const deltaTomorrow = tMaxTomorrow - tMax;
-    tomorrowSub = Math.abs(deltaTomorrow) < 0.3
-      ? 'Stable par rapport à aujourd\'hui'
-      : deltaTomorrow > 0 ? '↗️ Un peu plus chaude' : '↘️ Un peu plus fraîche';
+  if (hasTomorrow && waveHToday != null && isFinite(waveHToday)) {
+    const deltaTomorrow = waveHTomorrow - waveHToday;
+    tomorrowSub = Math.abs(deltaTomorrow) < 0.15
+      ? 'Houle stable'
+      : deltaTomorrow > 0 ? '↗️ Houle plus formée' : '↘️ Houle plus faible';
   }
 
   function compassDir(deg) {
@@ -4064,7 +4111,7 @@ function renderWaterCard(marine) {
       <div class="water-sub-item"><div class="wsi-label">🌊 Houle</div><div class="wsi-value">${waveVal}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2);margin-top:2px">${waveSub}</div></div>
       <div class="water-sub-item"><div class="wsi-label">📊 Min / Max jour</div><div class="wsi-value">${fmtT(tMin)} / ${fmtT(tMax)}</div></div>
       <div class="water-sub-item"><div class="wsi-label">🆚 Eau vs air</div><div class="wsi-value">${diffTxt}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2)">${airTxt}</div></div>
-      <div class="water-sub-item"><div class="wsi-label">📅 Demain</div><div class="wsi-value">${tomorrowVal}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2)">${tomorrowSub}</div></div>
+      <div class="water-sub-item"><div class="wsi-label">📅 Houle demain</div><div class="wsi-value">${tomorrowVal}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2)">${tomorrowSub}</div></div>
     </div>`;
   card.style.display = '';
 }
@@ -4426,6 +4473,12 @@ function clearEffects() {
   document.getElementById('weather-overlay').innerHTML = '';
 }
 
+// Compteur global pour des id de <radialGradient> uniques d'un appel à
+// l'autre — deux volutes avec le même id de gradient dans le DOM en même
+// temps se marcheraient dessus (le second écraserait la référence du
+// premier dans certains navigateurs).
+let windWispIdSeq = 0;
+
 function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null) {
   clearEffects();
   const o = document.getElementById('weather-overlay');
@@ -4521,11 +4574,15 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null) {
   // Volontairement pas mélangé à l'orage/pluie forte/neige (déjà chargés).
   const WIND_THRESHOLD = 35; // km/h — à partir de là, le vent se voit/s'entend
   if (windSpeed >= WIND_THRESHOLD && !['storm', 'heavyrain', 'snow'].includes(effect)) {
-    // 0 au seuil, 1 vers 90 km/h — pilote le nombre de traits, leur
-    // vitesse, leur longueur et leur intensité lumineuse d'un seul geste.
+    // 0 au seuil, 1 vers 90 km/h — pilote la taille, la vitesse et l'éclat
+    // de chaque volute. Le nombre d'éléments à l'écran, lui, ne bouge
+    // presque pas (2 à 4) : c'est la vivacité de chaque volute qui dit
+    // "ça souffle fort", pas une accumulation de formes à l'écran — un
+    // ancien essai à base de traits + tourbillons montait jusqu'à 31
+    // éléments lumineux simultanés par grand vent, trop chargé pour lire
+    // les infos sereinement à côté.
     const intensity = Math.min(1, (windSpeed - WIND_THRESHOLD) / 55);
-    const n = Math.round(11 + intensity * 15); // 11 → 26 traits
-    const wrap = Object.assign(document.createElement('div'), { className: 'wind-streaks' });
+    const wrap = Object.assign(document.createElement('div'), { className: 'wind-fx' });
 
     // Sens de défilement à l'écran déduit de la direction météo réelle.
     // windDirDeg = direction D'OÙ vient le vent ; le déplacement visuel
@@ -4538,22 +4595,58 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null) {
       if (eastward < -0.2) wrap.classList.add('reverse');
     }
 
-    for (let i = 0; i < n; i++) {
-      const s = Object.assign(document.createElement('div'), { className: 'wind-streak' });
-      const isGust = Math.random() < 0.2 + intensity * 0.25;
-      if (isGust) s.classList.add('is-gust');
-      const len   = (isGust ? 85 : 46) + Math.random() * (65 + intensity * 85);
-      const dur   = Math.max(0.55, (isGust ? 0.75 : 1.5) - intensity * 0.6 + Math.random() * 0.55);
-      const op    = (isGust ? 0.45 : 0.28) + intensity * 0.28 + Math.random() * 0.12;
-      Object.assign(s.style, {
+    const nWisps = Math.round(2 + intensity * 2); // 2 → 4, jamais plus
+    for (let i = 0; i < nWisps; i++) {
+      // Volute : coordonnées polaires, rayon qui se resserre plus vite que
+      // l'angle n'avance (taperPow > 1, resserrement en fin de course) et
+      // forme étirée dans le sens du déplacement (stretchX) — se lit comme
+      // un coup de vent qui s'accroche en un point plutôt qu'une spirale
+      // géométrique fermée ou un indicateur de chargement.
+      const rMax     = 15 + Math.random() * 8 + intensity * 9;
+      const turns    = 0.85 + Math.random() * 0.3;
+      const taperPow = 1.3 + Math.random() * 0.3;
+      const stretchX = 1.3 + Math.random() * 0.25;
+      const pts = 28, pad = 3;
+      const cx = rMax * stretchX + pad, cy = rMax + pad;
+      let d = '';
+      for (let p = 0; p <= pts; p++) {
+        const t = p / pts;
+        const angle = t * turns * Math.PI * 2;
+        const r = rMax * (1 - Math.pow(t, taperPow) * 0.85);
+        d += (p === 0 ? 'M' : 'L') + (cx + r * Math.cos(angle) * stretchX).toFixed(1) + ',' + (cy + r * Math.sin(angle)).toFixed(1) + ' ';
+      }
+      const w = cx * 2, h = cy * 2;
+      const gid = `windWispGrad${windWispIdSeq++}`;
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', w);
+      svg.setAttribute('height', h);
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      svg.innerHTML =
+        `<defs><radialGradient id="${gid}" cx="50%" cy="50%" r="65%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+          <stop offset="45%" stop-color="#c7e0ff" stop-opacity="0.85"/>
+          <stop offset="100%" stop-color="#c7e0ff" stop-opacity="0"/>
+        </radialGradient></defs>
+        <path d="${d.trim()}" stroke="url(#${gid})" stroke-width="${(1.8 + intensity * 0.8).toFixed(2)}"
+              fill="none" stroke-linecap="round" stroke-linejoin="round" />`;
+
+      const spin = Object.assign(document.createElement('div'), { className: 'wind-wisp-spin' });
+      spin.style.animationDuration  = `${(4.5 - intensity * 1.5 + Math.random() * 2).toFixed(2)}s`;
+      spin.style.animationDirection = Math.random() < 0.5 ? 'normal' : 'reverse';
+      spin.appendChild(svg);
+
+      const wisp = Object.assign(document.createElement('div'), { className: 'wind-wisp' });
+      const drDur = Math.max(1.8, 4.2 - intensity * 2.2 + Math.random() * 0.8);
+      Object.assign(wisp.style, {
         top:               `${Math.random() * 100}%`,
-        width:             `${len}px`,
-        height:            isGust ? '2.5px' : '1.5px',
-        animationDuration: `${dur}s`,
-        animationDelay:    `${-(Math.random() * 3)}s`,
+        animationDuration: `${drDur.toFixed(2)}s`,
+        animationDelay:    `${-(Math.random() * 3.5)}s`,
       });
-      s.style.setProperty('--streak-op', op.toFixed(2));
-      wrap.appendChild(s);
+      wisp.style.setProperty('--wisp-dy', `${(Math.random() * 24 - 12).toFixed(0)}px`);
+      wisp.style.setProperty('--wisp-op', (0.45 + intensity * 0.35 + Math.random() * 0.12).toFixed(2));
+      wisp.appendChild(spin);
+      wrap.appendChild(wisp);
     }
     o.appendChild(wrap);
   }
