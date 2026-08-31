@@ -4,7 +4,7 @@
 //             Network-first pour les APIs météo
 // ──────────────────────────────────────────────────────────────────
 
-const CACHE_NAME   = 'weatherradar-v18';
+const CACHE_NAME   = 'weatherradar-v19';
 const OFFLINE_PAGE = '/';
 
 // Assets à mettre en cache immédiatement à l'installation
