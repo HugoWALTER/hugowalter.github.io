@@ -2748,7 +2748,7 @@ function renderToday(d) {
   document.getElementById('today-skeleton').style.display = 'none';
   document.getElementById('today-content').style.display  = 'block';
 
-  applyWeatherEffect(cw.is_day === 0 && info.effect === 'sun' ? 'clear-night' : info.effect, cw.windspeed ?? 0, cw.winddirection);
+  applyWeatherEffect(cw.is_day === 0 && info.effect === 'sun' ? 'clear-night' : info.effect, cw.windspeed ?? 0, cw.winddirection, cloudCover);
   buildInlineChart(d);
 }
 
@@ -3705,15 +3705,16 @@ function buildBarometerSVG(p) {
     return `<path d="M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${R} ${R} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${color}" stroke-width="13"/>`;
   };
   const arcs = PRESSURE_ZONES.map(z => arc(z.min, z.max, z.color)).join('');
-  // Min/max (960, 1060) : ancrées en "start"/"end" pour que le texte
-  // s'étende vers l'intérieur du cadran plutôt que vers les bords du
-  // viewBox — avec un ancrage "middle" classique, ces deux étiquettes
-  // dépassaient du cadre et se retrouvaient à moitié tronquées, jusqu'à
-  // 3 unités hors-cadre côté 1060. La valeur médiane (1013) reste centrée
-  // en haut, où il y a largement la place.
-  const sideTick = (val, anchor) => {
-    const [tx, ty] = ptAt(val, R + 8);
-    return `<text x="${tx.toFixed(1)}" y="${(ty - 2).toFixed(1)}" fill="#8990ae" font-size="9.5" font-weight="600" text-anchor="${anchor}" dominant-baseline="middle" font-family="Inter">${val}</text>`;
+  // Min/max (960, 1060) : placées sous les extrémités à plat du demi-cercle
+  // (ancrage "middle" sur l'abscisse du bout d'arc) plutôt qu'à côté de
+  // l'arc — un ancrage "start"/"end" au même niveau que l'arc faisait
+  // chevaucher le texte avec le tracé coloré (l'arc a 13 de large, donc
+  // déborde jusqu'à R+6.5, très proche du rayon R+8 des étiquettes). En
+  // dessous, il y a de la place libre jusqu'au bord du viewBox. La valeur
+  // médiane (1013) reste centrée en haut, où il y a largement la place.
+  const sideTick = val => {
+    const [tx] = ptAt(val, R);
+    return `<text x="${tx.toFixed(1)}" y="112" fill="#8990ae" font-size="9.5" font-weight="600" text-anchor="middle" dominant-baseline="middle" font-family="Inter">${val}</text>`;
   };
   const midTick = val => {
     const [tx, ty] = ptAt(val, R + 13);
@@ -3721,9 +3722,9 @@ function buildBarometerSVG(p) {
   };
   const needleDeg = (90 - 180 * (1 - (clamp(p) - 960) / 100)).toFixed(1);
   return `
-  <svg viewBox="0 -4 200 122" role="img" aria-label="Baromètre ${Math.round(p)} hPa">
+  <svg viewBox="0 -4 200 128" role="img" aria-label="Baromètre ${Math.round(p)} hPa">
     ${arcs}
-    ${sideTick(960, 'start')}${midTick(1013)}${sideTick(1060, 'end')}
+    ${sideTick(960)}${midTick(1013)}${sideTick(1060)}
     <g class="baro-needle" data-deg="${needleDeg}" style="transform: rotate(0deg)">
       <path d="M 100 100 L 96.5 100 L 100 ${cy - (R - 16)} L 103.5 100 Z" fill="var(--txt)"/>
     </g>
@@ -4479,9 +4480,31 @@ function clearEffects() {
 // premier dans certains navigateurs).
 let windWispIdSeq = 0;
 
-function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null) {
+function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCoverPct = null) {
   clearEffects();
   const o = document.getElementById('weather-overlay');
+
+  // Couverture nuageuse (%) → vitesse et densité du décor nuageux : plus le
+  // ciel est couvert, plus la masse est perçue comme lourde (dérive plus
+  // lente, plus opaque) ; peu de nuages, dérive plus vive et plus légère.
+  // Sans donnée dispo (cloudCoverPct null, ex. l'appel de secours au
+  // chargement), on ne pose aucun style inline : les durées/opacités par
+  // défaut définies en CSS (11s/16s, 0.8) restent inchangées, donc aucune
+  // régression pour un appelant qui ne passe pas cette donnée.
+  const cloudLayer = extraClass => {
+    const el = Object.assign(document.createElement('div'), {
+      className: extraClass ? `cloud-layer ${extraClass}` : 'cloud-layer',
+    });
+    if (typeof cloudCoverPct === 'number' && !Number.isNaN(cloudCoverPct)) {
+      const t = Math.max(0, Math.min(100, cloudCoverPct)) / 100;
+      const isLayer2 = extraClass === 'layer2';
+      const dur = isLayer2 ? 10 + t * 19 : 7 + t * 13; // s — plus lent quand plus couvert
+      const op  = isLayer2 ? 0.55 + t * 0.35 : 0.75 + t * 0.25;
+      el.style.animationDuration = `${dur.toFixed(1)}s`;
+      el.style.opacity = op.toFixed(2);
+    }
+    return el;
+  };
 
   if (effect === 'rain' || effect === 'heavyrain') {
     const n = effect === 'heavyrain' ? 220 : 130;
@@ -4561,13 +4584,13 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null) {
   }
 
   if (effect === 'cloud') {
-    o.appendChild(Object.assign(document.createElement('div'), { className:'cloud-layer' }));
-    o.appendChild(Object.assign(document.createElement('div'), { className:'cloud-layer layer2' }));
+    o.appendChild(cloudLayer());
+    o.appendChild(cloudLayer('layer2'));
   }
 
   if (effect === 'fog') {
     o.appendChild(Object.assign(document.createElement('div'), { className:'fog-layer' }));
-    o.appendChild(Object.assign(document.createElement('div'), { className:'cloud-layer' }));
+    o.appendChild(cloudLayer());
   }
 
   // Vent — overlay discret, ajouté par-dessus l'effet déjà posé ci-dessus.
