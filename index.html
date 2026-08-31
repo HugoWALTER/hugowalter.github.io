@@ -4609,15 +4609,6 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
     const intensity = Math.min(1, (windSpeed - WIND_THRESHOLD) / 55);
     const wrap = Object.assign(document.createElement('div'), { className: 'wind-fx' });
 
-    // Un même pourcentage de largeur d'écran (vw) correspond à beaucoup moins
-    // de pixels réels sur mobile (viewport ~380-430px) que sur desktop
-    // (~1600-1920px) : les rafales, et surtout leurs traits déjà fins,
-    // devenaient quasi invisibles sur téléphone alors qu'elles se voyaient
-    // bien en desktop. On élargit la portion de vw allouée sous ce seuil
-    // (même breakpoint que le reste du CSS) pour revenir à une taille rendue
-    // comparable en pixels réels des deux côtés, sans toucher au desktop.
-    const gustVwBoost = window.innerWidth <= 600 ? 1.8 : 1;
-
     // Sens de défilement à l'écran déduit de la direction météo réelle.
     // windDirDeg = direction D'OÙ vient le vent ; le déplacement visuel
     // va donc à l'opposé. On ne retient que la composante est/ouest —
@@ -4663,13 +4654,41 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
           <stop offset="45%" stop-color="#c7e0ff" stop-opacity="0.4"/>
           <stop offset="100%" stop-color="#ffffff" stop-opacity="0.95"/>
         </linearGradient></defs>${paths}`;
-      const gustLenVw = (8 + intensity * 7 + Math.random() * 3) * gustVwBoost; // 8 → ~18vw (×boost sur mobile)
-      svg.style.width = `${gustLenVw.toFixed(2)}vw`;
+      // clamp() plutôt qu'un simple vw : un même pourcentage de largeur d'écran
+      // représente beaucoup moins de pixels réels sur mobile (~380-430px de
+      // large) que sur desktop (~1600-1920px), donc les rafales — et surtout
+      // leurs traits déjà fins — devenaient quasi invisibles sur téléphone
+      // tout en restant nettes en desktop. Le plancher (60px) garantit une
+      // taille lisible en dessous de laquelle le rendu ne descend jamais ; le
+      // plafond (420px) évite l'effet inverse sur les très grands écrans
+      // (ultra-wide/4K). Entre les deux, le comportement proportionnel en vw
+      // d'origine est inchangé — le rendu desktop actuel n'est donc pas
+      // affecté. Contrairement à un multiplicateur fixe par palier, clamp()
+      // se recalcule nativement à chaque redimensionnement/rotation d'écran.
+      const gustLenVw = 8 + intensity * 7 + Math.random() * 3; // 8 → ~18vw
+      svg.style.width = `clamp(60px, ${gustLenVw.toFixed(2)}vw, 420px)`;
 
       const gust = Object.assign(document.createElement('div'), { className: 'wind-gust' });
       const drDur = Math.max(1.8, 4.2 - intensity * 2.2 + Math.random() * 0.8);
+      // La rafale ne quitte l'écran QUE par les côtés (translateX -18vw →
+      // 118vw, voulu : elle doit entrer/sortir latéralement). Le flottement
+      // vertical (--gust-dy/--gust-mid-dy plus bas, ±12px) n'est qu'un
+      // frémissement organique, jamais une sortie d'écran voulue — mais le
+      // conteneur (#weather-overlay, 100vh, overflow hidden) coupe net tout
+      // ce qui dépasse en haut ou en bas. Une rafale tronquée horizontalement
+      // se lit comme "sortie du cadre" (normal) ; tronquée verticalement,
+      // elle se lit comme un bug (la forme s'interrompt net au milieu de sa
+      // courbe). On réserve donc une marge = flottement max + hauteur réelle
+      // du SVG (ratio H/W du viewBox, cf. plus haut) pour que top% ne puisse
+      // jamais placer une rafale assez près d'un bord pour être rognée.
+      const gustWidthPx = Math.min(420, Math.max(60, window.innerWidth * gustLenVw / 100));
+      const gustHeightPx = gustWidthPx * (H / W);
+      const maxDriftPx = 12; // borne haute de dy plus bas (Math.random()*24-12)
+      const vh = window.innerHeight;
+      const topMin = maxDriftPx;
+      const topMax = Math.max(topMin, vh - gustHeightPx - maxDriftPx);
       Object.assign(gust.style, {
-        top:               `${Math.random() * 100}%`,
+        top:               `${(topMin + Math.random() * (topMax - topMin)).toFixed(1)}px`,
         animationDuration: `${drDur.toFixed(2)}s`,
         animationDelay:    `${-(Math.random() * 3.5)}s`,
       });
