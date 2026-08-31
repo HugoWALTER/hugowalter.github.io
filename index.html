@@ -259,44 +259,46 @@
        effet à part, un filet discret par-dessus. Volontairement absent
        de l'orage/pluie forte/neige, où il n'ajouterait que du bruit
        visuel à des effets déjà chargés.
-       Un seul type d'élément (avant : des traits + des tourbillons en
-       accent) — un "wisp" en forme de volute allongée, calculé point
-       par point (coordonnées polaires, rayon qui se resserre plus vite
-       vers l'extrémité, forme étirée dans le sens du déplacement). Ça se
-       lit comme un vrai coup de vent plutôt qu'une spirale géométrique
-       ou un indicateur de chargement, et un seul type d'élément à l'écran
-       plutôt que deux, pour une scène plus calme à l'œil. L'intensité se
-       lit dans la vitesse, la taille et l'éclat de chaque volute plutôt
-       que dans leur nombre (toujours 2 à 4, jamais plus). */
+       Trois traits filants incurvés par rafale ("wind-gust"), calqués
+       sur le pictogramme vent universel des applis météo (3 lignes
+       fluides, longueurs inégales) plutôt qu'une volute en spirale qui
+       tournait sur elle-même en travers de l'écran — lisible d'un coup
+       d'œil comme "du vent" plutôt qu'une forme abstraite qui tournoie.
+       Chaque trait s'éclaircit de la queue (transparente) vers la tête
+       (blanc plein), rendu via un dégradé linéaire en objectBoundingBox
+       qui se recalibre automatiquement sur la longueur propre de
+       chaque trait. Taille posée en vw (pas en px) pour rester à une
+       échelle comparable à l'écran aussi bien sur mobile que sur grand
+       moniteur. L'intensité se lit dans la vitesse, la longueur et
+       l'éclat de chaque rafale plutôt que dans leur nombre (toujours
+       2 à 4 rafales simultanées, jamais plus, pour une scène calme). */
     .wind-fx {
       position: absolute; inset: 0; overflow: hidden; pointer-events: none;
       mix-blend-mode: screen;
     }
-    .wind-wisp {
+    .wind-gust {
       position: absolute; left: 0; top: 0;
-      animation: wind-wisp-drift linear infinite;
+      animation: wind-gust-drift linear infinite;
       will-change: transform, opacity;
     }
-    .wind-wisp-spin {
-      animation: wind-wisp-spin linear infinite;
-    }
-    .wind-wisp svg {
+    .wind-gust svg {
       display: block;
-      filter: drop-shadow(0 0 5px rgba(180,210,255,0.6));
+      height: auto;
+      filter: drop-shadow(0 0 4px rgba(180,210,255,0.55));
     }
-    @keyframes wind-wisp-drift {
-      0%   { transform: translateX(-16vw) translateY(0); opacity: 0; }
-      10%  { opacity: var(--wisp-op, 0.6); }
-      85%  { opacity: var(--wisp-op, 0.6); }
-      100% { transform: translateX(116vw) translateY(var(--wisp-dy, 16px)); opacity: 0; }
+    @keyframes wind-gust-drift {
+      0%   { transform: translateX(-18vw) translateY(0) scaleX(0.92); opacity: 0; }
+      10%  { opacity: var(--gust-op, 0.6); }
+      50%  { transform: translateX(50vw) translateY(var(--gust-mid-dy, -6px)) scaleX(1.04); }
+      88%  { opacity: var(--gust-op, 0.6); }
+      100% { transform: translateX(118vw) translateY(var(--gust-dy, 14px)) scaleX(0.92); opacity: 0; }
     }
-    @keyframes wind-wisp-spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
-    /* Vent inversé (composante ouest) : même volute, sens miroir — pas
-       besoin d'un second jeu de keyframes. */
-    .wind-fx.reverse .wind-wisp { animation-direction: reverse; }
+    /* Vent inversé (composante ouest) : même rafale, sens miroir — la
+       forme est directionnelle (tête franche à droite), donc contrairement
+       à l'ancienne volute il faut la retourner explicitement pour que la
+       tête continue de mener le déplacement une fois le sens inversé. */
+    .wind-fx.reverse .wind-gust { animation-direction: reverse; }
+    .wind-fx.reverse .wind-gust svg { transform: scaleX(-1); }
 
     /* ── Storm ───────────────────────────────────────────────────── */
     .thunder-flash {
@@ -329,7 +331,7 @@
     @media (prefers-reduced-motion: reduce) {
       .raindrop,
       .snowflake,
-      .wind-wisp {
+      .wind-gust {
         animation: none;
         display: none;
       }
@@ -4474,11 +4476,11 @@ function clearEffects() {
   document.getElementById('weather-overlay').innerHTML = '';
 }
 
-// Compteur global pour des id de <radialGradient> uniques d'un appel à
-// l'autre — deux volutes avec le même id de gradient dans le DOM en même
+// Compteur global pour des id de <linearGradient> uniques d'un appel à
+// l'autre — deux rafales avec le même id de gradient dans le DOM en même
 // temps se marcheraient dessus (le second écraserait la référence du
 // premier dans certains navigateurs).
-let windWispIdSeq = 0;
+let windGustIdSeq = 0;
 
 function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCoverPct = null) {
   clearEffects();
@@ -4618,58 +4620,56 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
       if (eastward < -0.2) wrap.classList.add('reverse');
     }
 
-    const nWisps = Math.round(2 + intensity * 2); // 2 → 4, jamais plus
-    for (let i = 0; i < nWisps; i++) {
-      // Volute : coordonnées polaires, rayon qui se resserre plus vite que
-      // l'angle n'avance (taperPow > 1, resserrement en fin de course) et
-      // forme étirée dans le sens du déplacement (stretchX) — se lit comme
-      // un coup de vent qui s'accroche en un point plutôt qu'une spirale
-      // géométrique fermée ou un indicateur de chargement.
-      const rMax     = 15 + Math.random() * 8 + intensity * 9;
-      const turns    = 0.85 + Math.random() * 0.3;
-      const taperPow = 1.3 + Math.random() * 0.3;
-      const stretchX = 1.3 + Math.random() * 0.25;
-      const pts = 28, pad = 3;
-      const cx = rMax * stretchX + pad, cy = rMax + pad;
-      let d = '';
-      for (let p = 0; p <= pts; p++) {
-        const t = p / pts;
-        const angle = t * turns * Math.PI * 2;
-        const r = rMax * (1 - Math.pow(t, taperPow) * 0.85);
-        d += (p === 0 ? 'M' : 'L') + (cx + r * Math.cos(angle) * stretchX).toFixed(1) + ',' + (cy + r * Math.sin(angle)).toFixed(1) + ' ';
-      }
-      const w = cx * 2, h = cy * 2;
-      const gid = `windWispGrad${windWispIdSeq++}`;
+    const nGusts = Math.round(2 + intensity * 2); // 2 → 4, jamais plus
+    for (let i = 0; i < nGusts; i++) {
+      // Rafale : 3 traits (repère universel du vent dans les applis météo),
+      // longueurs inégales et légère ondulation en "S" pour un rendu
+      // organique plutôt que 3 lignes parfaitement parallèles. L'espace de
+      // dessin local est fixe (indépendant de l'écran) ; c'est la taille
+      // CSS posée en vw plus bas qui adapte le rendu à la largeur réelle.
+      const gapY = 12, pad = 5, ampBase = 3 + Math.random() * 2.5;
+      const lenFracs = [0.5, 0.82, 0.66].map(f => Math.min(1, f + (Math.random() * 0.16 - 0.08)));
+      const maxLen = 100;
+      const W = pad * 2 + maxLen, H = pad * 2 + gapY * 2;
+      const gid = `windGustGrad${windGustIdSeq++}`;
+
+      let paths = '';
+      lenFracs.forEach((frac, li) => {
+        const len  = maxLen * frac;
+        const y    = pad + gapY * li;
+        const amp  = ampBase * (0.7 + Math.random() * 0.5);
+        const x0   = pad, x1 = pad + len;
+        const c1x  = x0 + len * 0.32, c1y = y - amp;
+        const c2x  = x0 + len * 0.68, c2y = y + amp * 0.6;
+        const sw   = (1.1 + intensity * 0.9) * (0.75 + li * 0.18);
+        paths += `<path d="M ${x0.toFixed(1)},${y.toFixed(1)} C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${x1.toFixed(1)},${y.toFixed(1)}" `
+               + `stroke="url(#${gid})" stroke-width="${sw.toFixed(2)}" fill="none" stroke-linecap="round"/>`;
+      });
 
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('width', w);
-      svg.setAttribute('height', h);
-      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
       svg.innerHTML =
-        `<defs><radialGradient id="${gid}" cx="50%" cy="50%" r="65%">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-          <stop offset="45%" stop-color="#c7e0ff" stop-opacity="0.85"/>
-          <stop offset="100%" stop-color="#c7e0ff" stop-opacity="0"/>
-        </radialGradient></defs>
-        <path d="${d.trim()}" stroke="url(#${gid})" stroke-width="${(1.8 + intensity * 0.8).toFixed(2)}"
-              fill="none" stroke-linecap="round" stroke-linejoin="round" />`;
+        `<defs><linearGradient id="${gid}" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#c7e0ff" stop-opacity="0"/>
+          <stop offset="45%" stop-color="#c7e0ff" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0.95"/>
+        </linearGradient></defs>${paths}`;
+      const gustLenVw = 8 + intensity * 7 + Math.random() * 3; // 8 → ~18vw
+      svg.style.width = `${gustLenVw.toFixed(2)}vw`;
 
-      const spin = Object.assign(document.createElement('div'), { className: 'wind-wisp-spin' });
-      spin.style.animationDuration  = `${(4.5 - intensity * 1.5 + Math.random() * 2).toFixed(2)}s`;
-      spin.style.animationDirection = Math.random() < 0.5 ? 'normal' : 'reverse';
-      spin.appendChild(svg);
-
-      const wisp = Object.assign(document.createElement('div'), { className: 'wind-wisp' });
+      const gust = Object.assign(document.createElement('div'), { className: 'wind-gust' });
       const drDur = Math.max(1.8, 4.2 - intensity * 2.2 + Math.random() * 0.8);
-      Object.assign(wisp.style, {
+      Object.assign(gust.style, {
         top:               `${Math.random() * 100}%`,
         animationDuration: `${drDur.toFixed(2)}s`,
         animationDelay:    `${-(Math.random() * 3.5)}s`,
       });
-      wisp.style.setProperty('--wisp-dy', `${(Math.random() * 24 - 12).toFixed(0)}px`);
-      wisp.style.setProperty('--wisp-op', (0.45 + intensity * 0.35 + Math.random() * 0.12).toFixed(2));
-      wisp.appendChild(spin);
-      wrap.appendChild(wisp);
+      const dy = Math.random() * 24 - 12;
+      gust.style.setProperty('--gust-dy', `${dy.toFixed(0)}px`);
+      gust.style.setProperty('--gust-mid-dy', `${(dy * 0.4).toFixed(0)}px`);
+      gust.style.setProperty('--gust-op', (0.45 + intensity * 0.35 + Math.random() * 0.12).toFixed(2));
+      gust.appendChild(svg);
+      wrap.appendChild(gust);
     }
     o.appendChild(wrap);
   }
