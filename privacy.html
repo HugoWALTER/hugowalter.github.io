@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#07090f" />
+  <title>Confidentialité — WeatherRadar</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #07090f; color: #e8eaf2; line-height: 1.6; }
+    main { width: min(760px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 64px; }
+    a { color: #4fc3f7; }
+    a:focus-visible { outline: 2px solid #4fc3f7; outline-offset: 3px; }
+    .back { display: inline-block; margin-bottom: 28px; text-decoration: none; }
+    h1 { margin: 0 0 8px; font-size: clamp(1.8rem, 5vw, 2.6rem); }
+    h2 { margin-top: 32px; font-size: 1.1rem; }
+    p, li { color: #b3b8cf; }
+    strong { color: #e8eaf2; }
+    .summary { padding: 16px 18px; border: 1px solid rgba(79,195,247,.25); border-radius: 12px; background: rgba(79,195,247,.06); }
+    .updated { font-size: .78rem; color: #8990ae; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="index.html">← Retour à WeatherRadar</a>
+    <h1>Confidentialité</h1>
+    <p class="updated">Dernière mise à jour : 1er septembre 2026</p>
+
+    <p class="summary"><strong>En bref :</strong> WeatherRadar ne demande aucun compte, n'utilise aucun outil d'analyse d'audience et ne dépose aucun cookie publicitaire.</p>
+
+    <h2>Données conservées sur votre appareil</h2>
+    <p>L'application utilise <code>localStorage</code> pour mémoriser la dernière ville choisie et un petit cache de codes de départements. Ces informations restent dans votre navigateur. Le service worker conserve aussi les fichiers statiques nécessaires au fonctionnement hors ligne.</p>
+    <p>Vous pouvez supprimer ces données depuis les paramètres de site de votre navigateur.</p>
+
+    <h2>Services externes contactés</h2>
+    <p>WeatherRadar fonctionne sans serveur applicatif propre. Votre navigateur contacte directement :</p>
+    <ul>
+      <li><strong>Open-Meteo</strong> pour la recherche de villes, les prévisions, l'air et les données marines ; la recherche saisie ou les coordonnées de la ville sont transmises.</li>
+      <li><strong>RainViewer</strong> pour les images du radar de précipitations.</li>
+      <li><strong>OpenStreetMap</strong> pour les tuiles visibles du fond de carte.</li>
+      <li><strong>Géoplateforme et OpenDataSoft</strong> pour identifier le département et afficher la vigilance Météo-France en France métropolitaine.</li>
+      <li><strong>unpkg, jsDelivr et Google Fonts</strong> pour charger les bibliothèques et la police de l'interface.</li>
+    </ul>
+    <p>Comme pour toute requête web, ces fournisseurs reçoivent notamment votre adresse IP et les informations techniques habituelles du navigateur. Leurs propres politiques s'appliquent : <a href="https://open-meteo.com/en/terms" target="_blank" rel="noopener">Open-Meteo</a>, <a href="https://www.rainviewer.com/privacy.html" target="_blank" rel="noopener">RainViewer</a> et <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener">OpenStreetMap Foundation</a>.</p>
+
+    <h2>Absence de localisation automatique</h2>
+    <p>L'application ne demande pas l'accès à la position GPS de votre appareil. Seule la ville que vous recherchez ou sélectionnez est utilisée.</p>
+
+    <h2>Statut du service</h2>
+    <p>WeatherRadar est une application indépendante et n'est ni éditée ni approuvée par Météo-France. En cas de risque, consultez toujours la <a href="https://vigilance.meteofrance.fr/" target="_blank" rel="noopener">vigilance officielle</a>.</p>
+  </main>
+</body>
+</html>

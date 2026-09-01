@@ -1,661 +1,963 @@
 # WeatherRadar 🌦
 
-Application météo complète en **fichier HTML unique** (zero build, zero serveur), entièrement en français, orientée France. Données en temps réel via des APIs publiques gratuites, sans clé d'API requise.
+WeatherRadar est une application météo responsive, entièrement en français, qui regroupe prévisions, radar de précipitations, qualité de l’air, pollens, vigilance, données marines et indicateurs détaillés dans une PWA installable.
 
----
+Le projet fonctionne sans framework, sans bundler et sans serveur applicatif : l’interface, les styles et la logique métier sont réunis dans `index.html`. Les autres fichiers assurent l’installation PWA, le cache hors ligne, les icônes et l’information de confidentialité.
+
+> WeatherRadar est une application indépendante. Elle n’est ni éditée, ni approuvée, ni garantie par Météo-France. Pour toute décision liée à la sécurité, consultez toujours les sources officielles.
 
 ## Table des matières
 
 - [Aperçu](#aperçu)
 - [Fonctionnalités](#fonctionnalités)
+- [Fichiers du projet](#fichiers-du-projet)
 - [Architecture technique](#architecture-technique)
-- [APIs & dépendances](#apis--dépendances)
+- [Sources de données et dépendances](#sources-de-données-et-dépendances)
 - [Structure du code](#structure-du-code)
-- [Sections de l'interface](#sections-de-linterface)
-- [Gestion de l'état](#gestion-de-létat)
-- [Système de recherche de villes](#système-de-recherche-de-villes)
-- [Radar météo (RainViewer)](#radar-météo-rainviewer)
-- [Effets météo visuels](#effets-météo-visuels)
-- [Qualité de l'air](#qualité-de-lair)
-- [Statistiques du jour](#statistiques-du-jour)
+- [Gestion de l’état et cycle de chargement](#gestion-de-létat-et-cycle-de-chargement)
+- [Recherche de villes](#recherche-de-villes)
+- [Prévisions météo](#prévisions-météo)
+- [Radar météo RainViewer](#radar-météo-rainviewer)
 - [Graphiques](#graphiques)
+- [Qualité de l’air](#qualité-de-lair)
+- [Pollens](#pollens)
+- [Données marines](#données-marines)
+- [Pression atmosphérique](#pression-atmosphérique)
+- [Lune et coefficient de marée](#lune-et-coefficient-de-marée)
+- [Vigilance et fortes chaleurs](#vigilance-et-fortes-chaleurs)
+- [Statistiques du jour](#statistiques-du-jour)
+- [Effets météo visuels](#effets-météo-visuels)
 - [Responsive design](#responsive-design)
-- [Persistance locale](#persistance-locale)
-- [Codes WMO](#codes-wmo)
-- [Déploiement](#déploiement)
+- [Accessibilité](#accessibilité)
+- [Persistance, sécurité et confidentialité](#persistance-sécurité-et-confidentialité)
+- [PWA et stratégies de cache](#pwa-et-stratégies-de-cache)
+- [Lancer le projet](#lancer-le-projet)
+- [Déploiement en production](#déploiement-en-production)
 - [Personnalisation](#personnalisation)
-
----
+- [Maintenance et diagnostic](#maintenance-et-diagnostic)
+- [Limites connues](#limites-connues)
+- [Crédits](#crédits)
 
 ## Aperçu
 
-WeatherRadar est une SPA (Single Page Application) météo sans framework ni processus de build. Tout le HTML, le CSS et le JavaScript tiennent dans un seul fichier `index.html`. L'application s'ouvre directement dans n'importe quel navigateur moderne — localement ou hébergée sur n'importe quel serveur statique.
+WeatherRadar est une SPA statique orientée France, mais la recherche et les prévisions fonctionnent dans le monde entier lorsque les fournisseurs couvrent la position choisie.
 
-```
-index.html          ← l'application entière (~2800 lignes)
-README.md           ← ce fichier
-```
+Principes du projet :
 
----
+- zéro étape de compilation ;
+- aucun compte utilisateur ;
+- aucune clé API intégrée dans le navigateur ;
+- aucun outil d’analytics ou cookie publicitaire ;
+- chargement direct depuis un hébergement statique ;
+- interface sombre, responsive et installable ;
+- dégradation indépendante des modules : l’indisponibilité du radar, des pollens ou des données marines ne doit pas effacer les prévisions déjà obtenues.
+
+Une connexion est nécessaire pour actualiser les données. Après une première visite réussie, le service worker peut conserver l’interface statique, mais il ne transforme pas les données météo en prévisions hors ligne.
 
 ## Fonctionnalités
 
 ### Météo
 
-- **Conditions actuelles** : température, ressenti, humidité, vent, code météo
-- **Prévisions matin / après-midi** pour aujourd'hui et demain
-- **Prévisions 7 jours** avec températures min/max et icône météo
-- **Prévision heure par heure sur 48h** avec défilement horizontal, icônes alignées, précipitations, défilement auto sur l'heure courante
-- **Lever et coucher du soleil** dans la card Aujourd'hui
+- Conditions actuelles : température, ressenti, humidité, vent et état du ciel.
+- Prévisions matin/après-midi pour aujourd’hui et demain.
+- Prévisions synthétiques sur 7 jours et heure par heure sur 48 heures.
+- Lever/coucher du soleil, rosée, visibilité, rafales et ensoleillement.
+- Réessais automatiques de la requête principale en cas de coupure transitoire.
 
-### Radar
+### Radar et graphiques
 
-- **Radar précipitations en direct** via RainViewer (tuiles Leaflet animées)
-- Historique des **8 dernières trames** (80 min) + nowcast si disponible
-- **Animation automatique** avec bouton ▶ Animer
-- Légende colorée des intensités (0.1 → 50+ mm/h)
-- Marqueur de position de la ville sélectionnée
+- Radar RainViewer animé sur fond OpenStreetMap.
+- Jusqu’à 8 trames historiques et 6 trames nowcast.
+- Sélection manuelle ou lecture automatique des images radar.
+- Graphique combiné température/précipitations/probabilité sur 24 heures.
+- Graphique sur 15 jours : température, précipitations, vent et humidité.
+- Graphiques secondaires pour la pression et le pollen dominant.
 
-### Graphiques
+### Environnement et risques
 
-- **Graphique inline 24h** : températures (ligne orange), précipitations (barres bleues), probabilité de pluie (ligne pointillée)
-- **Graphique 15 jours** avec 4 onglets :
-  - 🌡 Températures min/max
-  - 🌧 Précipitations journalières
-  - 💨 Vent maximum
-  - 💧 Humidité relative
+- Indice européen de qualité de l’air et quatre polluants.
+- Six familles de pollens CAMS.
+- Température de l’eau et houle lorsque le modèle marin couvre la position.
+- Pression au niveau de la mer, tendance sur 3 heures et baromètre.
+- Phase lunaire, illumination et prochains événements lunaires.
+- Coefficient de marée indicatif pour certaines positions côtières françaises.
+- Vigilance départementale et estimation locale des épisodes de forte chaleur.
 
-### Qualité de l'air
+### Interface
 
-- Score **AQI européen** avec niveau textuel et jauge de couleur
-- Barres de **4 polluants** (PM2.5, PM10, NO₂, O₃) colorées dynamiquement selon les **seuils OMS**
-- Couleur de barre : 🟢 Bon → 🟡 Moyen → 🟠 Dégradé → 🔴 Mauvais
+- Recherche internationale avec autocomplétion.
+- Navigation clavier de la recherche, du radar et des graphiques.
+- Header sticky avec suivi automatique de la section visible.
+- Ambiance animée adaptée au code météo et au vent.
+- Réduction des animations selon `prefers-reduced-motion`.
+- Mise en page mobile portrait, très petit écran et mobile paysage.
+- Installation PWA en portrait ou en paysage.
 
-### Statistiques du jour (8 cards)
+## Fichiers du projet
 
-| Card | Contenu |
-|------|---------|
-| 🔆 Indice UV | Valeur colorée selon les seuils, max du jour |
-| 🌂 Prochaine pluie | Heure précise, délai relatif, % probabilité, mm |
-| 🌡 Amplitude | Min / Max du jour, écart °C |
-| 🌧 Précipitations | Total mm, heures de pluie |
-| 💨 Vent maximum | km/h, direction cardinale |
-| 🌡 Ressenti actuel | Température ressentie calculée |
-| 📅 Moy. semaine proch. | T° max moyenne J+7→J+14 |
-| 🌦 Jours de pluie | Nombre de jours pluvieux sur 7 jours |
+```text
+index.html         Interface, CSS, état et logique applicative
+sw.js              Service worker et stratégies de cache
+manifest.json      Métadonnées de la PWA
+privacy.html       Information de confidentialité
+icon-192.png       Icône PWA 192 × 192
+icon-512.png       Icône PWA 512 × 512, également maskable
+WeatherRadar.apk   Artefact Android distribué séparément du code web
+README.md          Documentation actuelle
+old_readme.md      Documentation historique de référence
+```
 
-### Recherche
-
-- Barre de recherche avec **autocomplétion** (Open-Meteo Geocoding + Nominatim)
-- Fallback sur une base locale de **20 grandes villes françaises**
-- Navigation clavier (↑ ↓ Entrée Échap)
-- Annulation automatique des requêtes en cours (AbortController)
-- **Mémorisation** de la dernière ville en localStorage
-
-### Navigation
-
-- Menu sticky dans le header avec 4 ancres : Radar, Horaire, Graphiques, Statistiques
-- Lien actif détecté automatiquement via **IntersectionObserver**
-- Sur mobile (< 600px) : icônes seules, labels masqués
-
-### Effets visuels
-
-- Canvas d'ambiance atmosphérique animé en arrière-plan
-- Overlay dynamique selon la météo : ☀️ soleil / 🌧 pluie / ❄️ neige / ⛈ orage / ☁️ nuages / 🌫 brouillard
-
----
+`WeatherRadar.apk` n’est pas généré par un script présent dans ce dépôt. Après une modification du site, il faut vérifier séparément si cet artefact doit être reconstruit.
 
 ## Architecture technique
 
-```
-┌─────────────────────────────────────────────────┐
-│                   index.html                    │
-│                                                 │
-│  ┌──────────────────────────────────────────┐   │
-│  │  <head>                                  │   │
-│  │    Google Fonts (Inter)                  │   │
-│  │    Leaflet 1.9.4 CSS + JS                │   │
-│  │    Chart.js 4.4.0                        │   │
-│  │    <style> (~700 lignes CSS)             │   │
-│  └──────────────────────────────────────────┘   │
-│                                                 │
-│  ┌──────────────────────────────────────────┐   │
-│  │  <body>                                  │   │
-│  │    #atmo-canvas (fond animé)             │   │
-│  │    #weather-overlay (effets météo)       │   │
-│  │    .app-shell                            │   │
-│  │      header (nav + horloge)              │   │
-│  │      main                                │   │
-│  │        .search-section                   │   │
-│  │        .main-grid                        │   │
-│  │          .left-col (radar + chart 24h)   │   │
-│  │          .right-col (today/demain/7j)    │   │
-│  │          .radar-inline-chart (chart 24h) │   │
-│  │        .hourly-card (48h)                │   │
-│  │        .charts-section (15j + AQI)       │   │
-│  │        .stats-section (8 cards)          │   │
-│  │      footer                              │   │
-│  └──────────────────────────────────────────┘   │
-│                                                 │
-│  ┌──────────────────────────────────────────┐   │
-│  │  <script> (~1700 lignes JS)              │   │
-│  │    État global S{}                       │   │
-│  │    Base de villes CITIES[]               │   │
-│  │    WMO codes → wmoInfo()                 │   │
-│  │    Horloge tick()                        │   │
-│  │    Recherche + géocodage                 │   │
-│  │    Leaflet map + RainViewer radar        │   │
-│  │    fetchWeather() → Open-Meteo           │   │
-│  │    fetchAQI() → Open-Meteo Air Quality   │   │
-│  │    Renderers (Today/Tomorrow/Week/...)   │   │
-│  │    Chart.js buildChart() / inline        │   │
-│  │    Effets visuels applyWeatherEffect()   │   │
-│  │    ResizeObserver (map invalidateSize)   │   │
-│  │    Navigation IntersectionObserver       │   │
-│  └──────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────┘
+```text
+Navigateur
+├─ index.html
+│  ├─ HTML sémantique et cartes
+│  ├─ CSS responsive et effets météo
+│  └─ JavaScript applicatif
+│     ├─ état global S
+│     ├─ recherche et validation des lieux
+│     ├─ clients des APIs
+│     ├─ renderers des cartes
+│     ├─ Leaflet + radar RainViewer
+│     ├─ Chart.js
+│     └─ effets Canvas/CSS
+├─ manifest.json
+├─ sw.js
+└─ privacy.html
+
+Services distants
+├─ Open-Meteo Forecast / Air Quality / Geocoding / Marine
+├─ RainViewer
+├─ OpenStreetMap
+├─ Géoplateforme
+└─ OpenDataSoft / vigilance Météo-France
 ```
 
----
+### Structure de l’interface
 
-## APIs & dépendances
+```text
+body
+├─ #atmo-canvas
+├─ #weather-overlay
+└─ .app-shell
+   ├─ header : logo, navigation, heure, météo et ville
+   ├─ main
+   │  ├─ recherche
+   │  ├─ vigilance officielle et alerte chaleur
+   │  ├─ radar, aujourd’hui, demain, semaine et graphique 24 h
+   │  ├─ prévisions horaires 48 h
+   │  ├─ graphique 15 jours + qualité de l’air
+   │  ├─ pollens et données marines conditionnelles
+   │  ├─ pression + lune
+   │  └─ 12 cartes statistiques
+   └─ footer et confidentialité
+```
 
-### APIs externes (toutes gratuites, sans clé)
+### Choix techniques
 
-| Service | URL | Usage |
-|---------|-----|-------|
-| **Open-Meteo Forecast** | `https://api.open-meteo.com/v1/forecast` | Météo horaire + journalière 16 jours |
-| **Open-Meteo Air Quality** | `https://air-quality-api.open-meteo.com/v1/air-quality` | PM2.5, PM10, NO₂, O₃, AQI européen |
-| **Open-Meteo Geocoding** | `https://geocoding-api.open-meteo.com/v1/search` | Recherche de villes (suggestions) |
-| **Nominatim (OSM)** | `https://nominatim.openstreetmap.org/search` | Fallback géocodage |
-| **RainViewer** | `https://api.rainviewer.com/public/weather-maps.json` | Métadonnées radar (frames + host) |
-| **RainViewer tiles** | `https://tilecache.rainviewer.com/...` | Tuiles radar précipitations |
-| **OpenStreetMap tiles** | `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png` | Fond de carte Leaflet |
+- JavaScript natif en mode strict, `fetch` et `AbortController`.
+- Leaflet 1.9.4 pour la carte et Chart.js 4.4.0 pour les graphiques.
+- Canvas 2D pour le fond atmosphérique.
+- CSS Grid, Flexbox et `display: contents` pour le mobile.
+- `ResizeObserver` pour la carte et le décalage du header.
+- `IntersectionObserver` pour la navigation active.
+- `localStorage` pour la persistance locale.
+- Service worker pour le shell de la PWA.
 
-### Bibliothèques CDN
+## Sources de données et dépendances
 
-| Lib | Version | CDN | Usage |
-|-----|---------|-----|-------|
-| **Leaflet.js** | 1.9.4 | unpkg | Carte interactive + tuiles radar |
-| **Chart.js** | 4.4.0 | jsDelivr | Graphiques (ligne, barre, combiné) |
-| **Inter** | variable | Google Fonts | Police principale (lisibilité écran) |
+### APIs externes
 
-### Paramètres Open-Meteo utilisés
+| Service | Endpoint | Utilisation | Clé |
+|---|---|---|---|
+| Open-Meteo Forecast | `api.open-meteo.com/v1/forecast` | Prévisions sur 16 jours | Non |
+| Open-Meteo Air Quality / CAMS | `air-quality-api.open-meteo.com/v1/air-quality` | AQI, polluants et pollens | Non |
+| Open-Meteo Geocoding | `geocoding-api.open-meteo.com/v1/search` | Recherche internationale | Non |
+| Open-Meteo Marine | `marine-api.open-meteo.com/v1/marine` | Température de surface et houle | Non |
+| RainViewer | `api.rainviewer.com/public/weather-maps.json` | Métadonnées radar | Non |
+| RainViewer Tiles | Hôte fourni par l’API | Images radar | Non |
+| OpenStreetMap | `tile.openstreetmap.org` | Fond de carte | Non |
+| Géoplateforme | `data.geopf.fr/geocodage/reverse/` | Résolution du département | Non |
+| OpenDataSoft | `public.opendatasoft.com` | Vigilance Météo-France redistribuée | Non |
 
-**Horaire** (`hourly=`) :
-`temperature_2m`, `weathercode`, `precipitation`, `precipitation_probability`, `windspeed_10m`, `relativehumidity_2m`, `apparent_temperature`, `uv_index`
+Les services restent soumis à leurs conditions, quotas, disponibilités et zones de couverture. « Sans clé » ne signifie pas « sans limite » ni « autorisé pour tout volume ou usage commercial ».
 
-**Journalier** (`daily=`) :
-`weathercode`, `temperature_2m_max`, `temperature_2m_min`, `precipitation_sum`, `windspeed_10m_max`, `sunrise`, `sunset`, `precipitation_hours`, `uv_index_max`
+L’application n’utilise pas l’API publique Nominatim pour l’autocomplétion : elle s’appuie sur la base locale puis Open-Meteo Geocoding.
 
-**Options** : `current_weather=true`, `forecast_days=16`, `timezone=auto`
+### Dépendances navigateur
 
----
+| Bibliothèque | Version | Source | Rôle |
+|---|---:|---|---|
+| Leaflet | 1.9.4 | unpkg | Carte, marqueur et tuiles |
+| Chart.js | 4.4.0 | jsDelivr | Graphiques |
+| Inter | variable | Google Fonts | Typographie |
+
+Ces dépendances sont critiques au premier chargement. Pour une production à forte exigence de disponibilité, leur auto-hébergement est préférable.
+
+### Paramètres Open-Meteo Forecast
+
+Variables horaires :
+
+```text
+temperature_2m, weathercode, precipitation, precipitation_probability
+windspeed_10m, relativehumidity_2m, apparent_temperature, uv_index
+cloudcover, pressure_msl, surface_pressure, dewpoint_2m
+windgusts_10m, visibility
+```
+
+Variables journalières :
+
+```text
+weathercode, temperature_2m_max, temperature_2m_min
+apparent_temperature_max, apparent_temperature_min
+precipitation_sum, windspeed_10m_max, sunrise, sunset
+precipitation_hours, uv_index_max, daylight_duration, sunshine_duration
+```
+
+Options : `current_weather=true`, `forecast_days=16`, `timezone=auto`.
+
+Air et pollens :
+
+```text
+pm2_5, pm10, nitrogen_dioxide, ozone, european_aqi
+alder_pollen, birch_pollen, grass_pollen
+mugwort_pollen, olive_pollen, ragweed_pollen
+forecast_days=1, timezone=auto
+```
+
+Marine :
+
+```text
+hourly: sea_surface_temperature, wave_height, wave_period, wave_direction
+daily: sea_surface_temperature_max, sea_surface_temperature_min, wave_height_max
+forecast_days=2, timezone=auto
+```
 
 ## Structure du code
 
-### Constantes et état global (lignes ~1128–1149)
+### État global `S`
 
-```js
-const S = {
-  city, lat, lon, region, timezone,  // ville sélectionnée
-  forecast,                          // données Open-Meteo (cache)
-  aqi,                               // données qualité de l'air
-  chart,                             // instance Chart.js principale
-  chartType,                         // onglet actif ('temp'|'precip'|'wind'|'humidity')
-  radarFrames, radarIdx,             // frames RainViewer
-  radarLayer, radarLayers,           // couches Leaflet (cache Map())
-  radarHost, radarFadeFrame,         // config RainViewer
-  animInterval,                      // setInterval animation radar
-  cityMarker,                        // marqueur Leaflet
-  weatherEffect,                     // effet visuel courant
-};
-```
+| Propriété | Rôle |
+|---|---|
+| `city`, `region`, `countryCode` | Libellés du lieu actif |
+| `lat`, `lon`, `timezone` | Coordonnées et fuseau |
+| `departmentCode` | Département utilisé pour la vigilance |
+| `forecast`, `aqi` | Dernières réponses météo et air |
+| `chart`, `chartType` | Instance et onglet du graphique 15 jours |
+| `radarFrames`, `radarIdx` | Trames radar et index courant |
+| `radarLayer`, `radarLayers` | Couche courante et cache mémoire Leaflet |
+| `radarHost`, `radarPending`, `radarTransition` | Chargement et transition radar |
+| `animInterval` | Lecture automatique du radar |
+| `cityMarker` | Marqueur de la ville |
+| `weatherEffect` | Effet météo actif |
+| `showTide` | Autorise l’estimation de marée après détection côtière |
 
 ### Fonctions principales
 
 | Fonction | Rôle |
-|----------|------|
-| `loadAll()` | Orchestrateur : appelle fetchWeather + fetchAQI, distribue aux renderers |
-| `fetchWeather()` | Requête Open-Meteo forecast, retourne la réponse JSON |
-| `fetchAQI()` | Requête Open-Meteo air quality, retourne la réponse JSON |
-| `loadRadar()` | Charge les métadonnées RainViewer, reconstruit la timeline |
-| `renderToday(d)` | Remplit la card Aujourd'hui (conditions, lever/coucher soleil) |
-| `renderTomorrow(d)` | Remplit la card Demain (matin/après-midi) |
-| `renderWeek(d)` | Génère les 7 lignes de prévisions hebdomadaires |
-| `renderHourly(d)` | Génère les 48 slots horaires avec alignement icônes |
-| `buildChart(d)` | Construit/reconstruit le graphique Chart.js 15 jours |
-| `buildInlineChart(d)` | Construit le mini-graphique 24h (temp + précip + prob) |
-| `renderAQI(data)` | Remplit la card qualité de l'air avec couleurs dynamiques |
-| `renderStats(d)` | Calcule et affiche les 8 cartes statistiques |
-| `applyWeatherEffect(effect)` | Déclenche l'effet visuel (pluie/neige/orage/soleil/nuages) |
-| `wmoInfo(code)` | Mappe un code WMO → { icon, desc, effect } |
-| `currentHourKey(d)` | Retourne la clé ISO de l'heure courante (ex. `2024-06-10T14:00`) |
-| `updateMarker()` | Repositionne le marqueur Leaflet sur la ville active |
-| `tick()` | Met à jour l'horloge dans le header (toutes les 30 s) |
-| `windDir(deg)` | Convertit un angle en direction cardinale (N/NE/E/…) |
-| `tempClass(t)` | Retourne la classe CSS de couleur selon la température |
-| `pollutantColor(val, thresholds)` | Retourne la couleur de barre AQI selon les seuils OMS |
-| `uvLabel(v)` | Retourne le label et la couleur selon l'indice UV |
+|---|---|
+| `loadAll()` | Orchestre météo, alertes, air et données marines |
+| `fetchWeatherResilient()` | Réessaie la prévision principale jusqu’à quatre fois |
+| `fetchAQI()` / `fetchMarine()` | Chargent air, pollens, eau et houle |
+| `resolveDepartmentCode()` / `fetchVigilance()` | Chargent la vigilance |
+| `renderToday()` / `renderTomorrow()` / `renderWeek()` | Cartes de prévision |
+| `renderHourly()` | Prévisions sur 48 heures |
+| `buildInlineChart()` / `buildChart()` | Graphiques 24 h et 15 jours |
+| `renderAQI()` / `renderPollen()` | Air et pollens |
+| `renderWaterCard()` | Données marines conditionnelles |
+| `renderPressureCard()` / `renderMoonCard()` | Pression, lune et marée |
+| `renderVigilance()` / `renderHeatwave()` | Bannières de risque |
+| `renderStats()` | Douze cartes statistiques |
+| `loadRadar()` / `showRadarFrame()` | Timeline et couche radar |
+| `applyWeatherEffect()` | Overlay météo |
+| `normalizeLocation()` / `escapeHTML()` | Validation et échappement |
 
----
+## Gestion de l’état et cycle de chargement
 
-## Sections de l'interface
+L’état est centralisé dans `S`. Les renderers écrivent directement dans le DOM ; il n’existe ni virtual DOM ni store externe.
 
-### Layout desktop (> 1100px)
+```text
+Initialisation
+├─ restaurer wr_city si sa structure est valide
+├─ initialiser Leaflet et le marqueur
+├─ calculer la lune localement
+├─ loadAll()
+└─ loadRadar()
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  header : logo + nav (Radar / Horaire / Graphiques / Stats) │
-│           + horloge + badge météo + ville                   │
-├──────────────────────────────┬──────────────────────────────┤
-│  .left-col                   │  .right-col                  │
-│  ┌──────────────────────────┐│  ┌──────────────────────────┐│
-│  │  .radar-card             ││  │  .today-card (Aujourd'hui││
-│  │    timeline (8 trames)   ││  │    nom ville, T°, icône  ││
-│  │    #map (Leaflet)        ││  │    lever/coucher soleil  ││
-│  │    légende + statut      ││  │    matin / après-midi    ││
-│  └──────────────────────────┘│  └──────────────────────────┘│
-│  ┌──────────────────────────┐│  ┌──────────────────────────┐│
-│  │  .radar-inline-chart     ││  │  .tomorrow-card (Demain) ││
-│  │    ligne T° + barres mm  ││  │    matin / après-midi    ││
-│  │    + prob. pluie 24h     ││  └──────────────────────────┘│
-│  └──────────────────────────┘│  ┌──────────────────────────┐│
-│                              │  │  .week-card (7 jours)    ││
-│                              │  │    liste jour / icône /  ││
-│                              │  │    description / min max ││
-│                              │  └──────────────────────────┘│
-├──────────────────────────────┴──────────────────────────────┤
-│  .hourly-card — Prévision heure par heure 48h               │
-│    scroll horizontal · 48 slots · icônes alignées           │
-├────────────────────────────────────┬────────────────────────┤
-│  .chart-card — Graphiques 15 jours │  .aqi-card — Qualité   │
-│    onglets : T° / Précip / Vent /  │  de l'air (AQI + 4     │
-│    Humidité                        │  polluants)            │
-├────────────────────────────────────┴────────────────────────┤
-│  .stats-section — 8 cartes statistiques (grille 4 cols)     │
-└─────────────────────────────────────────────────────────────┘
+Sélection d’une ville
+├─ normalizeLocation()
+├─ mettre à jour S et wr_city
+├─ map.flyTo() + updateMarker()
+├─ loadAll()
+└─ loadRadar()
 ```
 
-### Layout mobile (≤ 600px)
+`loadAll()` lance la résolution du département en parallèle de la prévision. Après réception de la météo principale, il met à jour aujourd’hui, demain, la semaine, l’horaire, les graphiques, les statistiques, la pression et l’alerte chaleur. L’air/pollen et les données marines sont ensuite chargés indépendamment.
 
-Sur mobile, la grille principale devient une colonne flex avec reordering CSS :
+La prévision principale dispose de quatre tentatives avec des délais de 1, 2 puis 4 secondes. Si le navigateur est hors ligne, l’attente peut se terminer dès l’événement `online`.
 
-1. `.left-col` (radar) — `order: 1`
-2. `.right-col` (Aujourd'hui → Demain → 7 jours) — `order: 2`
-3. `.radar-inline-chart` (graphique 24h) — `order: 3`
-4. `.hourly-card` (48h)
-5. `.charts-section`
-6. `.stats-section` (2 colonnes)
+Les modules secondaires ont leurs propres replis : une erreur Air Quality ne supprime pas la météo, une erreur Marine masque la carte d’eau et une erreur Vigilance masque sa bannière.
 
-Le menu de navigation se déplace sous le logo et devient scrollable horizontalement. Les labels texte disparaissent, seules les icônes restent.
+## Recherche de villes
 
----
+### Sources et classement
 
-## Gestion de l'état
+La recherche combine :
 
-L'état global est centralisé dans l'objet `S`. Aucun framework de gestion d'état (Redux, MobX…) n'est utilisé. Les mises à jour déclenchent directement les fonctions de rendu correspondantes.
+1. un filtre instantané dans `CITIES[]`, qui contient 25 villes françaises ;
+2. Open-Meteo Geocoding pour les résultats internationaux.
 
-**Flux de données :**
+Les résultats locaux apparaissent immédiatement, puis sont fusionnés avec les résultats distants et dédupliqués à partir du nom, du pays et des coordonnées arrondies.
 
-```
-sélection ville (search / localStorage)
-        │
-        ▼
-  updateCity(city)
-        │
-        ├──► map.flyTo() + updateMarker()
-        ├──► loadAll()
-        │       ├── fetchWeather() ──► renderToday()
-        │       │                 ──► renderTomorrow()
-        │       │                 ──► renderWeek()
-        │       │                 ──► renderHourly()
-        │       │                 ──► buildChart()
-        │       │                 ──► buildInlineChart()
-        │       │                 ──► renderStats()
-        │       │                 ──► applyWeatherEffect()
-        │       └── fetchAQI()    ──► renderAQI()
-        └──► loadRadar() ──► buildTimeline()
-                        ──► preloadRadarLayers()
-                        ──► showRadarFrame()
-```
+### Comportement
 
----
+- Recherche à partir de deux caractères.
+- Temporisation de 230 ms.
+- Huit suggestions au maximum dans le flux normal.
+- Jusqu’à douze résultats lors d’une soumission explicite.
+- Annulation de la requête précédente avec `AbortController`.
+- Flèches haut/bas pour parcourir les suggestions.
+- Entrée pour sélectionner ou soumettre, Échap pour fermer.
+- États ARIA `combobox`, `listbox` et `option`.
+- Ellipse propre du placeholder sur petit écran.
 
-## Système de recherche de villes
+### Validation
 
-La recherche combine trois sources dans l'ordre de priorité :
+`normalizeLocation()` contrôle :
 
-1. **Filtre local** sur `CITIES[]` (20 villes françaises préconfigurées) — résultat instantané, 0 requête réseau
-2. **Open-Meteo Geocoding API** — recherche internationale, résultats triés par population
-3. **Nominatim (OpenStreetMap)** — fallback si Open-Meteo ne retourne rien
+- un nom non vide, limité à 120 caractères ;
+- une latitude entre −90 et 90 ;
+- une longitude entre −180 et 180 ;
+- un code pays ISO à deux lettres lorsqu’il est présent ;
+- un fuseau ramené à `auto` si son format n’est pas reconnu.
 
-Les requêtes sont **debouncées** (300 ms) et **annulées** via `AbortController` à chaque nouvelle frappe. La navigation clavier (↑ ↓ Entrée Échap) est entièrement supportée.
+Si Open-Meteo Geocoding est indisponible, seules les correspondances locales restent accessibles. Nominatim ne doit pas être réintroduit directement pour une autocomplétion côté navigateur.
 
-À la sélection d'une ville, l'état S est mis à jour, la ville est sauvegardée en `localStorage` (`wr_city`), et toutes les données sont rechargées.
+## Prévisions météo
 
----
+### Aujourd’hui
 
-## Radar météo (RainViewer)
+La carte principale affiche ville, région, température courante, description WMO, minimum/maximum, ressenti, lever/coucher du soleil et deux créneaux matin/après-midi.
 
-### Fonctionnement
+Le code WMO, `is_day`, le vent et la couverture nuageuse déterminent l’ambiance visuelle.
 
-1. `loadRadar()` interroge `https://api.rainviewer.com/public/weather-maps.json`
-2. Les 8 dernières trames historiques (`radar.past`) + jusqu'à 6 trames nowcast (`radar.nowcast`) sont extraites
-3. `buildTimeline()` génère les boutons de la timeline avec classes `now` (trame courante) et `forecast` (nowcast)
-4. `preloadRadarLayers()` crée les couches Leaflet en avance pour éviter les clignotements
-5. `showRadarFrame(idx)` applique un **fondu croisé** animé via `requestAnimationFrame` entre la couche précédente et la nouvelle
+### Demain et semaine
 
-### Cache des couches
+La carte demain utilise deux heures représentatives pour le matin et l’après-midi, avec température, humidité, vent et indication min/max.
 
-Les couches Leaflet sont stockées dans `S.radarLayers` (Map keyed par timestamp), réutilisées d'une animation à l'autre. Ce cache est vidé (`clearRadarLayerCache()`) à chaque rechargement des métadonnées (toutes les 10 minutes via `setInterval`).
+Chaque ligne des sept jours contient jour, icône WMO, description, température minimale et maximale. Aujourd’hui est mis en évidence.
 
-### Animation
+### Prévisions horaires
 
-Le bouton ▶ Animer démarre un `setInterval` de 600 ms qui avance frame par frame, revient au début à la fin de la séquence. L'animation s'arrête proprement avant tout rechargement.
+Chaque case des 48 heures comprend heure, icône, température et précipitations. L’heure courante est mise en évidence et centrée après rendu. Le centrage devient instantané lorsque la réduction des animations est activée.
 
-### Résolution des tuiles
+## Radar météo RainViewer
+
+### Chargement des trames
+
+1. `loadRadar()` appelle `weather-maps.json`.
+2. Les huit dernières trames `radar.past` sont conservées.
+3. Jusqu’à six trames `radar.nowcast` sont ajoutées.
+4. La timeline distingue historique, présent et prévision.
+5. La dernière trame historique est affichée par défaut.
+
+Sans nowcast, l’interface indique que seul l’historique radar est disponible.
+
+### Tuiles et résolution
 
 ```js
 const RAINVIEWER_TILE_IMAGE_SIZE = window.devicePixelRatio >= 2 ? 512 : 256;
 ```
 
-Les écrans Retina (dpr ≥ 2) reçoivent des tuiles 512px pour une meilleure netteté.
+- Schéma de couleurs RainViewer : `2`.
+- Opacité maximale : `0.96`.
+- Radar : `maxNativeZoom: 7`, `maxZoom: 12`.
+- Fond OpenStreetMap : zoom maximal 18.
+- Tuiles radar chargées avec `crossOrigin: true`.
 
-### Correction de taille (invalidateSize)
+### Mémoire, transitions et lecture
 
-La carte Leaflet est initialisée avant que le layout CSS grid/flex soit résolu. Trois mécanismes garantissent le bon dimensionnement :
+Au repos, seule la couche radar courante reste sur la carte. Au lancement de l’animation, toutes les trames sont préparées ; elles sont libérées à l’arrêt.
 
-```js
-// 1. Double rAF — attend le premier paint complet
-requestAnimationFrame(() => requestAnimationFrame(fix));
+Le fondu entre deux couches dure 280 ms et utilise `requestAnimationFrame`. Une trame qui ne signale pas son chargement dispose d’un repli après 1,1 seconde.
 
-// 2. Timeouts — couvre les layouts tardifs
-setTimeout(fix, 300);
-setTimeout(fix, 800);
+Le bouton « Animer » avance toutes les 450 ms, boucle, met à jour la progression et devient « Stop ». Les métadonnées sont actualisées toutes les dix minutes.
 
-// 3. ResizeObserver — réagit à tout changement de taille du conteneur
-new ResizeObserver(entries => {
-  for (const e of entries) {
-    if (e.contentRect.width > 0 && e.contentRect.height > 0) fix();
-  }
-}).observe(container);
-```
+### Correction de taille Leaflet
 
----
-
-## Effets météo visuels
-
-L'overlay `#weather-overlay` affiche des effets CSS/JS dynamiques selon le code météo courant. L'état est appliqué via `applyWeatherEffect(effect)` à la fin de `renderToday()`.
-
-| Effect | Déclenché par | Rendu |
-|--------|--------------|-------|
-| `sun` | Codes 0, 1, 2 | Rayons CSS + halo animé |
-| `cloud` | Code 3 (couvert) | Couches de nuages qui dérivent |
-| `fog` | Codes 45, 48 | Couches de brume semi-transparentes |
-| `rain` | Codes 51–67, 80–82 | Gouttes de pluie animées (CSS keyframes) |
-| `heavyrain` | Code 65 | Pluie dense (plus de gouttes) |
-| `snow` | Codes 71–77, 85–86 | Flocons animés |
-| `storm` | Codes 82, 95–99 | Pluie + éclairs (flash aléatoire) |
-
-Le canvas `#atmo-canvas` génère un fond de particules atmosphériques en JavaScript, indépendant de l'état météo.
-
----
-
-## Qualité de l'air
-
-### Score AQI européen
-
-Le score AQI est affiché avec une jauge dégradée (vert → violet) et un pointeur positionné selon la valeur (0–100+). Les niveaux sont :
-
-| AQI | Niveau |
-|-----|--------|
-| 0–20 | Bon |
-| 21–40 | Satisfaisant |
-| 41–60 | Modéré |
-| 61–80 | Mauvais |
-| 81–100 | Très mauvais |
-| > 100 | Extrêmement mauvais |
-
-### Couleur des barres de polluants
-
-Chaque polluant a ses propres seuils OMS. La couleur est calculée dynamiquement :
-
-```js
-function pollutantColor(val, thresholds) {
-  const [t1, t2, t3] = thresholds;
-  if (val <= t1) return '#4caf50';  // Bon
-  if (val <= t2) return '#fdd835';  // Moyen
-  if (val <= t3) return '#ff9800';  // Dégradé
-  return '#f44336';                 // Mauvais
-}
-```
-
-| Polluant | t1 (bon) | t2 (moyen) | t3 (dégradé) | Unité |
-|----------|----------|------------|--------------|-------|
-| PM2.5 | 15 | 25 | 50 | µg/m³ |
-| PM10 | 45 | 75 | 150 | µg/m³ |
-| NO₂ | 25 | 50 | 100 | µg/m³ |
-| O₃ | 100 | 130 | 160 | µg/m³ |
-
----
-
-## Statistiques du jour
-
-### Indice UV
-
-L'indice UV est lu en priorité depuis `hourly.uv_index` à l'heure courante (valeur instantanée), avec fallback sur `daily.uv_index_max` (pic journalier). La couleur et le label suivent les seuils internationaux :
-
-| Valeur | Niveau | Couleur |
-|--------|--------|---------|
-| < 3 | Faible | 🟢 vert |
-| 3–5 | Modéré | 🟡 jaune |
-| 6–7 | Élevé | 🟠 orange |
-| 8–10 | Très élevé | 🔴 rouge |
-| ≥ 11 | Extrême | 🟣 violet |
-
-### Prochaine heure de pluie
-
-Parcourt les 48 prochaines heures horaires. Une heure est considérée "pluvieuse" si :
-
-- `precipitation_probability ≥ 40 %` **OU**
-- `precipitation > 0.1 mm`
-
-Le résultat affiche l'heure exacte, un label relatif (`Maintenant`, `Dans ~2h`, `Jeu 14:00`…), le pourcentage de probabilité et les mm prévus. Si rien n'est prévu dans les 48h : "Aucune dans 48h".
-
----
+`invalidateSize()` est appelé après deux `requestAnimationFrame`, après 300 et 800 ms, puis à chaque taille détectée par `ResizeObserver`. Un listener `resize` sert de repli.
 
 ## Graphiques
 
-### Graphique 15 jours (Chart.js)
+### Graphique combiné 24 heures
 
-Construit par `buildChart(d)` selon l'onglet actif (`S.chartType`). Configuration dans `CHART_CONFIGS` :
+| Série | Type | Axe |
+|---|---|---|
+| Température | Ligne orange remplie | Gauche, °C |
+| Précipitations | Barres bleues | Droite, mm |
+| Probabilité de pluie | Ligne pointillée | Axe 0–100 % masqué |
 
-```js
-const CHART_CONFIGS = {
-  temp:    { type: 'line', datasets: [T°max, T°min] },
-  precip:  { type: 'bar',  datasets: [mm/jour] },
-  wind:    { type: 'line', datasets: [km/h max] },
-  humidity:{ type: 'line', datasets: [% humidité] },
-};
-```
+L’infobulle regroupe les trois séries d’un même index horaire.
 
-Chaque clic sur un onglet détruit l'instance Chart.js précédente et en crée une nouvelle.
+### Graphique 15 jours
 
-### Graphique inline 24h
+| Onglet | Type | Calcul |
+|---|---|---|
+| Températures | Deux lignes | Min et max journaliers |
+| Précipitations | Barres | Cumul journalier en mm |
+| Vent | Ligne | Maximum journalier en km/h |
+| Humidité | Ligne | Moyenne des valeurs horaires du jour |
 
-Triple axe Y :
+L’instance précédente est détruite avant reconstruction. Les onglets suivent le modèle ARIA `tablist`/`tab`/`tabpanel` et prennent en charge Gauche, Droite, Début et Fin.
 
-- **Gauche** : température en °C (ligne orange, fill)
-- **Droite** : précipitations en mm (barres bleues)
-- **Caché** : probabilité 0–100% (ligne pointillée, axes masqués pour ne pas surcharger)
+### Graphiques secondaires
 
-`maintainAspectRatio: false` — la hauteur est fixée par le conteneur CSS.
+- Pression : environ 12 heures avant et 12 heures après l’heure courante.
+- Pollens : 24 prochaines heures du pollen dominant.
 
----
+## Qualité de l’air
+
+### Indice européen
+
+| Valeur | Niveau | Couleur |
+|---:|---|---|
+| 0–20 | Bon | Vert |
+| 21–40 | Moyen | Vert clair |
+| 41–60 | Modéré | Jaune |
+| 61–80 | Mauvais | Orange |
+| 81–100 | Très mauvais | Rouge |
+| plus de 100 | Extrêmement mauvais | Violet |
+
+Le pointeur utilise une échelle visuelle 0–150, plafonnée à 95 % de la largeur.
+
+### Polluants
+
+| Polluant | Bon | Moyen | Dégradé | Maximum visuel |
+|---|---:|---:|---:|---:|
+| PM2.5 | 15 | 25 | 50 | 75 µg/m³ |
+| PM10 | 45 | 75 | 150 | 200 µg/m³ |
+| NO₂ | 25 | 50 | 100 | 200 µg/m³ |
+| O₃ | 100 | 130 | 160 | 240 µg/m³ |
+
+Les barres ont un rôle `progressbar`, une valeur ARIA et une animation vers leur cible. En l’absence de données, la carte affiche explicitement « Indisponible ».
+
+## Pollens
+
+Les pollens proviennent de CAMS via Open-Meteo et peuvent être absents hors de la zone européenne couverte.
+
+| Famille | Seuils faible/modéré/élevé en grains/m³ |
+|---|---|
+| Bouleau | 10 / 70 / 150 |
+| Aulne | 10 / 70 / 150 |
+| Olivier | 10 / 70 / 150 |
+| Graminées | 3 / 20 / 50 |
+| Armoise | 3 / 20 / 50 |
+| Ambroisie | 3 / 20 / 50 |
+
+Chaque famille affiche concentration, niveau, prochain seuil et jauge segmentée. Si la valeur courante est nulle, le pic disponible du jour sert de repli.
+
+Le pollen dominant est choisi par niveau puis par concentration. Il alimente le résumé et le graphique 24 h. Les conseils sont indicatifs et ne constituent pas un avis médical.
+
+## Données marines
+
+La carte marine est affichée uniquement si l’API renvoie au moins une température de surface exploitable.
+
+### Confort de baignade
+
+| Température | Niveau |
+|---:|---|
+| moins de 12 °C | Glaciale |
+| 12 à moins de 18 °C | Froide |
+| 18 à moins de 21 °C | Fraîche |
+| 21 à moins de 24 °C | Agréable |
+| 24 à moins de 27 °C | Chaude |
+| 27 °C et plus | Très chaude |
+
+La carte présente hauteur/période/direction de houle, min/max de l’eau, différence eau-air et houle maximale prévue demain. Une variation de houle inférieure à 0,15 m est considérée stable.
+
+## Pression atmosphérique
+
+La pression utilise `pressure_msl`, avec repli sur `surface_pressure`. La tendance est la différence avec la valeur trois heures plus tôt : au moins +1 hPa signifie hausse, au plus −1 hPa baisse, sinon stabilité.
+
+| Pression | Libellé |
+|---:|---|
+| 960 à moins de 985 hPa | Tempête |
+| 985 à moins de 1000 hPa | Pluie |
+| 1000 à moins de 1015 hPa | Variable |
+| 1015 à moins de 1035 hPa | Beau temps |
+| 1035 à 1060 hPa | Très sec |
+
+Le cadran est limité à 960–1060 hPa. Une variation d’au moins 3 hPa sur trois heures ajoute un commentaire de hausse ou chute rapide. Ces libellés restent une interprétation générale : la pression seule ne prédit pas précisément le temps local.
+
+## Lune et coefficient de marée
+
+### Phase lunaire
+
+Le calcul local utilise la nouvelle lune de référence du 6 janvier 2000 à 18:14 UTC et un mois synodique moyen de `29.530588853` jours. L’âge est converti en huit phases et l’illumination est approximée trigonométriquement.
+
+La carte affiche phase, illumination, jour du cycle, prochaine pleine lune et prochaine nouvelle lune. La précision annoncée par le code est de l’ordre d’une heure pour ce modèle moyen.
+
+### Coefficient indicatif
+
+Le coefficient est calculé avec un modèle harmonique simplifié fondé sur M2, S2 et N2 à Brest, limité à 20–120 puis calibré par un facteur `0.911`. Il est affiché par dizaine avec suffixe `+` ou `−` pour ne pas simuler une précision officielle.
+
+| Estimation | Niveau |
+|---:|---|
+| 100 et plus | Grande marée |
+| 70 à 99 | Marée moyenne+ |
+| 45 à 69 | Marée moyenne |
+| moins de 45 | Marée faible |
+
+Cette estimation n’apparaît qu’après détection d’une position côtière française métropolitaine par le filtre de l’application. Elle n’utilise pas le modèle officiel complet, ne fournit ni horaires ni hauteurs et ne doit jamais servir à la navigation.
+
+## Vigilance et fortes chaleurs
+
+### Vigilance départementale
+
+Pour une position française métropolitaine :
+
+1. Géoplateforme résout le département ;
+2. le code est mémorisé dans `wr_dept_cache` ;
+3. OpenDataSoft fournit la vigilance ;
+4. les niveaux du jour et du lendemain sont comparés ;
+5. la bannière apparaît à partir du jaune.
+
+Les phénomènes reconnus incluent vent, pluie-inondation, orages, crues, neige-verglas, avalanches, canicule, grand froid et vagues-submersion.
+
+Le panneau détaille niveau, période, phénomènes, tendance et conseils génériques, avec un lien vers la carte officielle. Il est actualisé toutes les quinze minutes tant qu’un département est actif.
+
+### Estimation des fortes chaleurs
+
+- Horizon : jusqu’à 10 jours.
+- Jour chaud : maximum d’au moins 32 °C.
+- Nuit tropicale : minimum d’au moins 20 °C.
+- Affichage seulement si le premier déclencheur arrive au plus tard à J+2.
+- « Canicule » : au moins 3 jours consécutifs ≥ 32 °C et pic ≥ 35 °C.
+- « Canicule probable » : au moins 3 jours consécutifs et pic ≥ 33 °C.
+- « Forte chaleur » : pic ≥ 32 °C.
+- Sinon, signalement possible de nuits chaudes.
+
+La fenêtre horaire à risque cherche un bloc contigu à au moins 33 °C ressentis, puis 30 °C en repli. La bannière attend la résolution de la vigilance afin d’éviter un déplacement de page ; un délai de sécurité de trois secondes libère l’affichage.
+
+Ces seuils sont heuristiques et ne remplacent pas les seuils départementaux officiels.
+
+## Statistiques du jour
+
+`renderStats()` génère douze cartes :
+
+| Carte | Source ou calcul |
+|---|---|
+| Indice UV | Valeur horaire actuelle, sinon maximum journalier |
+| Prochaine pluie | Première heure sur 48 h avec probabilité ≥ 40 % ou cumul > 0,1 mm |
+| Amplitude du jour | Minimum, maximum et différence |
+| Précipitations | Somme journalière et heures de pluie |
+| Vent maximum | Maximum journalier et direction courante |
+| Ressenti actuel | `apparent_temperature` à l’heure courante |
+| Moyenne semaine prochaine | Moyenne des maxima J+7 à J+14 |
+| Ensoleillement | Durée et part de la durée du jour |
+| Humidité relative | Humidité, niveau et point de rosée |
+| Visibilité | Distance en kilomètres et appréciation |
+| Rafales maximales | Maximum horaire du jour |
+| Durée du jour | `daylight_duration` convertie en heures/minutes |
+
+### Seuils UV
+
+| Indice | Niveau |
+|---:|---|
+| moins de 3 | Faible |
+| 3 à 5 | Modéré |
+| 6 à 7 | Élevé |
+| 8 à 10 | Très élevé |
+| 11 et plus | Extrême |
+
+Humidité : très sèche sous 30 %, confortable sous 50 %, modérée sous 70 %, élevée sous 85 %, très élevée au-delà.
+
+Visibilité : brouillard dense sous 1 km, brume sous 4 km, bonne sous 10 km, excellente à partir de 10 km.
+
+## Effets météo visuels
+
+### Correspondance WMO
+
+| Codes | Description | Effet |
+|---|---|---|
+| 0 | Ciel dégagé | `sun` |
+| 1 | Principalement dégagé | `sun` |
+| 2 | Partiellement nuageux | `partly-cloudy` |
+| 3 | Couvert | `cloud` |
+| 45, 48 | Brouillard | `fog` |
+| 51–64, 66–67, 80–81 | Bruine, pluie ou averses | `rain` |
+| 65 | Pluie forte | `heavyrain` |
+| 71–77, 85–86 | Neige ou grésil | `snow` |
+| 82, 95–99 | Violentes averses ou orage | `storm` |
+
+La nuit, les effets `sun` et `partly-cloudy` sont remplacés par `clear-night`.
+
+### Rendu
+
+| Effet | Éléments |
+|---|---|
+| Soleil | Rayons coniques, halo et brume lumineuse |
+| Partiellement nuageux | Soleil et deux couches nuageuses atténuées |
+| Nuit claire | Halo lunaire et étoiles |
+| Nuages | Deux couches de gradients en dérive |
+| Brouillard | Nuages et nappe de brume basse |
+| Pluie | Gouttes CSS à densité responsive |
+| Neige | Flocons animés |
+| Orage | Pluie dense et éclairs |
+| Vent | Rafales SVG au-delà de 35 km/h |
+
+La couverture nuageuse ajuste vitesse et opacité. La densité des particules dépend du viewport pour réduire le DOM sur mobile. Sous 600 px, les halos soleil/lune passent à environ 50 % de leur taille desktop.
+
+Le canvas atmosphérique dessine 55 particules à 30 images par seconde. Il s’arrête quand l’onglet est masqué et conserve leurs positions relatives lors du redimensionnement.
+
+### Réduction des animations
+
+Avec `prefers-reduced-motion: reduce` :
+
+- pluie, neige, éclairs et rafales ne sont pas créés ou animés ;
+- nuages, brouillard, halos et étoiles restent visibles mais figés ;
+- le canvas devient statique ;
+- les scrolls automatiques deviennent instantanés ;
+- les transitions de jauges et animations décoratives sont neutralisées.
 
 ## Responsive design
 
-| Breakpoint | Layout |
-|-----------|--------|
-| > 1100px | Grille 2 colonnes (radar + météo) |
-| ≤ 1100px | Colonne unique, radar hauteur 420px fixe |
-| ≤ 600px | Mobile : flex column, reordering CSS, graphique affiché, nav icônes seules |
-| ≤ 380px | Très petit : colonnes encore réduites, 1 col pour les stats |
+### Breakpoints
 
-Techniques utilisées pour éviter les débordements sur mobile :
+| Condition | Comportement |
+|---|---|
+| plus de 1100 px | Grille principale à deux colonnes |
+| 1100 px et moins | Colonne unique, graphiques empilés, radar de 420 px |
+| 600 px et moins | Flux réordonné, navigation compacte, radar en `68vw` |
+| 380 px et moins | Statistiques sur une colonne et composants resserrés |
+| hauteur ≤ 500 px en paysage | Radar limité et paddings verticaux réduits |
 
-- `* { min-width: 0 }` ciblé sur les éléments flex/grid
-- `overflow-x: hidden` sur `main`
-- `#map` en `position: absolute; inset: 0` pour s'affranchir de la résolution flex
-- `minmax(0, 1fr)` sur les colonnes grid
+### Ordre mobile sous 600 px
 
----
+1. recherche ;
+2. vigilance officielle ;
+3. alerte chaleur ;
+4. aujourd’hui ;
+5. demain ;
+6. prévision horaire ;
+7. graphique 24 h ;
+8. prévisions 7 jours ;
+9. radar ;
+10. graphique 15 jours, air, pollens et eau ;
+11. pression et lune ;
+12. statistiques.
 
-## Persistance locale
+Les conteneurs principaux passent en `display: contents` pour permettre ce réordonnancement.
 
-Une seule clé `localStorage` est utilisée :
+### Protection contre les débordements
 
-```js
-// Sauvegarde
-localStorage.setItem('wr_city', JSON.stringify({
-  name, region, lat, lon, timezone
-}));
+- `min-width: 0` sur les enfants flex/grid sensibles.
+- `minmax(0, 1fr)` sur les colonnes compressibles.
+- `overflow-x: hidden` sur le contenu.
+- carte Leaflet dans un conteneur à hauteur contrôlée.
+- ellipses sur placeholder, ville et descriptions longues.
+- effets `:hover` réservés aux pointeurs précis.
 
-// Restauration au chargement
-const saved = JSON.parse(localStorage.getItem('wr_city'));
-```
+Le décalage des ancres est dynamique : `ResizeObserver` mesure le header sticky et met à jour `--scroll-offset`.
 
-Au chargement, si une ville est sauvegardée, elle est restaurée silencieusement (setView sans animation) avant le premier appel API.
+## Accessibilité
 
----
+- Langue française déclarée sur le document.
+- Focus visible sur les contrôles.
+- Recherche exposée comme combobox avec liste et options.
+- Onglets Chart.js avec rôles et états ARIA.
+- Timeline radar avec libellés et `aria-pressed`.
+- Bannières d’alerte utilisant de vrais boutons.
+- Panneaux fermés marqués `aria-hidden` et `inert`.
+- `aria-current` sur la section active.
+- Navigation clavier pour recherche, graphiques et alertes.
+- Respect de la préférence de réduction du mouvement.
 
-## Codes WMO
+Les graphiques Canvas restent principalement visuels. Une restitution tabulaire des séries serait une amélioration utile pour une conformité renforcée.
 
-La fonction `wmoInfo(code)` mappe les codes météo WMO (World Meteorological Organization) retournés par Open-Meteo vers un objet `{ icon, desc, effect }` :
+## Persistance, sécurité et confidentialité
 
-| Codes | Description | Effet |
-|-------|-------------|-------|
-| 0 | Ciel dégagé ☀️ | sun |
-| 1–2 | Principalement/partiellement dégagé 🌤⛅ | sun |
-| 3 | Couvert ☁️ | cloud |
-| 45, 48 | Brouillard 🌫 | fog |
-| 51–55 | Bruine 🌦🌧 | rain |
-| 56–57 | Bruine verglaçante 🌨 | rain |
-| 61–65 | Pluie légère → forte 🌧 | rain / heavyrain |
-| 66–67 | Pluie verglaçante 🌨 | rain |
-| 71–77 | Neige ❄️🌨 | snow |
-| 80–82 | Averses 🌦🌧⛈ | rain / storm |
-| 85–86 | Averses de neige 🌨 | snow |
-| 95–99 | Orage ⛈ | storm |
+### Stockage local
 
----
+| Clé | Contenu | Limite |
+|---|---|---|
+| `wr_city` | Nom, région, pays, coordonnées et fuseau | Une ville |
+| `wr_dept_cache` | Coordonnées arrondies vers département | 40 entrées |
 
-## Déploiement
+La clé département utilise des coordonnées arrondies à 0,01°, environ un kilomètre. L’entrée la plus ancienne est supprimée au-delà de 40 clés.
 
-### Ouverture locale
+Une valeur `wr_city` invalide ou corrompue est supprimée et Paris reste la valeur par défaut.
+
+### Mesures défensives
+
+- Validation des coordonnées et du fuseau.
+- Échappement des valeurs externes injectées dans les alertes.
+- Annulation des anciennes recherches réseau.
+- Timeout de huit secondes pour département et vigilance.
+- Vigilance et radar exclus du cache applicatif pour éviter une donnée obsolète.
+- Liens externes ouverts avec `rel="noopener"`.
+
+### Confidentialité
+
+L’application ne demande aucun compte, ne collecte pas automatiquement le GPS et n’intègre ni analytics ni publicité. Le navigateur envoie directement la recherche ou les coordonnées nécessaires aux fournisseurs, qui reçoivent également les métadonnées habituelles d’une requête web.
+
+La page [`privacy.html`](privacy.html) détaille les services contactés et les données locales.
+
+## PWA et stratégies de cache
+
+### Manifeste
+
+`manifest.json` déclare le français, le mode `standalone`, l’orientation `any`, le thème `#07090f`, les catégories météo/utilitaires et les icônes 192/512 px. L’icône 512 est également `maskable`.
+
+### Service worker
+
+Cache courant : `weatherradar-v22`.
+
+| Ressource | Stratégie |
+|---|---|
+| Navigation HTML | Réseau d’abord, cache puis `/` en secours |
+| APIs météo, vigilance et RainViewer | Réseau uniquement |
+| Tuiles OpenStreetMap | Cache HTTP normal du navigateur |
+| Google Fonts | Cache d’abord après obtention réussie |
+| Leaflet et Chart.js | Cache d’abord après obtention réussie |
+| Assets locaux | Cache d’abord, réseau puis page de secours |
+
+Assets précachés : `/`, `/index.html`, `/privacy.html`, `/manifest.json`, `/icon-192.png`, `/icon-512.png`.
+
+À l’activation, les anciens caches sont supprimés puis le worker prend le contrôle avec `clients.claim()`.
+
+### Portée du mode hors ligne
+
+Après une visite réussie, le shell local peut s’ouvrir hors ligne. Les données fraîches et les tuiles ne sont pas garanties ; les modules réseau utilisent leurs replis. Incrémenter `CACHE_NAME` après toute modification des assets statiques.
+
+## Lancer le projet
+
+### Serveur local recommandé
 
 ```bash
-# Option 1 — directement dans le navigateur (file://)
-open index.html
-
-# Option 2 — serveur local (évite les restrictions CORS sur file://)
 npx serve .
-# ou
-python3 -m http.server 8080
 ```
 
-### Hébergement statique
+ou :
 
-Le fichier `index.html` peut être déposé directement sur :
-
-- **GitHub Pages** : déposer dans la branche `gh-pages` ou dans `/docs`
-- **Netlify** : drag & drop du fichier dans l'interface
-- **Vercel** : `vercel deploy`
-- **Tout hébergeur Apache/Nginx** : upload via FTP
-
-Aucune configuration serveur n'est requise. Aucun `.htaccess` ni `_redirects` nécessaire.
-
-### Contraintes réseau
-
-L'application nécessite l'accès aux domaines suivants :
-
+```bash
+python -m http.server 8080
 ```
+
+Le mode `file://` ne reproduit pas correctement le service worker, l’installation PWA, certains comportements CORS et les chemins absolus `/sw.js` et `/`.
+
+### Prérequis navigateur
+
+Le navigateur doit prendre en charge `fetch`, Promises, fonctions fléchées, optional chaining, nullish coalescing, Canvas, CSS Grid/Flexbox et `localStorage`.
+
+`ResizeObserver`, `IntersectionObserver`, Service Worker et `inert` sont utilisés pour les fonctions correspondantes.
+
+## Déploiement en production
+
+Le projet peut être publié sur GitHub Pages, Netlify, Vercel, Cloudflare Pages ou tout serveur statique.
+
+### Contraintes
+
+- HTTPS requis pour le service worker hors `localhost`.
+- Tous les fichiers PWA doivent être servis aux chemins attendus.
+- `start_url: "/"` et `register('/sw.js')` supposent un déploiement à la racine. Adapter pour un sous-répertoire.
+- Types MIME corrects pour HTML, JavaScript, JSON et PNG.
+- Attributions fournisseurs conservées.
+
+### Domaines à autoriser
+
+```text
 api.open-meteo.com
 air-quality-api.open-meteo.com
 geocoding-api.open-meteo.com
+marine-api.open-meteo.com
 api.rainviewer.com
 tilecache.rainviewer.com
 tile.openstreetmap.org
+data.geopf.fr
+public.opendatasoft.com
 fonts.googleapis.com
 fonts.gstatic.com
 unpkg.com
 cdn.jsdelivr.net
-nominatim.openstreetmap.org
 ```
 
----
+Une Content Security Policy stricte doit aussi tenir compte du CSS et du JavaScript inline présents dans `index.html`.
+
+### Checklist avant publication
+
+- [ ] Vérifier `index.html`, Leaflet et Chart.js sans erreur console.
+- [ ] Tester une ville locale et une ville internationale.
+- [ ] Tester les changements rapides de recherche.
+- [ ] Tester radar, timeline, animation et changement de ville.
+- [ ] Tester les quatre onglets du graphique au clavier et à la souris.
+- [ ] Tester une position côtière et une position intérieure.
+- [ ] Tester les états sans données air, pollen, marine et vigilance.
+- [ ] Vérifier installation PWA et secours hors ligne en HTTPS.
+- [ ] Tester à 390 px, 380 px, sur desktop et en paysage bas.
+- [ ] Tester `prefers-reduced-motion: reduce`.
+- [ ] Vérifier `privacy.html` et les liens externes.
+- [ ] Contrôler conditions et quotas des fournisseurs.
+- [ ] Incrémenter le cache si les assets ont changé.
+- [ ] Vérifier si `WeatherRadar.apk` doit être reconstruit.
+
+### Durcissement recommandé
+
+- Auto-héberger Leaflet, Chart.js et éventuellement Inter.
+- Ajouter SRI si les dépendances restent sur CDN.
+- Ajouter une CSP après extraction éventuelle du CSS/JS inline.
+- Configurer `Referrer-Policy`, `X-Content-Type-Options` et `Permissions-Policy` côté hébergeur.
+- Automatiser un test du shell HTML et des endpoints principaux.
 
 ## Personnalisation
 
-### Changer la ville par défaut
+### Ville par défaut
 
 ```js
 const S = {
-  city: 'Lyon',       // ← nom affiché
-  lat:  45.7640,      // ← latitude
-  lon:  4.8357,       // ← longitude
+  city: 'Lyon',
+  lat: 45.7640,
+  lon: 4.8357,
   region: 'Auvergne-Rhône-Alpes, FR',
+  countryCode: 'FR',
+  departmentCode: '69',
   timezone: 'Europe/Paris',
-  // ...
+  // autres propriétés inchangées
 };
 ```
 
-### Ajouter des villes à la base locale
+### Ajouter une ville locale
 
 ```js
 const CITIES = [
-  // ...villes existantes...
+  // villes existantes
   { name: 'Annecy', region: 'Auvergne-Rhône-Alpes', lat: 45.8992, lon: 6.1294 },
 ];
 ```
 
-### Modifier les tokens de design
+Une ville locale est automatiquement enrichie avec `country: 'France'`, `countryCode: 'FR'` et `timezone: 'Europe/Paris'`.
 
-Toutes les couleurs, rayons et typographies sont dans les variables CSS `:root` :
+### Tokens de design
 
 ```css
 :root {
-  --bg:      #07090f;   /* fond principal */
-  --bg2:     #0c0f1a;   /* fond secondaire */
-  --surface: #111521;   /* surface des cards */
-  --accent:  #4fc3f7;   /* bleu clair (accent principal) */
-  --accent2: #1565c0;   /* bleu foncé */
-  --warm:    #ffb74d;   /* températures chaudes */
-  --cold:    #81d4fa;   /* températures froides */
-  --txt:     #e8eaf2;   /* texte principal */
-  --txt2:    #8990ae;   /* texte secondaire */
-  --fd:      'Inter', sans-serif;  /* police display */
-  --fb:      'Inter', sans-serif;  /* police body */
-  --radius:  16px;      /* border-radius cards */
-  --hh:      56px;      /* hauteur header */
+  --bg: #07090f;
+  --bg2: #0c0f1a;
+  --surface: rgba(255,255,255,0.035);
+  --surface2: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --txt: #e8eaf2;
+  --txt2: #8990ae;
+  --accent: #4fc3f7;
+  --accent2: #0288d1;
+  --warm: #ffb74d;
+  --cold: #81d4fa;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --hh: 64px;
+  --fh: 52px;
 }
 ```
 
-### Modifier la fréquence de rafraîchissement du radar
+### Fréquences et effets
 
 ```js
-setInterval(loadRadar, 600000); // toutes les 10 min → valeur en ms
+setInterval(loadRadar, 600000); // radar : 10 minutes
 ```
 
----
+La vigilance est planifiée dans `scheduleVigilanceRefresh()` avec un intervalle de 900 000 ms, soit 15 minutes.
+
+Constantes courantes :
+
+```js
+const RADAR_MAX_OPACITY = 0.96;
+const RAINVIEWER_COLOR_SCHEME = 2;
+const WIND_THRESHOLD = 35;
+```
+
+`WIND_THRESHOLD` est local à `applyWeatherEffect()` dans l’implémentation actuelle.
+
+### Ajouter un effet WMO
+
+1. Ajouter ou modifier l’entrée de `wmoInfo()`.
+2. Ajouter le rendu dans `applyWeatherEffect()`.
+3. Ajouter styles et keyframes.
+4. Prévoir une variante statique pour `prefers-reduced-motion`.
+5. Vérifier le coût DOM sur mobile.
+
+### Ajouter une carte
+
+1. Créer le conteneur HTML et son squelette si nécessaire.
+2. Ajouter les styles desktop, tablette et mobile.
+3. Créer un renderer tolérant les valeurs nulles.
+4. L’appeler depuis `loadAll()` ou le module réseau concerné.
+5. Prévoir un état indisponible.
+6. Vérifier ordre mobile, clavier et ARIA.
+7. Documenter source, unités, seuils et limites dans ce README.
+
+## Maintenance et diagnostic
+
+### Contrôles statiques
+
+```bash
+node --check sw.js
+git diff --check
+```
+
+`manifest.json` doit rester un JSON strict, sans commentaire ni virgule finale.
+
+### Après une modification du service worker
+
+1. incrémenter `CACHE_NAME` ;
+2. recharger la page ;
+3. vérifier l’onglet Application du navigateur ;
+4. confirmer l’activation du nouveau worker ;
+5. tester une navigation hors ligne ;
+6. supprimer manuellement les données du site si un ancien worker perturbe le test.
+
+### Symptômes fréquents
+
+| Symptôme | Vérifications |
+|---|---|
+| `L is not defined` | Leaflet/unpkg, réseau, bloqueur ou CSP |
+| `Chart is not defined` | Chart.js/jsDelivr ou CSP |
+| Carte grise ou mal dimensionnée | Tuiles OSM, `invalidateSize()`, hauteur du conteneur |
+| Radar vide | API RainViewer, hôte de tuiles, CORS ou nowcast absent |
+| Recherche internationale vide | Open-Meteo Geocoding et connectivité |
+| Pollens indisponibles | Position hors CAMS ou valeurs nulles |
+| Carte eau masquée | Aucune température de surface exploitable |
+| Vigilance absente | Hors métropole, département non résolu ou niveau vert |
+| Ancienne version persistante | Cache du service worker et `CACHE_NAME` |
+
+## Limites connues
+
+- Une panne d’Open-Meteo Geocoding retire la recherche internationale ; la liste locale reste disponible.
+- Leaflet et Chart.js sont critiques au premier chargement depuis les CDN.
+- Toutes les prévisions ne sont pas automatiquement actualisées à intervalle fixe ; radar et vigilance ont leurs propres temporisateurs.
+- Les fournisseurs peuvent modifier disponibilité, quotas ou schémas.
+- La couverture des pollens est principalement européenne.
+- Le modèle marin peut ne rien fournir même près du littoral.
+- L’estimation de marée est non officielle et sans horaires.
+- La bannière chaleur utilise des seuils génériques.
+- Les graphiques Canvas n’ont pas d’équivalent tabulaire complet.
+- Les tuiles OpenStreetMap ne sont pas mises en cache durablement par le service worker.
+- Un déploiement en sous-répertoire exige d’adapter les chemins PWA absolus.
+- L’APK n’est pas construit par le dépôt statique.
 
 ## Crédits
 
-- Données météo : [Open-Meteo](https://open-meteo.com) — licence CC BY 4.0
-- Radar précipitations : [RainViewer](https://www.rainviewer.com) — API publique
-- Fond de carte : [OpenStreetMap](https://www.openstreetmap.org/copyright) — © contributeurs OSM
-- Géocodage fallback : [Nominatim](https://nominatim.org)
-- Carte interactive : [Leaflet.js](https://leafletjs.com) 1.9.4 — BSD 2-Clause
-- Graphiques : [Chart.js](https://www.chartjs.org) 4.4.0 — MIT
+- Prévisions, géocodage et données marines : [Open-Meteo](https://open-meteo.com/)
+- Qualité de l’air et pollens : CAMS via [Open-Meteo Air Quality](https://open-meteo.com/en/docs/air-quality-api)
+- Radar : [RainViewer](https://www.rainviewer.com/)
+- Fond de carte : [OpenStreetMap](https://www.openstreetmap.org/copyright) — © contributeurs OpenStreetMap
+- Géocodage inverse : [Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage)
+- Vigilance : données Météo-France redistribuées par [OpenDataSoft](https://public.opendatasoft.com/)
+- Carte : [Leaflet](https://leafletjs.com/) 1.9.4 — BSD 2-Clause
+- Graphiques : [Chart.js](https://www.chartjs.org/) 4.4.0 — MIT
 - Police : [Inter](https://rsms.me/inter/) — SIL Open Font License
+
+Les conditions et licences applicables sont celles publiées par chaque fournisseur. Les attributions visibles dans l’application ne doivent pas être supprimées.

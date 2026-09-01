@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WeatherRadar — Météo France</title>
+  <title>WeatherRadar — Météo et radar</title>
   <!-- Favicon: radar pulse SVG -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307090f'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%234fc3f7'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%234fc3f7' stroke-width='1.5' stroke-opacity='.7'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%234fc3f7' stroke-width='1' stroke-opacity='.4'/%3E%3Ccircle cx='16' cy='16' r='14.5' fill='none' stroke='%234fc3f7' stroke-width='.7' stroke-opacity='.2'/%3E%3Cline x1='16' y1='16' x2='23' y2='9' stroke='%23ffb74d' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307090f'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%234fc3f7'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%234fc3f7' stroke-width='1.5' stroke-opacity='.7'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%234fc3f7' stroke-width='1' stroke-opacity='.4'/%3E%3Cline x1='16' y1='16' x2='23' y2='9' stroke='%23ffb74d' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E" />
@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="WeatherRadar" />
   <!-- Open Graph -->
-  <meta property="og:title" content="WeatherRadar — Météo France" />
+  <meta property="og:title" content="WeatherRadar — Météo et radar" />
   <meta property="og:description" content="Radar météo en temps réel, prévisions 7 jours, qualité de l'air." />
   <meta property="og:type" content="website" />
   <meta name="description" content="Application météo avec radar précipitations en temps réel, prévisions 7 jours, qualité de l'air et statistiques détaillées." />
@@ -55,11 +55,17 @@
        RESET & BASE
     ══════════════════════════════════════════════════════════════ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: var(--scroll-offset, 80px);
+    }
     /* Supprimer le rectangle de tap sur tous les éléments interactifs */
     a, button, [role="button"], input, select, textarea, label {
       -webkit-tap-highlight-color: transparent;
-      outline: none;
+    }
+    :where(a, button, [role="button"], input, select, textarea):focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
     body {
       font-family: var(--fb);
@@ -98,12 +104,14 @@
       background: linear-gradient(to bottom, transparent, rgba(100,170,230,0.75));
       border-radius: 2px;
       animation: fall linear infinite;
+      --rain-skew: 0deg;
+      --rain-drift: 50px;
     }
     @keyframes fall {
-      from { transform: translateY(-5vh) translateX(0); opacity: 0; }
+      from { transform: translateY(-5vh) translateX(0) skewX(var(--rain-skew)); opacity: 0; }
       5%   { opacity: 1; }
       95%  { opacity: 0.8; }
-      to   { transform: translateY(110vh) translateX(50px); opacity: 0; }
+      to   { transform: translateY(110vh) translateX(var(--rain-drift)) skewX(var(--rain-skew)); opacity: 0; }
     }
 
     /* ── Snow ────────────────────────────────────────────────────── */
@@ -248,6 +256,23 @@
       position: absolute; border-radius: 50%; background: #fff;
       animation: star-twinkle ease-in-out infinite;
     }
+
+    /* Sur petit écran, conserver la même portion de halo visible dans le
+       coin sans laisser des dimensions desktop couvrir tout le viewport. */
+    @media (max-width: 600px) {
+      .sun-ray {
+        width: 340px; height: 340px;
+        top: -110px; right: -110px;
+      }
+      .sun-glow {
+        width: 250px; height: 250px;
+        top: -90px; right: -90px;
+      }
+      .night-moon-glow {
+        width: 220px; height: 220px;
+        top: -80px; right: -80px;
+      }
+    }
     @keyframes star-twinkle {
       0%, 100% { opacity: var(--star-min, 0.15); }
       50%      { opacity: var(--star-max, 0.9); }
@@ -329,6 +354,7 @@
          gardés visibles, figés sur une valeur choisie plutôt que livrés
          au hasard de l'image sur laquelle l'animation s'interrompt. ── */
     @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
       .raindrop,
       .snowflake,
       .wind-gust {
@@ -356,6 +382,19 @@
       .star {
         animation: none;
         opacity: 0.5;
+      }
+      .status-dot,
+      .radar-anim-btn.animating,
+      .fade-in,
+      .search-suggestions.show {
+        animation: none;
+      }
+      .aqi-pointer,
+      .pollutant-bar-fill,
+      .pollen-gauge-fill,
+      .barometer .baro-needle,
+      .alert-details {
+        transition: none;
       }
     }
 
@@ -471,7 +510,7 @@
     .search-input {
       flex: 1; background: transparent; border: none; outline: none;
       color: var(--txt); font-family: var(--fb); font-size: 1rem; font-weight: 400;
-      min-width: 0;
+      min-width: 0; text-overflow: ellipsis;
     }
     .search-input::placeholder { color: var(--txt2); }
     .search-shortcut {
@@ -529,7 +568,6 @@
       border-radius: var(--radius);
       overflow: hidden; transition: border-color .2s;
     }
-    .card:hover { border-color: var(--border2); }
     /* Perf : pas de backdrop-filter sur les cartes (11+ éléments au scroll). Le
        fond derrière est quasi uniforme et sombre, le flou n'apportait rien de
        visible mais recalculait à chaque frame. Léger fond opaque pour garder le
@@ -569,7 +607,6 @@
       color: var(--txt2); font-size: 0.7rem; font-family: var(--fb);
       cursor: pointer; transition: all .15s; white-space: nowrap;
       -webkit-tap-highlight-color: transparent;
-      outline: none;
       -webkit-appearance: none;
       appearance: none;
     }
@@ -581,9 +618,6 @@
     .timeline-btn.forecast { color: var(--accent); border-color: rgba(79,195,247,0.25); }
     .timeline-btn.forecast.active { background: rgba(79,195,247,0.15); border-color: var(--accent); color: var(--accent); }
 
-    #section-radar, #section-hourly, #section-charts {
-      scroll-margin-top: 80px;
-    }
     /* Map takes all remaining height inside the flex radar-card */
     #map-container { flex: 1; min-height: 320px; position: relative; overflow: hidden; contain: paint; }
     #map {
@@ -644,7 +678,6 @@
       color: var(--txt); font-size: 0.73rem; font-family: var(--fb);
       cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 6px;
       -webkit-tap-highlight-color: transparent;
-      outline: none;
       -webkit-appearance: none;
       appearance: none;
     }
@@ -729,7 +762,6 @@
       transition: background .12s;
     }
     .week-row:last-child { border-bottom: none; }
-    .week-row:hover { background: var(--surface2); }
     .week-day { font-size: 0.8rem; font-weight: 500; }
     .week-day.is-today { color: var(--accent); }
     .week-icon { font-size: 1.25rem; justify-self: center; }
@@ -765,7 +797,6 @@
       display: flex; flex-direction: column; align-items: center; gap: 4px;
       transition: background .12s, border-color .12s;
     }
-    .hour-slot:hover  { background: var(--surface2); border-color: var(--border2); }
     .hour-slot.now-hr { border-color: var(--accent); background: rgba(79,195,247,0.06); }
     /* Fixed heights on each row so all slots align regardless of content */
     .hour-time {
@@ -842,7 +873,6 @@
       border: 1px solid var(--border); background: var(--surface);
       transition: border-color .2s, transform .2s;
     }
-    .pollen-item:hover { border-color: var(--border2); transform: translateY(-2px); }
     .pollen-icon { font-size: 1.5rem; line-height: 1; }
     .pollen-name { font-size: 0.68rem; color: var(--txt2); text-align: center; line-height: 1.2; }
     .pollen-gauge {
@@ -905,7 +935,6 @@
       transition: border-color .2s, transform .2s;
       min-height: 118px;
     }
-    .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
     .stat-icon  { font-size: 1.25rem; min-height: 1.5rem; display:flex; align-items:center; justify-content:center; }
     .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0; color: var(--txt2); line-height: 1.25; }
     .stat-value { font-family: var(--fd); font-size: 1.35rem; font-weight: 700; }
@@ -1056,14 +1085,18 @@
     .alert-chip {
       display: flex; align-items: center; gap: 10px;
       padding: 9px 14px; cursor: pointer; user-select: none;
+      width: 100%; border: 0; background: transparent; color: inherit;
+      text-align: left; font: inherit;
     }
     .alert-chip .alert-icon  { font-size: 1.05rem; flex-shrink: 0; }
-    .alert-chip .alert-text  { flex: 1; min-width: 0; }
+    .alert-chip .alert-text  { display: block; flex: 1; min-width: 0; }
     .alert-chip .alert-title {
+      display: block;
       font-weight: 700; font-size: 0.8rem; color: var(--txt);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .alert-chip .alert-sub {
+      display: block;
       font-size: 0.66rem; color: var(--txt2); margin-top: 1px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
@@ -1081,6 +1114,16 @@
     .alert-details-inner .hw-grid { margin-top: 12px; }
     @media (max-width: 700px) {
       .alert-details-inner .hw-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* Les survols de contenu sont réservés aux pointeurs précis : sur
+       tactile, un état :hover persistant donnait l'impression que les
+       lignes et les cartes purement informatives étaient cliquables. */
+    @media (hover: hover) and (pointer: fine) {
+      .week-row:hover { background: var(--surface2); }
+      .hour-slot:hover { background: var(--surface2); border-color: var(--border2); }
+      .pollen-item:hover { border-color: var(--border2); transform: translateY(-2px); }
+      .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
     }
 
     /* ══════════════════════════════════════════════════════════════
@@ -1366,7 +1409,7 @@
 
     <!-- Navigation -->
     <nav class="header-nav" aria-label="Sections">
-      <a class="nav-link active" href="#section-radar" data-section="section-radar">
+      <a class="nav-link active" href="#section-radar" data-section="section-radar" aria-current="location">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="6" stroke-opacity=".5"/><circle cx="12" cy="12" r="10" stroke-opacity=".3"/></svg>
         <span class="nav-label">Radar</span>
       </a>
@@ -1431,7 +1474,7 @@
               Radar météo
             </span>
             <span id="radar-time-label" style="font-size:.7rem;color:#81c784;display:flex;align-items:center;gap:5px">
-              <span style="width:6px;height:6px;border-radius:50%;background:#4caf50;display:inline-block;animation:blink 2s infinite"></span>
+              <span class="status-dot"></span>
               Chargement…
             </span>
           </div>
@@ -1583,13 +1626,13 @@
             Graphiques 15 jours
           </span>
         </div>
-        <div class="chart-tabs" id="chart-tabs">
-          <button class="chart-tab active" data-chart="temp">🌡 Températures</button>
-          <button class="chart-tab" data-chart="precip">🌧 Précipitations</button>
-          <button class="chart-tab" data-chart="wind">💨 Vent</button>
-          <button class="chart-tab" data-chart="humidity">💧 Humidité</button>
+        <div class="chart-tabs" id="chart-tabs" role="tablist" aria-label="Donnée affichée dans le graphique">
+          <button class="chart-tab active" id="chart-tab-temp" role="tab" aria-selected="true" aria-controls="chart-panel" data-chart="temp">🌡 Températures</button>
+          <button class="chart-tab" id="chart-tab-precip" role="tab" tabindex="-1" aria-selected="false" aria-controls="chart-panel" data-chart="precip">🌧 Précipitations</button>
+          <button class="chart-tab" id="chart-tab-wind" role="tab" tabindex="-1" aria-selected="false" aria-controls="chart-panel" data-chart="wind">💨 Vent</button>
+          <button class="chart-tab" id="chart-tab-humidity" role="tab" tabindex="-1" aria-selected="false" aria-controls="chart-panel" data-chart="humidity">💧 Humidité</button>
         </div>
-        <div class="chart-wrap"><canvas id="main-chart"></canvas></div>
+        <div class="chart-wrap" id="chart-panel" role="tabpanel" aria-labelledby="chart-tab-temp"><canvas id="main-chart"></canvas></div>
       </div>
 
       <!-- AQI -->
@@ -1599,7 +1642,7 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
             Qualité de l'air
           </span>
-          <span id="aqi-updated" style="font-size:.68rem;color:var(--txt2)">Indice IQA européen</span>
+          <span id="aqi-updated" style="font-size:.68rem;color:var(--txt2)">Données CAMS — Europe</span>
         </div>
         <div class="aqi-body">
           <div class="aqi-value-row">
@@ -1611,7 +1654,7 @@
           </div>
           <div class="aqi-bar"><div class="aqi-pointer" id="aqi-pointer" style="left:5%"></div></div>
           <div class="aqi-range-labels">
-            <span>Bon</span><span>Moyen</span><span>Dégradé</span><span>Mauvais</span><span>Très mv.</span>
+            <span>Bon</span><span>Moyen</span><span>Modéré</span><span>Mauvais</span><span>Très mv.</span><span>Extrême</span>
           </div>
           <div class="pollutants" id="pollutants">
             <div class="skel skel-line"></div>
@@ -1691,7 +1734,7 @@
     </div>
 
     <!-- STAT CARDS -->
-    <div class="stats-section" id="stats-section" style="scroll-margin-top: 80px">
+    <div class="stats-section" id="stats-section">
       <!-- filled by JS -->
     </div>
 
@@ -1699,11 +1742,12 @@
 
   <!-- ════════════════════ FOOTER ════════════════════ -->
   <footer>
-    <div>© 2026 <strong>WeatherRadar</strong> — Météo France</div>
+    <div>© 2026 <strong>WeatherRadar</strong> — Application indépendante</div>
     <div class="footer-links">
       <span>Données: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a></span>
-      <span>Radar: <a href="https://rainviewer.com" target="_blank" rel="noopener">RainViewer</a></span>
+      <span>Radar météo: <a href="https://rainviewer.com" target="_blank" rel="noopener">RainViewer</a></span>
       <span>Cartes: <a href="https://www.openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a></span>
+      <span><a href="privacy.html">Confidentialité</a></span>
     </div>
   </footer>
 
@@ -1785,7 +1829,7 @@ function wmoInfo(code) {
   const m = {
     0:  ['☀️', 'Ciel dégagé',           'sun'],
     1:  ['🌤', 'Principalement dégagé', 'sun'],
-    2:  ['⛅', 'Partiellement nuageux', 'sun'],
+    2:  ['⛅', 'Partiellement nuageux', 'partly-cloudy'],
     3:  ['☁️', 'Couvert',               'cloud'],
     45: ['🌫', 'Brouillard',            'fog'],
     48: ['🌫', 'Brouillard givrant',    'fog'],
@@ -1848,7 +1892,6 @@ document.getElementById('tomorrow-date').textContent =
 const searchEl = document.getElementById('search-input');
 const suggestEl = document.getElementById('search-suggestions');
 const GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
-const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 let searchTimer = null;
 let searchAbort = null;
 let searchSeq = 0;
@@ -1877,6 +1920,37 @@ function escapeHTML(value) {
   }[ch]));
 }
 
+// Les positions venant d'une API ou de localStorage ne sont utilisées
+// qu'après validation. Une valeur locale corrompue ne peut ainsi ni casser
+// Leaflet ni laisser l'état global dans une configuration incohérente.
+function normalizeLocation(value) {
+  if (!value || typeof value !== 'object') return null;
+  const name = String(value.name ?? '').trim().slice(0, 120);
+  const lat = Number(value.lat);
+  const lon = Number(value.lon);
+  if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)
+      || lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+
+  const timezoneRaw = String(value.timezone || 'auto').trim();
+  const timezone = timezoneRaw === 'auto'
+    || /^[A-Za-z_+-]+(?:\/[A-Za-z0-9_+-]+)*$/.test(timezoneRaw)
+      ? timezoneRaw
+      : 'auto';
+  const countryCodeRaw = String(value.countryCode || '').trim().toUpperCase();
+
+  return {
+    name,
+    region: String(value.region || '').trim().slice(0, 160),
+    country: String(value.country || '').trim().slice(0, 80),
+    countryCode: /^[A-Z]{2}$/.test(countryCodeRaw) ? countryCodeRaw : '',
+    lat,
+    lon,
+    timezone,
+    population: Number.isFinite(Number(value.population)) ? Number(value.population) : 0,
+    source: String(value.source || '').slice(0, 24),
+  };
+}
+
 function localCityToLocation(c) {
   return {
     name: c.name,
@@ -1903,27 +1977,6 @@ function geocodeResultToLocation(r) {
     timezone: r.timezone || 'auto',
     population: r.population || 0,
     source: 'geocoding',
-  };
-}
-
-function nominatimResultToLocation(r) {
-  const address = r.address || {};
-  const name = address.city || address.town || address.village || address.municipality || r.name || String(r.display_name || '').split(',')[0];
-  const region = [
-    address.state || address.region || address.county,
-    address.country,
-  ].filter(Boolean).join(', ');
-
-  return {
-    name,
-    region,
-    country: address.country || '',
-    countryCode: String(address.country_code || '').toUpperCase(),
-    lat: Number(r.lat),
-    lon: Number(r.lon),
-    timezone: 'auto',
-    population: 0,
-    source: 'nominatim',
   };
 }
 
@@ -1987,7 +2040,7 @@ function renderSuggestions(results, state = '') {
         </div>
       </button>`);
     if (state === 'loading') {
-      rows.push('<div class="suggestion-item loading"><span>⌕</span><div><div class="suggestion-name">Recherche mondiale…</div><div class="suggestion-sub">Open-Meteo puis OpenStreetMap si nécessaire</div></div></div>');
+      rows.push('<div class="suggestion-item loading"><span>⌕</span><div><div class="suggestion-name">Recherche mondiale…</div><div class="suggestion-sub">Open-Meteo Geocoding</div></div></div>');
     }
     suggestEl.innerHTML = rows.join('');
   }
@@ -2019,36 +2072,11 @@ async function geocodeOpenMeteo(q, signal, force = false) {
     .map(geocodeResultToLocation);
 }
 
-async function geocodeNominatim(q, signal) {
-  const params = new URLSearchParams({
-    q,
-    format: 'jsonv2',
-    addressdetails: '1',
-    limit: '8',
-    'accept-language': 'fr',
-  });
-  const res = await fetch(`${NOMINATIM_URL}?${params}`, { signal });
-  if (!res.ok) throw new Error('Nominatim ' + res.status);
-  const data = await res.json();
-  return (data || [])
-    .filter(r => Number.isFinite(Number(r.lat)) && Number.isFinite(Number(r.lon)))
-    .map(nominatimResultToLocation)
-    .filter(r => r.name);
-}
-
 async function geocodeCities(q, force = false) {
   if (searchAbort) searchAbort.abort();
   searchAbort = new AbortController();
   const signal = searchAbort.signal;
-
-  try {
-    const openMeteo = await geocodeOpenMeteo(q, signal, force);
-    if (openMeteo.length) return openMeteo;
-  } catch(e) {
-    if (e.name === 'AbortError') throw e;
-  }
-
-  return geocodeNominatim(q, signal);
+  return geocodeOpenMeteo(q, signal, force);
 }
 
 function queueCitySearch() {
@@ -2141,26 +2169,29 @@ function selectCity(idx) {
 }
 
 function selectLocation(c) {
-  S.city = c.name;
-  S.lat  = Number(c.lat);
-  S.lon  = Number(c.lon);
-  S.region = locationRegionLabel(c);
-  S.countryCode = c.countryCode || '';
-  S.timezone = c.timezone || 'auto';
+  const location = normalizeLocation(c);
+  if (!location) return;
 
-  searchEl.value = c.name;
+  S.city = location.name;
+  S.lat  = location.lat;
+  S.lon  = location.lon;
+  S.region = locationRegionLabel(location);
+  S.countryCode = location.countryCode;
+  S.timezone = location.timezone;
+
+  searchEl.value = location.name;
   hideSuggestions();
-  document.getElementById('city-name').textContent = c.name;
+  document.getElementById('city-name').textContent = location.name;
   document.getElementById('city-country').textContent = S.region;
-  document.getElementById('header-location').textContent = c.name;
+  document.getElementById('header-location').textContent = location.name;
   map.flyTo([S.lat, S.lon], 8, { duration: 1.2 });
 
   try {
     localStorage.setItem('wr_city', JSON.stringify({
-      name: c.name,
-      region: c.region,
-      country: c.country,
-      countryCode: c.countryCode,
+      name: location.name,
+      region: location.region,
+      country: location.country,
+      countryCode: location.countryCode,
       lat: S.lat,
       lon: S.lon,
       timezone: S.timezone,
@@ -2284,6 +2315,8 @@ function buildTimeline(pastCount) {
     btn.className = `timeline-btn${isNow ? ' now' : (isPast ? '' : ' forecast')}`;
     btn.id = `tl-${i}`;
     btn.textContent = isNow ? `● ${hm}` : hm;
+    btn.setAttribute('aria-label', `${isNow ? 'Maintenant' : (isPast ? 'Historique' : 'Prévision')} à ${hm}`);
+    btn.setAttribute('aria-pressed', 'false');
     btn.onclick = () => showRadarFrame(i);
     tl.appendChild(btn);
   });
@@ -2408,10 +2441,14 @@ function radarStatusText() {
 }
 
 function updateRadarFrameUI(idx) {
-  document.querySelectorAll('.timeline-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.timeline-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-pressed', 'false');
+  });
   const btn = document.getElementById(`tl-${idx}`);
   if (btn) {
     btn.classList.add('active');
+    btn.setAttribute('aria-pressed', 'true');
     centerTimelineButton(btn);
   }
 
@@ -2421,7 +2458,7 @@ function updateRadarFrameUI(idx) {
   const nowIdx = Math.max(0, (S._pastCount || 1) - 1);
   const isForecast = idx >= (S._pastCount || 0);
   const label = idx === nowIdx
-    ? '<span style="width:6px;height:6px;border-radius:50%;background:#4caf50;display:inline-block;animation:blink 2s infinite"></span> En direct'
+    ? '<span class="status-dot"></span> En direct'
     : isForecast
       ? `<span style="color:var(--accent)">▶ Prévision</span> ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`
       : `◀ ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
@@ -2750,7 +2787,10 @@ function renderToday(d) {
   document.getElementById('today-skeleton').style.display = 'none';
   document.getElementById('today-content').style.display  = 'block';
 
-  applyWeatherEffect(cw.is_day === 0 && info.effect === 'sun' ? 'clear-night' : info.effect, cw.windspeed ?? 0, cw.winddirection, cloudCover);
+  const currentEffect = cw.is_day === 0 && ['sun', 'partly-cloudy'].includes(info.effect)
+    ? 'clear-night'
+    : info.effect;
+  applyWeatherEffect(currentEffect, cw.windspeed ?? 0, cw.winddirection, cloudCover);
   buildInlineChart(d);
 }
 
@@ -2970,7 +3010,8 @@ function renderHourly(d) {
     const scroller = document.getElementById('hourly-scroll');
     if (nowEl && scroller) {
       const left = nowEl.offsetLeft - (scroller.clientWidth - nowEl.offsetWidth) / 2;
-      scroller.scrollTo({ left, behavior:'smooth' });
+      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+      scroller.scrollTo({ left, behavior });
     }
   }, 200);
 }
@@ -3074,18 +3115,46 @@ function buildChart(d) {
   });
 }
 
-// Chart tab clicks
-document.getElementById('chart-tabs').addEventListener('click', e => {
-  const btn = e.target.closest('.chart-tab');
+// Onglets du graphique : clic, état ARIA et navigation clavier.
+const chartTabs = document.getElementById('chart-tabs');
+function activateChartTab(btn) {
   if (!btn) return;
   S.chartType = btn.dataset.chart;
-  document.querySelectorAll('.chart-tab').forEach(b => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('.chart-tab').forEach(b => {
+    const active = b === btn;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-selected', String(active));
+    b.tabIndex = active ? 0 : -1;
+  });
+  document.getElementById('chart-panel').setAttribute('aria-labelledby', btn.id);
   if (S.forecast) buildChart(S.forecast);
+}
+chartTabs.addEventListener('click', e => {
+  activateChartTab(e.target.closest('.chart-tab'));
+});
+chartTabs.addEventListener('keydown', e => {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+  const tabs = [...chartTabs.querySelectorAll('.chart-tab')];
+  const current = tabs.indexOf(document.activeElement);
+  if (current < 0) return;
+  e.preventDefault();
+  const next = e.key === 'Home' ? 0
+    : e.key === 'End' ? tabs.length - 1
+    : (current + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+  tabs[next].focus();
+  activateChartTab(tabs[next]);
 });
 
 // ──────────────────────────────────────────────────────────────────
 // RENDER AQI
 // ──────────────────────────────────────────────────────────────────
+function animateMeterFills(scope) {
+  const fills = scope.querySelectorAll('[data-target-width]');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fills.forEach(fill => { fill.style.width = `${fill.dataset.targetWidth}%`; });
+  }));
+}
+
 function renderAQI(data) {
   // Find current hour index
   const nowStr = S.forecast ? currentHourKey(S.forecast) : data.hourly.time[0];
@@ -3099,12 +3168,12 @@ function renderAQI(data) {
   const o3   = data.hourly.ozone[idx];
 
   let label, color;
-  if      (aqi <= 20)  { label='Très bon';      color='#4caf50'; }
-  else if (aqi <= 40)  { label='Bon';            color='#8bc34a'; }
-  else if (aqi <= 60)  { label='Moyen';          color='#fdd835'; }
-  else if (aqi <= 80)  { label='Dégradé';        color='#ff9800'; }
-  else if (aqi <= 100) { label='Mauvais';        color='#f44336'; }
-  else                 { label='Très mauvais';   color='#9c27b0'; }
+  if      (aqi <= 20)  { label='Bon';                  color='#4caf50'; }
+  else if (aqi <= 40)  { label='Moyen';                color='#8bc34a'; }
+  else if (aqi <= 60)  { label='Modéré';              color='#fdd835'; }
+  else if (aqi <= 80)  { label='Mauvais';              color='#ff9800'; }
+  else if (aqi <= 100) { label='Très mauvais';         color='#f44336'; }
+  else                 { label='Extrêmement mauvais'; color='#9c27b0'; }
 
   document.getElementById('aqi-number').textContent = Math.round(aqi);
   document.getElementById('aqi-number').style.color = color;
@@ -3141,10 +3210,13 @@ function renderAQI(data) {
     return `
     <div class="pollutant-row">
       <span class="pollutant-name">${p.name}</span>
-      <div class="pollutant-bar-bg"><div class="pollutant-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      <div class="pollutant-bar-bg" role="progressbar" aria-label="${p.name}" aria-valuemin="0" aria-valuemax="${p.max}" aria-valuenow="${v}">
+        <div class="pollutant-bar-fill" data-target-width="${pct}" style="width:0;background:${barColor}"></div>
+      </div>
       <span class="pollutant-val">${disp}</span>
     </div>`;
   }).join('');
+  animateMeterFills(document.getElementById('pollutants'));
 }
 
 function renderAQIUnavailable() {
@@ -3289,7 +3361,7 @@ function renderPollen(data) {
         <div class="pollen-name">${it.name}</div>
         <div class="pollen-gauge">
           ${ticksHTML}
-          <div class="pollen-gauge-fill" style="width:${it.pct}%;background:${it.lvl.color}"></div>
+          <div class="pollen-gauge-fill" data-target-width="${it.pct}" style="width:0;background:${it.lvl.color}"></div>
         </div>
         <div class="pollen-level" style="color:${it.lvl.color}">${it.lvl.label}</div>
         <div class="pollen-value">${valDisp} gr/m³</div>
@@ -3310,6 +3382,16 @@ function renderPollen(data) {
     </div>`;
 
   body.innerHTML = summaryHTML + gridHTML + chartHTML;
+  body.querySelectorAll('.pollen-gauge').forEach((gauge, gaugeIdx) => {
+    const item = items[gaugeIdx];
+    const max = item.thresholds[2] + Math.max(1, item.thresholds[2] - item.thresholds[1]);
+    gauge.setAttribute('role', 'progressbar');
+    gauge.setAttribute('aria-label', item.name);
+    gauge.setAttribute('aria-valuemin', '0');
+    gauge.setAttribute('aria-valuemax', String(max));
+    if (item.val != null) gauge.setAttribute('aria-valuenow', String(item.val));
+  });
+  animateMeterFills(body);
 
   // Construit le graphique après insertion du canvas dans le DOM
   buildPollenChart(data, dominant ?? items[0], idx);
@@ -4206,11 +4288,10 @@ function wireAlertToggle(chipId, detailsId) {
     const open = chip.classList.toggle('expanded');
     details.classList.toggle('expanded', open);
     chip.setAttribute('aria-expanded', String(open));
+    details.setAttribute('aria-hidden', String(!open));
+    details.inert = !open;
   };
   chip.addEventListener('click', toggle);
-  chip.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
-  });
 }
 
 function renderVigilance(records) {
@@ -4234,7 +4315,9 @@ function renderVigilance(records) {
   const daySev   = isToday ? sevToday : sevTomorrow;
   const dayColor = Object.keys(VIGILANCE_SEVERITY).find(k => VIGILANCE_SEVERITY[k] === daySev);
   const triggers = dayList.filter(r => VIGILANCE_SEVERITY[r.color] === daySev);
-  const uniquePhenomena = [...new Set(triggers.map(r => r.phenomenon))];
+  const uniquePhenomena = [...new Set(
+    triggers.map(r => String(r.phenomenon ?? '').trim()).filter(Boolean)
+  )];
 
   const icon  = uniquePhenomena.slice(0, 3).map(p => VIGILANCE_ICONS[p] || '⚠️').join(' ');
   const names = uniquePhenomena.map(p => p.charAt(0).toUpperCase() + p.slice(1).replace(/[-_]/g, ' ')).join(', ');
@@ -4250,7 +4333,9 @@ function renderVigilance(records) {
   // égal, un risque qui change de nature (ex. vent → orages) n'est pas
   // vraiment "stable" pour l'utilisateur, même si la couleur ne bouge pas.
   const tomorrowTriggers = byEcheance.J1.filter(r => VIGILANCE_SEVERITY[r.color] === sevTomorrow);
-  const tomorrowPhenomena = new Set(tomorrowTriggers.map(r => r.phenomenon));
+  const tomorrowPhenomena = new Set(
+    tomorrowTriggers.map(r => String(r.phenomenon ?? '').trim()).filter(Boolean)
+  );
   const samePhenomena = uniquePhenomena.length === tomorrowPhenomena.size
     && uniquePhenomena.every(p => tomorrowPhenomena.has(p));
 
@@ -4279,9 +4364,9 @@ function renderVigilance(records) {
 
   const stat = (label, value, sub) => `
     <div class="hw-stat">
-      <div class="hws-label">${label}</div>
-      <div class="hws-value">${value}</div>
-      <div class="hws-sub">${sub}</div>
+      <div class="hws-label">${escapeHTML(label)}</div>
+      <div class="hws-value">${escapeHTML(value)}</div>
+      <div class="hws-sub">${escapeHTML(sub)}</div>
     </div>`;
 
   const advice = uniquePhenomena
@@ -4292,15 +4377,15 @@ function renderVigilance(records) {
   const level = daySev >= 3 ? 'level-severe' : daySev >= 2 ? 'level-high' : 'level-warn';
   banner.className = `alert-compact ${level}`;
   banner.innerHTML = `
-    <div class="alert-chip" id="vig-chip" role="button" tabindex="0" aria-expanded="false">
+    <button type="button" class="alert-chip" id="vig-chip" aria-expanded="false" aria-controls="vig-details">
       <span class="alert-icon">${icon}</span>
-      <div class="alert-text">
-        <div class="alert-title">${VIGILANCE_LABELS[dayColor]} — ${names}</div>
-        <div class="alert-sub">${whenLabel} · ${period}${bulletinLabel} · ${S.city}</div>
-      </div>
+      <span class="alert-text">
+        <span class="alert-title">${escapeHTML(VIGILANCE_LABELS[dayColor])} — ${escapeHTML(names)}</span>
+        <span class="alert-sub">${escapeHTML(`${whenLabel} · ${period}${bulletinLabel} · ${S.city}`)}</span>
+      </span>
       <span class="alert-chevron">▼</span>
-    </div>
-    <div class="alert-details" id="vig-details">
+    </button>
+    <div class="alert-details" id="vig-details" aria-hidden="true" inert>
       <div class="alert-details-inner">
         <div class="hw-grid">
           ${stat('⚠️ Phénomène(s)', names, `${uniquePhenomena.length} risque${uniquePhenomena.length > 1 ? 's' : ''} au niveau ${dayColor}`)}
@@ -4421,9 +4506,9 @@ function renderHeatwave(d) {
 
   const stat = (label, value, sub) => `
     <div class="hw-stat">
-      <div class="hws-label">${label}</div>
-      <div class="hws-value">${value}</div>
-      <div class="hws-sub">${sub}</div>
+      <div class="hws-label">${escapeHTML(label)}</div>
+      <div class="hws-value">${escapeHTML(value)}</div>
+      <div class="hws-sub">${escapeHTML(sub)}</div>
     </div>`;
 
   const advice = level === 'level-severe' || level === 'level-high'
@@ -4440,15 +4525,15 @@ function renderHeatwave(d) {
 
   banner.className = `alert-compact ${level}`;
   banner.innerHTML = `
-    <div class="alert-chip" id="hw-chip" role="button" tabindex="0" aria-expanded="false">
+    <button type="button" class="alert-chip" id="hw-chip" aria-expanded="false" aria-controls="hw-details">
       <span class="alert-icon">${icon}</span>
-      <div class="alert-text">
-        <div class="alert-title">${levelTxt} — ${S.city}</div>
-        <div class="alert-sub">${headline}</div>
-      </div>
+      <span class="alert-text">
+        <span class="alert-title">${escapeHTML(levelTxt)} — ${escapeHTML(S.city)}</span>
+        <span class="alert-sub">${escapeHTML(headline)}</span>
+      </span>
       <span class="alert-chevron">▼</span>
-    </div>
-    <div class="alert-details" id="hw-details">
+    </button>
+    <div class="alert-details" id="hw-details" aria-hidden="true" inert>
       <div class="alert-details-inner">
         <div class="hw-grid">
           ${stat('🌡 Pic de chaleur', `${Math.round(peak)}°`, `Maximum ${peakDayLabel}`)}
@@ -4485,6 +4570,12 @@ let windGustIdSeq = 0;
 function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCoverPct = null) {
   clearEffects();
   const o = document.getElementById('weather-overlay');
+  // Le nombre d'éléments suit grossièrement la surface disponible : un
+  // mobile n'a pas besoin du même DOM qu'un écran desktop pour garder une
+  // densité visuelle comparable.
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const decorDensity = Math.max(0.55, Math.min(1, window.innerWidth / 900));
+  const particleDensity = reducedMotion ? 0 : decorDensity;
 
   // Couverture nuageuse (%) → vitesse et densité du décor nuageux : plus le
   // ciel est couvert, plus la masse est perçue comme lourde (dérive plus
@@ -4493,23 +4584,26 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
   // chargement), on ne pose aucun style inline : les durées/opacités par
   // défaut définies en CSS (11s/16s, 0.8) restent inchangées, donc aucune
   // régression pour un appelant qui ne passe pas cette donnée.
-  const cloudLayer = extraClass => {
+  const cloudLayer = (extraClass, opacityScale = 1) => {
     const el = Object.assign(document.createElement('div'), {
       className: extraClass ? `cloud-layer ${extraClass}` : 'cloud-layer',
     });
+    const isLayer2 = extraClass === 'layer2';
+    let opacity = isLayer2 ? 0.8 : 1;
     if (typeof cloudCoverPct === 'number' && !Number.isNaN(cloudCoverPct)) {
       const t = Math.max(0, Math.min(100, cloudCoverPct)) / 100;
-      const isLayer2 = extraClass === 'layer2';
       const dur = isLayer2 ? 10 + t * 19 : 7 + t * 13; // s — plus lent quand plus couvert
-      const op  = isLayer2 ? 0.55 + t * 0.35 : 0.75 + t * 0.25;
+      opacity = isLayer2 ? 0.55 + t * 0.35 : 0.75 + t * 0.25;
       el.style.animationDuration = `${dur.toFixed(1)}s`;
-      el.style.opacity = op.toFixed(2);
+    }
+    if (opacityScale !== 1 || typeof cloudCoverPct === 'number') {
+      el.style.opacity = (opacity * opacityScale).toFixed(2);
     }
     return el;
   };
 
   if (effect === 'rain' || effect === 'heavyrain') {
-    const n = effect === 'heavyrain' ? 220 : 130;
+    const n = Math.round((effect === 'heavyrain' ? 220 : 130) * particleDensity);
     const wrap = Object.assign(document.createElement('div'), { className:'rain-container' });
     for (let i = 0; i < n; i++) {
       const d = Object.assign(document.createElement('div'), { className:'raindrop' });
@@ -4527,7 +4621,7 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
   }
 
   if (effect === 'snow') {
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0, n = Math.round(90 * particleDensity); i < n; i++) {
       const f = Object.assign(document.createElement('div'), { className:'snowflake' });
       const sz = 2 + Math.random() * 5;
       Object.assign(f.style, {
@@ -4541,7 +4635,7 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
   }
 
   if (effect === 'storm') {
-    const n = 180;
+    const n = Math.round(180 * particleDensity);
     const wrap = Object.assign(document.createElement('div'), { className:'rain-container' });
     for (let i = 0; i < n; i++) {
       const d = Object.assign(document.createElement('div'), { className:'raindrop' });
@@ -4550,25 +4644,30 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
         height:            `${18+Math.random()*28}px`,
         animationDuration: `${0.25+Math.random()*0.3}s`,
         animationDelay:    `${-(Math.random()*1.5)}s`,
-        transform:         'skewX(-8deg)',
         opacity:           0.35 + Math.random() * 0.5,
       });
+      d.style.setProperty('--rain-skew', '-8deg');
+      d.style.setProperty('--rain-drift', '70px');
       wrap.appendChild(d);
     }
     o.appendChild(wrap);
     o.appendChild(Object.assign(document.createElement('div'), { className:'thunder-flash' }));
   }
 
-  if (effect === 'sun') {
+  if (effect === 'sun' || effect === 'partly-cloudy') {
     o.appendChild(Object.assign(document.createElement('div'), { className:'sun-ray' }));
     o.appendChild(Object.assign(document.createElement('div'), { className:'sun-glow' }));
     o.appendChild(Object.assign(document.createElement('div'), { className:'sun-haze' }));
+    if (effect === 'partly-cloudy') {
+      o.appendChild(cloudLayer('', 0.38));
+      o.appendChild(cloudLayer('layer2', 0.34));
+    }
   }
 
   if (effect === 'clear-night') {
     o.appendChild(Object.assign(document.createElement('div'), { className:'night-moon-glow' }));
     const starsWrap = Object.assign(document.createElement('div'), { className:'stars' });
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0, n = Math.round(70 * decorDensity); i < n; i++) {
       const s = Object.assign(document.createElement('div'), { className:'star' });
       const sz = 1 + Math.random() * 1.6;
       Object.assign(s.style, {
@@ -4598,7 +4697,7 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
   // Vent — overlay discret, ajouté par-dessus l'effet déjà posé ci-dessus.
   // Volontairement pas mélangé à l'orage/pluie forte/neige (déjà chargés).
   const WIND_THRESHOLD = 35; // km/h — à partir de là, le vent se voit/s'entend
-  if (windSpeed >= WIND_THRESHOLD && !['storm', 'heavyrain', 'snow'].includes(effect)) {
+  if (!reducedMotion && windSpeed >= WIND_THRESHOLD && !['storm', 'heavyrain', 'snow'].includes(effect)) {
     // 0 au seuil, 1 vers 90 km/h — pilote la taille, la vitesse et l'éclat
     // de chaque volute. Le nombre d'éléments à l'écran, lui, ne bouge
     // presque pas (2 à 4) : c'est la vivacité de chaque volute qui dit
@@ -4711,21 +4810,29 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
   const ctx = cv.getContext('2d');
   let W, H, glow;
   const pts = [];
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   // Le dégradé est statique : on le (re)calcule seulement au resize, pas à
   // chaque frame (la recréation + l'échantillonnage par pixel coûtaient cher).
   function resize() {
+    const oldW = W || innerWidth;
+    const oldH = H || innerHeight;
     W = cv.width = innerWidth; H = cv.height = innerHeight;
+    pts.forEach(p => {
+      p.x = (p.x / oldW) * W;
+      p.y = (p.y / oldH) * H;
+    });
     glow = ctx.createRadialGradient(W*.78, H*.06, 0, W*.78, H*.06, W*.55);
     glow.addColorStop(0,  'rgba(2,136,209,0.05)');
     glow.addColorStop(.6, 'rgba(1,87,155,0.02)');
     glow.addColorStop(1,  'transparent');
+    if (reducedMotion.matches && pts.length && !document.hidden) paint(false);
   }
   resize();
   window.addEventListener('resize', resize);
 
   for (let i = 0; i < 55; i++) pts.push({
-    x: Math.random()*1000, y: Math.random()*800,
+    x: Math.random()*W, y: Math.random()*H,
     r: 0.5+Math.random()*1.8,
     vx:(Math.random()-.5)*.12, vy:(Math.random()-.5)*.08,
     a: 0.015+Math.random()*.04,
@@ -4736,16 +4843,12 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
   const FRAME_MS = 1000 / 30;
   let last = 0, raf = null;
 
-  function draw(ts) {
-    raf = requestAnimationFrame(draw);
-    if (ts - last < FRAME_MS) return;
-    last = ts;
-
+  function paint(moveParticles) {
     ctx.clearRect(0,0,W,H);
     ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
 
     pts.forEach(p => {
-      p.x += p.vx; p.y += p.vy;
+      if (moveParticles) { p.x += p.vx; p.y += p.vy; }
       if (p.x<0) p.x=W; if (p.x>W) p.x=0;
       if (p.y<0) p.y=H; if (p.y>H) p.y=0;
       ctx.beginPath();
@@ -4755,10 +4858,24 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
     });
   }
 
-  function start() { if (raf == null) { last = 0; raf = requestAnimationFrame(draw); } }
+  function draw(ts) {
+    raf = requestAnimationFrame(draw);
+    if (ts - last < FRAME_MS) return;
+    last = ts;
+    paint(true);
+  }
+
+  function start() {
+    if (reducedMotion.matches) { paint(false); return; }
+    if (raf == null) { last = 0; raf = requestAnimationFrame(draw); }
+  }
   function stop()  { if (raf != null) { cancelAnimationFrame(raf); raf = null; } }
   // Inutile d'animer un fond invisible quand l'onglet est masqué.
   document.addEventListener('visibilitychange', () => { document.hidden ? stop() : start(); });
+  reducedMotion.addEventListener('change', () => {
+    stop();
+    if (!document.hidden) start();
+  });
   start();
 })();
 
@@ -4911,31 +5028,29 @@ async function loadAll() {
 try {
   const saved = localStorage.getItem('wr_city');
   if (saved) {
-    const c = JSON.parse(saved);
-    const savedLoc = {
-      name: c.name,
-      region: c.region,
-      country: c.country || 'France',
-      countryCode: c.countryCode || 'FR',
-      lat: Number(c.lat),
-      lon: Number(c.lon),
-      timezone: c.timezone || 'auto',
-    };
-    S.city   = c.name;
-    S.lat    = savedLoc.lat;
-    S.lon    = savedLoc.lon;
-    S.region = locationRegionLabel(savedLoc);
-    S.countryCode = savedLoc.countryCode || '';
-    S.timezone = savedLoc.timezone;
-    // Update UI immediately so it doesn't flash "Paris"
-    document.getElementById('city-name').textContent       = c.name;
-    document.getElementById('city-country').textContent    = S.region;
-    document.getElementById('header-location').textContent = c.name;
-    // Centre map on saved city (no fly animation on cold start)
-    map.setView([c.lat, c.lon], 8);
-    updateMarker();
+    const savedLoc = normalizeLocation(JSON.parse(saved));
+    if (savedLoc) {
+      S.city   = savedLoc.name;
+      S.lat    = savedLoc.lat;
+      S.lon    = savedLoc.lon;
+      S.region = locationRegionLabel(savedLoc);
+      S.countryCode = savedLoc.countryCode;
+      S.timezone = savedLoc.timezone;
+      // Update UI immediately so it doesn't flash "Paris"
+      document.getElementById('city-name').textContent       = savedLoc.name;
+      document.getElementById('city-country').textContent    = S.region;
+      document.getElementById('header-location').textContent = savedLoc.name;
+      // Centre map on saved city (no fly animation on cold start)
+      map.setView([savedLoc.lat, savedLoc.lon], 8);
+      updateMarker();
+    } else {
+      localStorage.removeItem('wr_city');
+    }
   }
-} catch(e) { /* localStorage unavailable or corrupt — use default Paris */ }
+} catch(e) {
+  try { localStorage.removeItem('wr_city'); } catch (_) {}
+  // localStorage indisponible ou corrompu : l'état par défaut reste Paris.
+}
 
 applyWeatherEffect('cloud'); // default while loading
 renderMoonCard(); // calcul local, ne dépend d'aucun appel réseau
@@ -4994,6 +5109,11 @@ setInterval(loadRadar, 600000); // Refresh radar every 10 min
 
   function goToSearch() {
     if (window.scrollY > 0) {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        focusSearch();
+        return;
+      }
       // Remonte en haut avant de donner le focus, pour éviter que le
       // navigateur ne fasse un saut brutal en amenant le champ dans le
       // viewport pendant l'animation de scroll.
@@ -5024,10 +5144,27 @@ setInterval(loadRadar, 600000); // Refresh radar every 10 min
 (function() {
   const navLinks = document.querySelectorAll('.nav-link[data-section]');
   const sectionIds = ['section-radar','section-hourly','section-charts','stats-section'];
+  const header = document.querySelector('header');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function updateScrollOffset() {
+    if (!header) return;
+    const offset = Math.ceil(header.getBoundingClientRect().height) + 12;
+    document.documentElement.style.setProperty('--scroll-offset', `${offset}px`);
+  }
+  updateScrollOffset();
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(updateScrollOffset).observe(header);
+  } else {
+    window.addEventListener('resize', updateScrollOffset);
+  }
 
   function setActive(id) {
     navLinks.forEach(a => {
-      a.classList.toggle('active', a.dataset.section === id);
+      const active = a.dataset.section === id;
+      a.classList.toggle('active', active);
+      if (active) a.setAttribute('aria-current', 'location');
+      else a.removeAttribute('aria-current');
     });
   }
 
@@ -5037,7 +5174,7 @@ setInterval(loadRadar, 600000); // Refresh radar every 10 min
       e.preventDefault();
       const target = document.getElementById(a.dataset.section);
       if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        target.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
         setActive(a.dataset.section);
       }
     });

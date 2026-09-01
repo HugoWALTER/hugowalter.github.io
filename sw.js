@@ -1,16 +1,17 @@
 // ──────────────────────────────────────────────────────────────────
 // WeatherRadar — Service Worker
-// Stratégie : Cache-first pour assets statiques,
-//             Network-first pour les APIs météo
+// Stratégie : Network-first pour les navigations et les APIs météo,
+//             Cache-first pour les autres assets statiques
 // ──────────────────────────────────────────────────────────────────
 
-const CACHE_NAME   = 'weatherradar-v20';
+const CACHE_NAME   = 'weatherradar-v22';
 const OFFLINE_PAGE = '/';
 
 // Assets à mettre en cache immédiatement à l'installation
 const PRECACHE = [
   '/',
   '/index.html',
+  '/privacy.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
@@ -24,7 +25,6 @@ const API_ORIGINS = [
   'marine-api.open-meteo.com',       // Houle, courants, température de l'eau
   'api.rainviewer.com',
   'tilecache.rainviewer.com',
-  'nominatim.openstreetmap.org',
   'data.geopf.fr',                   // Géocodage inverse (département, pour la vigilance)
   'public.opendatasoft.com',         // Vigilance Météo-France — donnée de sécurité,
 // ne doit JAMAIS être servie depuis un cache obsolète
@@ -64,32 +64,43 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. APIs météo et tuiles radar → réseau uniquement (pas de cache)
+  // 1. Navigation → réseau d'abord pour recevoir les nouvelles versions,
+  //    avec l'app préchargée comme secours hors-ligne.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(async response => {
+          if (response.ok) {
+            const clone = response.clone();
+            try {
+              const cache = await caches.open(CACHE_NAME);
+              await cache.put(event.request, clone);
+            } catch (err) {
+              console.warn('[SW] Mise à jour du cache de navigation impossible:', err);
+            }
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request)
+          .then(cached => cached || caches.match(OFFLINE_PAGE)))
+    );
+    return;
+  }
+
+  // 2. APIs météo et tuiles radar → réseau uniquement (pas de cache)
   if (API_ORIGINS.some(origin => url.hostname.includes(origin))) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // 2. Tuiles OpenStreetMap → Cache-first avec fallback réseau
-  if (url.hostname.includes('tile.openstreetmap.org')) {
-    event.respondWith(
-      caches.match(event.request).then(cached => {
-        if (cached) return cached;
-        return fetch(event.request).then(response => {
-          // Cache les tuiles OSM (elles changent rarement)
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME + '-tiles')
-              .then(c => c.put(event.request, clone));
-          }
-          return response;
-        });
-      })
-    );
+  // 3. Tuiles OpenStreetMap → laisser le navigateur honorer directement
+  //    Cache-Control, Expires et ETag du fournisseur. Le service worker ne
+  //    constitue donc pas de cache hors-ligne permanent de ces tuiles.
+  if (url.hostname === 'tile.openstreetmap.org') {
     return;
   }
 
-  // 3. Google Fonts → Cache-first
+  // 4. Google Fonts → Cache-first
   if (url.hostname.includes('fonts.googleapis.com') ||
       url.hostname.includes('fonts.gstatic.com')) {
     event.respondWith(
@@ -107,7 +118,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 3bis. Bibliothèques CDN versionnées (Leaflet, Chart.js…) → Cache-first
+  // 4bis. Bibliothèques CDN versionnées (Leaflet, Chart.js…) → Cache-first
   if (CDN_ORIGINS.some(origin => url.hostname.includes(origin))) {
     event.respondWith(
       caches.match(event.request).then(cached => {
@@ -124,7 +135,10 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 4. Assets locaux (index.html, icônes, manifest) → Cache-first
+  // Toute autre ressource tierce conserve son comportement réseau normal.
+  if (url.origin !== self.location.origin) return;
+
+  // 5. Assets locaux (index.html, icônes, manifest, confidentialité) → Cache-first
   //    avec fallback réseau puis page offline
   event.respondWith(
     caches.match(event.request).then(cached => {
