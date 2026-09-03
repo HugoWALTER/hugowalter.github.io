@@ -4572,9 +4572,13 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
   const o = document.getElementById('weather-overlay');
   // Le nombre d'éléments suit grossièrement la surface disponible : un
   // mobile n'a pas besoin du même DOM qu'un écran desktop pour garder une
-  // densité visuelle comparable.
+  // densité visuelle comparable. Référence = 390px (largeur mobile courante,
+  // où les décomptes de base ci-dessous sont calibrés à l'œil) : jamais
+  // réduit en dessous (min 1), plafonné à ×2.5 sur très grand écran — au-delà
+  // la densité perçue ne progresse plus guère et ça évite d'empiler des
+  // milliers de nœuds DOM animés sur un moniteur ultra-wide.
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const decorDensity = Math.max(0.55, Math.min(1, window.innerWidth / 900));
+  const decorDensity = Math.min(2.5, Math.max(1, window.innerWidth / 390));
   const particleDensity = reducedMotion ? 0 : decorDensity;
 
   // Couverture nuageuse (%) → vitesse et densité du décor nuageux : plus le
