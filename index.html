@@ -128,6 +128,20 @@
       100% { transform: translateY(108vh) translateX(80px) rotate(360deg); opacity: 0; }
     }
 
+    /* ── Hail (mêlée à la pluie d'orage) ─────────────────────────────
+       Même trajectoire que les traits de pluie d'orage (--rain-skew/
+       --rain-drift, réutilisées telles quelles) mais un rendu rond et
+       mat plutôt qu'un trait fin dégradé : au milieu des rayures de
+       pluie, un petit disque plein et net se lit sans ambiguïté comme
+       un grêlon plutôt qu'une simple goutte plus grosse. */
+    .hailstone {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 32%, #ffffff, #cfe0ea 65%, #9fb6c4);
+      box-shadow: 0 0 2px rgba(255,255,255,0.5);
+      animation: fall linear infinite;
+    }
+
     /* ── Clouds (fog / nuageux) ──────────────────────────────────── */
     /* Alpha calibrés empiriquement (mesure de luminosité pixel, pas au
        jugé) : la première version utilisait mix-blend-mode:screen, qui
@@ -357,6 +371,7 @@
       html { scroll-behavior: auto; }
       .raindrop,
       .snowflake,
+      .hailstone,
       .wind-gust {
         animation: none;
         display: none;
@@ -1833,16 +1848,16 @@ function wmoInfo(code) {
     3:  ['☁️', 'Couvert',               'cloud'],
     45: ['🌫', 'Brouillard',            'fog'],
     48: ['🌫', 'Brouillard givrant',    'fog'],
-    51: ['🌦', 'Bruine légère',         'rain'],
-    53: ['🌦', 'Bruine modérée',        'rain'],
-    55: ['🌧', 'Bruine dense',          'rain'],
-    56: ['🌨', 'Bruine verglaçante',    'rain'],
-    57: ['🌨', 'Bruine verglaçante forte','rain'],
+    51: ['🌦', 'Bruine légère',         'drizzle'],
+    53: ['🌦', 'Bruine modérée',        'drizzle'],
+    55: ['🌧', 'Bruine dense',          'drizzle'],
+    56: ['🌨', 'Bruine verglaçante',    'freezing-drizzle'],
+    57: ['🌨', 'Bruine verglaçante forte','freezing-drizzle'],
     61: ['🌧', 'Pluie légère',          'rain'],
     63: ['🌧', 'Pluie modérée',         'rain'],
     65: ['🌧', 'Pluie forte',           'heavyrain'],
-    66: ['🌨', 'Pluie verglaçante',     'rain'],
-    67: ['🌨', 'Pluie verglaçante forte','rain'],
+    66: ['🌨', 'Pluie verglaçante',     'freezing-rain'],
+    67: ['🌨', 'Pluie verglaçante forte','freezing-rain'],
     71: ['❄️', 'Neige légère',          'snow'],
     73: ['❄️', 'Neige modérée',         'snow'],
     75: ['❄️', 'Neige abondante',       'snow'],
@@ -1853,7 +1868,7 @@ function wmoInfo(code) {
     85: ['🌨', 'Averses de neige',      'snow'],
     86: ['🌨', 'Averses de neige fortes','snow'],
     95: ['⛈', 'Orage',                 'storm'],
-    96: ['⛈', 'Orage avec grêle',      'storm'],
+    96: ['⛈', 'Orage avec grêle',      'storm-hail'],
     99: ['⛈', 'Orage violent',         'storm'],
   };
   const r = m[c];
@@ -2538,7 +2553,7 @@ async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
     + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,visibility`
-    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration,sunshine_duration`
+    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,snowfall_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration,sunshine_duration`
     + `&current_weather=true`
     + `&forecast_days=16`
     + `&timezone=auto`;
@@ -3504,6 +3519,14 @@ function renderStats(d) {
   const wMax   = Math.round(d.daily.windspeed_10m_max[i]);
   const precip = (d.daily.precipitation_sum[i]||0).toFixed(1);
   const precHrs= d.daily.precipitation_hours?.[i] ?? '--';
+  // Cumul de neige du jour (cm) — n'apparaît que les jours où il neige
+  // réellement (>0) ; le reste du temps, la sous-ligne "Xh de pluie"
+  // existante ne change pas, donc aucun bruit visuel ajouté un jour normal.
+  const snowfallToday = d.daily.snowfall_sum?.[i];
+  const hasSnowfall = typeof snowfallToday === 'number' && snowfallToday > 0;
+  const precipSub = hasSnowfall
+    ? `${precHrs}h de précip. · ❄️ ${snowfallToday.toFixed(1)} cm`
+    : `${precHrs}h de pluie`;
 
   // Ressenti actuel — apparent_temperature de l'API (cohérent avec la card Aujourd'hui)
   const nowIdxStat = d.hourly.time.indexOf(currentHourKey(d));
@@ -3639,7 +3662,7 @@ function renderStats(d) {
       value: nextRainLabel,
       sub: nextRainSub },
     { icon:'🌡', label:'Amplitude du jour',  value:`${tMin}° / ${tMax}°`,     sub:`Écart ${tMax-tMin}°C` },
-    { icon:'🌧', label:'Précipitations',     value:`${precip} mm`,            sub:`${precHrs}h de pluie` },
+    { icon:'🌧', label:'Précipitations',     value:`${precip} mm`,            sub:precipSub },
     { icon:'💨', label:'Vent maximum',        value:`${wMax} km/h`,            sub:`Direction ${windDir(cw.winddirection)}` },
     { icon:'🌡', label:'Ressenti actuel',     value:`${feelsLikeStat}°`, sub:'Température ressentie' },
     { icon:'📅', label:'Moy. semaine proch.', value:`${nwAvg}°`,               sub:'T° max moyenne J+7→14' },
@@ -4606,22 +4629,70 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
     return el;
   };
 
-  if (effect === 'rain' || effect === 'heavyrain') {
-    const n = Math.round((effect === 'heavyrain' ? 220 : 130) * particleDensity);
+  // Pluie / bruine / pluie forte / orage : un seul système de particules
+  // partagé (compte, taille, vitesse, dérive et teinte varient par variante)
+  // plutôt que du code dupliqué pour chaque cas. La bruine (drizzle) est
+  // délibérément plus fine et plus rare qu'une vraie pluie — c'est la seule
+  // des trois nuances ajoutées qui RÉDUIT le nombre de particules plutôt que
+  // d'en ajouter. Le verglaçant (freezing-*) ne change que la teinte (plus
+  // pâle/froide) : physiquement, la pluie/bruine verglaçante tombe à la même
+  // vitesse qu'une pluie/bruine normale — seul son comportement au contact du
+  // sol diffère, donc rien à changer dans la trajectoire ou la densité.
+  const RAIN_VARIANTS = {
+    drizzle:            { count: 55,  minH: 6,  addH: 6,  minDur: 0.6,  addDur: 0.7,  skew: '0deg',  drift: '25px', color: 'rgba(140,190,230,0.55)' },
+    'freezing-drizzle':  { count: 55,  minH: 6,  addH: 6,  minDur: 0.6,  addDur: 0.7,  skew: '0deg',  drift: '25px', color: 'rgba(195,225,240,0.8)'  },
+    rain:                { count: 130, minH: 12, addH: 22, minDur: 0.35, addDur: 0.55, skew: '0deg',  drift: '50px', color: 'rgba(100,170,230,0.75)' },
+    'freezing-rain':     { count: 130, minH: 12, addH: 22, minDur: 0.35, addDur: 0.55, skew: '0deg',  drift: '50px', color: 'rgba(195,225,240,0.8)'  },
+    heavyrain:           { count: 220, minH: 12, addH: 22, minDur: 0.35, addDur: 0.55, skew: '0deg',  drift: '50px', color: 'rgba(100,170,230,0.75)' },
+    storm:               { count: 180, minH: 18, addH: 28, minDur: 0.25, addDur: 0.3,  skew: '-8deg', drift: '70px', color: 'rgba(100,170,230,0.75)' },
+    'storm-hail':        { count: 180, minH: 18, addH: 28, minDur: 0.25, addDur: 0.3,  skew: '-8deg', drift: '70px', color: 'rgba(100,170,230,0.75)' },
+  };
+
+  if (RAIN_VARIANTS[effect]) {
+    const v = RAIN_VARIANTS[effect];
+    const n = Math.round(v.count * particleDensity);
+    const maxDelay = (effect === 'storm' || effect === 'storm-hail') ? 1.5 : (effect === 'drizzle' || effect === 'freezing-drizzle') ? 2.5 : 2;
     const wrap = Object.assign(document.createElement('div'), { className:'rain-container' });
     for (let i = 0; i < n; i++) {
       const d = Object.assign(document.createElement('div'), { className:'raindrop' });
-      const t = 0.35 + Math.random() * 0.55;
       Object.assign(d.style, {
         left:              `${Math.random()*100}%`,
-        height:            `${12+Math.random()*22}px`,
-        animationDuration: `${t}s`,
-        animationDelay:    `${-(Math.random()*2)}s`,
+        height:            `${v.minH + Math.random()*v.addH}px`,
+        animationDuration: `${(v.minDur + Math.random()*v.addDur).toFixed(2)}s`,
+        animationDelay:    `${-(Math.random()*maxDelay)}s`,
         opacity:           0.25 + Math.random() * 0.55,
+        background:        `linear-gradient(to bottom, transparent, ${v.color})`,
       });
+      d.style.setProperty('--rain-skew', v.skew);
+      d.style.setProperty('--rain-drift', v.drift);
       wrap.appendChild(d);
     }
     o.appendChild(wrap);
+
+    if (effect === 'storm' || effect === 'storm-hail') {
+      o.appendChild(Object.assign(document.createElement('div'), { className:'thunder-flash' }));
+    }
+
+    // Grêle : quelques particules rondes et dures mêlées à la pluie d'orage,
+    // sur la même trajectoire (vent/dérive de l'orage) mais nettement moins
+    // nombreuses — un semis distinct qui se reconnaît au milieu des traits de
+    // pluie, pas une deuxième couche aussi dense que la première.
+    if (effect === 'storm-hail') {
+      const hn = Math.round(22 * particleDensity);
+      for (let i = 0; i < hn; i++) {
+        const h = Object.assign(document.createElement('div'), { className:'hailstone' });
+        const sz = 3 + Math.random() * 3;
+        Object.assign(h.style, {
+          left:              `${Math.random()*100}%`,
+          width:             `${sz}px`, height: `${sz}px`,
+          animationDuration: `${(0.28 + Math.random()*0.3).toFixed(2)}s`,
+          animationDelay:    `${-(Math.random()*1.5)}s`,
+        });
+        h.style.setProperty('--rain-skew', '-8deg');
+        h.style.setProperty('--rain-drift', '70px');
+        o.appendChild(h);
+      }
+    }
   }
 
   if (effect === 'snow') {
@@ -4636,26 +4707,6 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
       });
       o.appendChild(f);
     }
-  }
-
-  if (effect === 'storm') {
-    const n = Math.round(180 * particleDensity);
-    const wrap = Object.assign(document.createElement('div'), { className:'rain-container' });
-    for (let i = 0; i < n; i++) {
-      const d = Object.assign(document.createElement('div'), { className:'raindrop' });
-      Object.assign(d.style, {
-        left:              `${Math.random()*100}%`,
-        height:            `${18+Math.random()*28}px`,
-        animationDuration: `${0.25+Math.random()*0.3}s`,
-        animationDelay:    `${-(Math.random()*1.5)}s`,
-        opacity:           0.35 + Math.random() * 0.5,
-      });
-      d.style.setProperty('--rain-skew', '-8deg');
-      d.style.setProperty('--rain-drift', '70px');
-      wrap.appendChild(d);
-    }
-    o.appendChild(wrap);
-    o.appendChild(Object.assign(document.createElement('div'), { className:'thunder-flash' }));
   }
 
   if (effect === 'sun' || effect === 'partly-cloudy') {
