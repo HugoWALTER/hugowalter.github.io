@@ -1861,7 +1861,7 @@ function wmoInfo(code) {
     71: ['❄️', 'Neige légère',          'snow'],
     73: ['❄️', 'Neige modérée',         'snow'],
     75: ['❄️', 'Neige abondante',       'snow'],
-    77: ['🌨', 'Grésil',               'snow'],
+    77: ['🌨', 'Grésil',               'sleet'],
     80: ['🌦', 'Averses légères',       'rain'],
     81: ['🌧', 'Averses modérées',      'rain'],
     82: ['⛈', 'Violentes averses',     'storm'],
@@ -3574,12 +3574,18 @@ function renderStats(d) {
   const uv = uvLabel(uvVal !== null ? Math.round(uvVal) : null);
   const uvDisplay = uvVal !== null ? Math.round(uvVal) : '--';
 
-  // ── Prochaine heure de pluie ───────────────────────────────────
+  // ── Prochaine heure de précipitation ────────────────────────────
+  // Distingue pluie et neige : la boucle ne regardait que la probabilité et
+  // le cumul en mm, jamais le code météo de l'heure trouvée — une neige à
+  // venir s'affichait donc comme "🌂 Prochaine pluie", trompeur en contexte
+  // hivernal/montagne.
   const hi = d.hourly;
   let startIdx = hi.time.findIndex(t => t === curHourKey);
   if (startIdx < 0) startIdx = 0;
   let nextRainLabel = 'Aucune dans 48h';
-  let nextRainSub   = 'Pas de pluie prévue';
+  let nextRainSub   = 'Pas de précip. prévue';
+  let nextRainIcon  = '🌂';
+  let nextRainTitle = 'Prochaine pluie';
   for (let h = startIdx; h < Math.min(startIdx + 48, hi.time.length); h++) {
     const prob = hi.precipitation_probability?.[h] ?? 0;
     const mm   = hi.precipitation?.[h] ?? 0;
@@ -3591,6 +3597,9 @@ function renderStats(d) {
         : diffH < 2  ? `Dans ~${diffH*60} min`
         : diffH < 24 ? `Dans ~${diffH}h`
         : `${dt.toLocaleDateString('fr-FR',{weekday:'short'})} ${hm}`;
+      const isSnow = wmoInfo(hi.weathercode?.[h]).effect === 'snow';
+      nextRainTitle = isSnow ? 'Prochaine neige' : 'Prochaine pluie';
+      nextRainIcon  = isSnow ? '❄️' : '🌂';
       nextRainLabel = hm;
       nextRainSub   = `${inLabel} · ${prob}% · ${mm.toFixed(1)} mm`;
       break;
@@ -3658,7 +3667,7 @@ function renderStats(d) {
     { icon:'🔆', label:'Indice UV',
       value: `<span style="color:${uv.color};font-weight:700">${uvDisplay}</span>`,
       sub: uv.txt + (uvMax !== null ? ` · max ${Math.round(uvMax)}` : '') },
-    { icon:'🌂', label:'Prochaine pluie',
+    { icon: nextRainIcon, label: nextRainTitle,
       value: nextRainLabel,
       sub: nextRainSub },
     { icon:'🌡', label:'Amplitude du jour',  value:`${tMin}° / ${tMax}°`,     sub:`Écart ${tMax-tMin}°C` },
@@ -4706,6 +4715,28 @@ function applyWeatherEffect(effect, windSpeed = 0, windDirDeg = null, cloudCover
         animationDelay:    `${-(Math.random()*5)}s`,
       });
       o.appendChild(f);
+    }
+  }
+
+  // Grésil : réutilise le rendu "grêlon" (disque dur et mat, cf. orage) mais
+  // en chute continue et régulière plutôt que mêlé en petite quantité à de
+  // la pluie — le grésil est la précipitation principale, pas un accent.
+  // Trajectoire droite (skew 0, comme la neige/pluie normales, pas de vent
+  // implicite) et vitesse nettement plus rapide que la neige — plus dense et
+  // plus dur, il ne flotte pas comme un flocon, il tombe.
+  if (effect === 'sleet') {
+    for (let i = 0, n = Math.round(110 * particleDensity); i < n; i++) {
+      const h = Object.assign(document.createElement('div'), { className:'hailstone' });
+      const sz = 2.5 + Math.random() * 2.5;
+      Object.assign(h.style, {
+        left:              `${Math.random()*100}%`,
+        width:             `${sz}px`, height: `${sz}px`,
+        animationDuration: `${(0.7 + Math.random()*0.6).toFixed(2)}s`,
+        animationDelay:    `${-(Math.random()*2)}s`,
+      });
+      h.style.setProperty('--rain-skew', '0deg');
+      h.style.setProperty('--rain-drift', '35px');
+      o.appendChild(h);
     }
   }
 
