@@ -776,6 +776,10 @@
       display: flex; flex-direction: column; align-items: center; gap: 5px;
     }
     .tomorrow-card .day-slot { background: rgba(12,15,26,0.6); }
+    /* Réserve la hauteur observée pour éviter un CLS quand Inter
+       remplace la police de repli (métriques différentes → reflow
+       du texte à l'intérieur, ce qui décalait les cartes en dessous) */
+    #tomorrow-card { min-height: 200px; }
     .day-slot-label { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0; color: var(--txt2); }
     .day-slot-icon  { font-size: 2rem; line-height: 1; }
     .day-slot-temp  { font-family: var(--fd); font-size: 1.55rem; font-weight: 700; }
