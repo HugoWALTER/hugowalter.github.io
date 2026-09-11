@@ -25,12 +25,12 @@
   <main>
     <a class="back" href="index.html">← Retour à WeatherRadar</a>
     <h1>Confidentialité</h1>
-    <p class="updated">Dernière mise à jour : 1er septembre 2026</p>
+    <p class="updated">Dernière mise à jour : 11 septembre 2026</p>
 
     <p class="summary"><strong>En bref :</strong> WeatherRadar ne demande aucun compte, n'utilise aucun outil d'analyse d'audience et ne dépose aucun cookie publicitaire.</p>
 
     <h2>Données conservées sur votre appareil</h2>
-    <p>L'application utilise <code>localStorage</code> pour mémoriser la dernière ville choisie et un petit cache de codes de départements. Ces informations restent dans votre navigateur. Le service worker conserve aussi les fichiers statiques nécessaires au fonctionnement hors ligne.</p>
+    <p>L'application utilise <code>localStorage</code> pour mémoriser la dernière ville choisie, votre liste de villes favorites, un petit cache de codes de départements, et si vous avez déjà refusé l'invite d'installation. Ces informations restent dans votre navigateur. Le service worker conserve aussi les fichiers statiques nécessaires au fonctionnement hors ligne.</p>
     <p>Vous pouvez supprimer ces données depuis les paramètres de site de votre navigateur.</p>
 
     <h2>Services externes contactés</h2>
@@ -39,13 +39,13 @@
       <li><strong>Open-Meteo</strong> pour la recherche de villes, les prévisions, l'air et les données marines ; la recherche saisie ou les coordonnées de la ville sont transmises.</li>
       <li><strong>RainViewer</strong> pour les images du radar de précipitations.</li>
       <li><strong>OpenStreetMap</strong> pour les tuiles visibles du fond de carte.</li>
-      <li><strong>Géoplateforme et OpenDataSoft</strong> pour identifier le département et afficher la vigilance Météo-France en France métropolitaine.</li>
+      <li><strong>Géoplateforme et OpenDataSoft</strong> pour identifier le département et afficher la vigilance Météo-France en France métropolitaine, et pour retrouver un nom de ville si vous utilisez la géolocalisation.</li>
       <li><strong>unpkg, jsDelivr et Google Fonts</strong> pour charger les bibliothèques et la police de l'interface.</li>
     </ul>
     <p>Comme pour toute requête web, ces fournisseurs reçoivent notamment votre adresse IP et les informations techniques habituelles du navigateur. Leurs propres politiques s'appliquent : <a href="https://open-meteo.com/en/terms" target="_blank" rel="noopener">Open-Meteo</a>, <a href="https://www.rainviewer.com/privacy.html" target="_blank" rel="noopener">RainViewer</a> et <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener">OpenStreetMap Foundation</a>.</p>
 
-    <h2>Absence de localisation automatique</h2>
-    <p>L'application ne demande pas l'accès à la position GPS de votre appareil. Seule la ville que vous recherchez ou sélectionnez est utilisée.</p>
+    <h2>Localisation (facultative)</h2>
+    <p>WeatherRadar ne demande votre position GPS que si vous appuyez explicitement sur le bouton de géolocalisation de la barre de recherche — jamais automatiquement, ni en arrière-plan. Si vous l'utilisez, votre navigateur affiche sa propre demande de permission ; une fois accordée, vos coordonnées sont transmises à la Géoplateforme (IGN, service public français) pour retrouver un nom de ville, puis à Open-Meteo pour récupérer la météo correspondante. WeatherRadar ne conserve pas ces coordonnées au-delà de l'affichage.</p>
 
     <h2>Statut du service</h2>
     <p>WeatherRadar est une application indépendante et n'est ni éditée ni approuvée par Météo-France. En cas de risque, consultez toujours la <a href="https://vigilance.meteofrance.fr/" target="_blank" rel="noopener">vigilance officielle</a>.</p>
