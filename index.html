@@ -575,6 +575,11 @@
     .fav-toggle-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .fav-toggle-btn.is-active { color: #ffc107; border-color: rgba(255,193,7,.4); background: rgba(255,193,7,.12); }
     .fav-toggle-btn.is-active svg { fill: currentColor; }
+    .fav-toggle-btn.today-fav-btn {
+      width: 24px; height: 24px; border: none; background: transparent;
+    }
+    .fav-toggle-btn.today-fav-btn:hover { background: var(--surface2); }
+    .fav-toggle-btn.today-fav-btn.is-active { background: transparent; }
     .share-btn {
       flex-shrink: 0; display: flex; align-items: center; justify-content: center;
       width: 24px; height: 24px; border-radius: 50%; padding: 0;
@@ -1560,7 +1565,7 @@
     <div class="header-right">
       <span class="header-time" id="header-time"></span>
       <span class="header-weather-badge" id="header-badge"></span>
-      <button type="button" class="fav-toggle-btn" id="fav-toggle-btn" aria-pressed="false" aria-label="Ajouter aux favoris" title="Ajouter aux favoris">
+      <button type="button" class="fav-toggle-btn" id="header-fav-btn" aria-label="Voir mes favoris" title="Voir mes favoris">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
         </svg>
@@ -1669,6 +1674,11 @@
             </span>
             <span style="display:flex;align-items:center;gap:8px">
               <span id="today-date" style="font-size:.7rem;color:var(--txt2)"></span>
+              <button type="button" class="fav-toggle-btn today-fav-btn" id="fav-toggle-btn" aria-pressed="false" aria-label="Ajouter aux favoris" title="Ajouter aux favoris">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </button>
               <button type="button" class="share-btn" id="today-share-btn" aria-label="Partager les prévisions du jour" title="Partager">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-3.9M8.6 13.5l6.8 3.9"/></svg>
               </button>
@@ -2287,7 +2297,7 @@ function renderSuggestions(results, state = '') {
           </div>
         </button>
         <button type="button" class="suggestion-fav-btn${fav ? ' is-active' : ''}" data-fav-index="${i}" aria-pressed="${fav}" aria-label="${fav ? 'Retirer' : 'Ajouter'} ${escapeHTML(c.name)} ${fav ? 'des' : 'aux'} favoris" title="${fav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">
-          <svg width="14" height="14" viewBox="0 -0.49 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </button>
       </div>`;
     });
@@ -2469,7 +2479,11 @@ suggestEl.addEventListener('click', e => {
 });
 
 document.addEventListener('click', e => {
-  if (!e.target.closest('.search-section')) hideSuggestions();
+  // Le bouton étoile du header est hors de .search-section mais déclenche
+  // légitimement l'affichage des favoris (voir plus bas) : sans cette
+  // exception, ce même clic — en bulle jusqu'ici — refermait aussitôt le
+  // panneau qu'il venait d'ouvrir quand on est déjà en haut de page.
+  if (!e.target.closest('.search-section') && !e.target.closest('#header-fav-btn')) hideSuggestions();
 });
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); searchEl.focus(); }
@@ -5614,44 +5628,45 @@ setInterval(loadRadar, 600000); // Refresh radar every 10 min
 })();
 
 // ──────────────────────────────────────────────────────────────────
-// HEADER CITY PILL — clic (ou Entrée/Espace au clavier) : remonte en
-// haut de page si nécessaire, puis place le focus dans la barre de
-// recherche pour permettre à l'utilisateur de changer de ville.
+// NAVIGATION VERS LA RECHERCHE — remonte en haut de page si
+// nécessaire puis place le focus dans la barre de recherche. Utilisé
+// par le nom de ville du header ET par le bouton favoris du header
+// (qui vide en plus le champ pour afficher la liste des favoris).
 // ──────────────────────────────────────────────────────────────────
+function focusSearch() {
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) searchInput.focus({ preventScroll: true });
+}
+
+function goToSearch() {
+  if (window.scrollY > 0) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      focusSearch();
+      return;
+    }
+    // Remonte en haut avant de donner le focus, pour éviter que le
+    // navigateur ne fasse un saut brutal en amenant le champ dans le
+    // viewport pendant l'animation de scroll.
+    if ('onscrollend' in window) {
+      window.addEventListener('scrollend', focusSearch, { once: true });
+    } else {
+      // Fallback pour les navigateurs sans l'événement 'scrollend'
+      setTimeout(focusSearch, 450);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    focusSearch();
+  }
+}
+
 (function() {
-  const cityBtn      = document.querySelector('.header-pill');
-  const searchInput  = document.getElementById('search-input');
-  if (!cityBtn || !searchInput) return;
+  const cityBtn = document.querySelector('.header-pill');
+  if (!cityBtn) return;
 
   cityBtn.setAttribute('role', 'button');
   cityBtn.setAttribute('tabindex', '0');
   cityBtn.setAttribute('aria-describedby', 'header-pill-hint');
-
-  function focusSearch() {
-    searchInput.focus({ preventScroll: true });
-  }
-
-  function goToSearch() {
-    if (window.scrollY > 0) {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-        focusSearch();
-        return;
-      }
-      // Remonte en haut avant de donner le focus, pour éviter que le
-      // navigateur ne fasse un saut brutal en amenant le champ dans le
-      // viewport pendant l'animation de scroll.
-      if ('onscrollend' in window) {
-        window.addEventListener('scrollend', focusSearch, { once: true });
-      } else {
-        // Fallback pour les navigateurs sans l'événement 'scrollend'
-        setTimeout(focusSearch, 450);
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      focusSearch();
-    }
-  }
 
   cityBtn.addEventListener('click', goToSearch);
   cityBtn.addEventListener('keydown', (e) => {
@@ -5659,6 +5674,21 @@ setInterval(loadRadar, 600000); // Refresh radar every 10 min
       e.preventDefault();
       goToSearch();
     }
+  });
+})();
+
+// Bouton favoris du header : ne favorise plus la ville affichée (voir
+// plus bas, ce geste vit maintenant dans la carte "Aujourd'hui", à
+// côté du partage) — un clic ici vide la recherche et y amène,
+// affichant directement la liste des favoris (le focus sur un champ
+// vide déclenche déjà ce panneau, voir searchEl 'focus' plus haut).
+(function() {
+  const headerFavBtn = document.getElementById('header-fav-btn');
+  const searchInput = document.getElementById('search-input');
+  if (!headerFavBtn || !searchInput) return;
+  headerFavBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    goToSearch();
   });
 })();
 
