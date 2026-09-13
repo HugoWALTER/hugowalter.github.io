@@ -577,6 +577,7 @@
     .fav-toggle-btn.is-active svg { fill: currentColor; }
     .fav-toggle-btn.today-fav-btn {
       width: 24px; height: 24px; border: none; background: transparent;
+      position: relative; /* point d'ancrage pour la zone tactile invisible, voir plus bas */
     }
     .fav-toggle-btn.today-fav-btn:hover { background: var(--surface2); }
     .fav-toggle-btn.today-fav-btn.is-active { background: transparent; }
@@ -585,6 +586,7 @@
       width: 24px; height: 24px; border-radius: 50%; padding: 0;
       border: none; background: transparent; color: var(--txt2); cursor: pointer;
       transition: color .15s, background .15s;
+      position: relative; /* idem */
     }
     .share-btn:hover { color: var(--accent); background: var(--surface2); }
     .share-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -611,6 +613,10 @@
     }
     .suggestion-name { font-size: 0.88rem; font-weight: 500; }
     .suggestion-sub { font-size: 0.72rem; color: var(--txt2); line-height: 1.35; }
+    .suggestion-fav-temp {
+      flex-shrink: 0; font-size: .8rem; font-weight: 600; color: var(--txt2);
+      font-family: var(--fd); white-space: nowrap;
+    }
     .suggestion-section-label {
       padding: 10px 20px 4px; font-size: .68rem; font-weight: 600;
       letter-spacing: .04em; text-transform: uppercase; color: var(--txt2);
@@ -645,6 +651,23 @@
     }
     .suggestion-remove-btn:hover { color: #f44336; }
     .suggestion-remove-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* Cibles tactiles trop petites sur mobile (24-32px, sous les ~40-44px
+       recommandés) — agrandies sur mobile uniquement ; desktop garde les
+       tailles compactes d'origine, la souris n'a pas ce besoin. */
+    @media (max-width: 600px) {
+      .fav-toggle-btn:not(.today-fav-btn) { width: 36px; height: 36px; }
+      .suggestion-fav-btn, .suggestion-remove-btn { width: 40px; height: 40px; }
+      .geoloc-btn { width: 36px; height: 36px; }
+      /* Étoile/partage de la carte "Aujourd'hui" : rangée compacte à côté
+         d'un petit texte de date — les agrandir visuellement comme les
+         autres déséquilibrait la ligne. On garde l'icône à sa taille
+         d'origine et on étend seulement la zone cliquable, invisible,
+         autour — meilleure cible tactile sans rien abîmer visuellement. */
+      .fav-toggle-btn.today-fav-btn::after,
+      .share-btn::after {
+        content: ''; position: absolute; inset: -8px;
+      }
+    }
 
     /* ══════════════════════════════════════════════════════════════
        MAIN GRID
@@ -2249,6 +2272,41 @@ function updateFavToggleUI() {
   btn.title = active ? 'Retirer des favoris' : 'Ajouter aux favoris';
 }
 
+// ──────────────────────────────────────────────────────────────────
+// TEMPÉRATURES DES FAVORIS DANS LA LISTE DÉROULANTE — plutôt qu'une
+// carte permanente sur la page, la météo de chaque favori ne se
+// charge que quand la liste est réellement ouverte (étoile du header,
+// ou champ de recherche vidé). Petit cache en mémoire (5 min) pour
+// éviter de refaire les appels si on rouvre/referme rapidement — pas
+// besoin de localStorage ici, cette info n'a pas vocation à survivre
+// au rechargement de la page.
+const FAV_TEMP_CACHE_TTL_MS = 5 * 60 * 1000;
+const _favTempCache = new Map();
+
+function fillFavoriteTemps(favs, scopeEl) {
+  favs.forEach(async (f, i) => {
+    const key = `${f.lat.toFixed(2)},${f.lon.toFixed(2)}`;
+    const cached = _favTempCache.get(key);
+    if (cached && (Date.now() - cached.ts) < FAV_TEMP_CACHE_TTL_MS) {
+      const el = scopeEl.querySelector(`[data-fs-temp="${i}"]`);
+      if (el) el.textContent = `${cached.icon} ${cached.temp}°`;
+      return;
+    }
+    try {
+      const u = `https://api.open-meteo.com/v1/forecast?latitude=${f.lat}&longitude=${f.lon}&current_weather=true&timezone=auto`;
+      const r = await fetchWithTimeout(u, 8000);
+      if (!r.ok) return;
+      const j = await r.json();
+      const cw = j.current_weather;
+      if (!cw) return;
+      const data = { temp: Math.round(cw.temperature), icon: wmoInfo(cw.weathercode).icon, ts: Date.now() };
+      _favTempCache.set(key, data);
+      const el = scopeEl.querySelector(`[data-fs-temp="${i}"]`);
+      if (el) el.textContent = `${data.icon} ${data.temp}°`;
+    } catch (e) { /* silencieux — ce favori reste sans température, les autres continuent */ }
+  });
+}
+
 function localSuggestions(q) {
   const n = normalizeText(q);
   return CITIES
@@ -2325,16 +2383,18 @@ function renderFavoritesSuggestions() {
     <div class="suggestion-row${i === activeSuggestion ? ' active' : ''}">
       <button type="button" class="suggestion-item" data-suggestion-index="${i}" style="flex:1;min-width:0">
         <span style="font-size:1.1rem" aria-hidden="true">★</span>
-        <div style="min-width:0">
+        <div style="min-width:0;flex:1">
           <div class="suggestion-name">${escapeHTML(c.name)}</div>
           <div class="suggestion-sub">${escapeHTML(locationRegionLabel(c))}</div>
         </div>
+        <span class="suggestion-fav-temp" data-fs-temp="${i}"></span>
       </button>
       <button type="button" class="suggestion-remove-btn" data-remove-index="${i}" aria-label="Retirer ${escapeHTML(c.name)} des favoris" title="Retirer des favoris">✕</button>
     </div>`);
   suggestEl.innerHTML = `<div class="suggestion-section-label">Favoris</div>${rows.join('')}`;
   suggestEl.classList.add('show');
   searchEl.setAttribute('aria-expanded', 'true');
+  fillFavoriteTemps(favs, suggestEl);
   return true;
 }
 
@@ -2999,7 +3059,7 @@ document.getElementById('anim-btn').addEventListener('click', function() {
 async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,visibility`
+    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,visibility,snow_depth`
     + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,snowfall_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration,sunshine_duration`
     + `&current_weather=true`
     + `&forecast_days=16`
@@ -4110,6 +4170,15 @@ function renderStats(d) {
     <line x1="5" y1="3.9" x2="5" y2="6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
   </svg>`;
 
+  // ── Neige au sol ─────────────────────────────────────────────
+  // (distincte de precipSub/snowfall_sum, qui ne compte que la chute du
+  // jour — snow_depth reflète l'épaisseur cumulée réellement au sol)
+  const snowDepthM  = nowIdxStat >= 0 ? d.hourly.snow_depth?.[nowIdxStat] : null;
+  const snowDepthCm = snowDepthM != null ? snowDepthM * 100 : null;
+  // Sous 1 cm, pas assez significatif pour occuper une carte — évite le
+  // bruit visuel pour la quasi-totalité des villes/jours sans neige.
+  const hasSnowDepth = snowDepthCm !== null && snowDepthCm >= 1;
+
   const stats = [
     { icon:'🔆', label:'Indice UV',
       value: `<span style="color:${uv.color};font-weight:700">${uvDisplay}</span>`,
@@ -4136,6 +4205,9 @@ function renderStats(d) {
       value: daylightH !== null ? `${daylightH}h${String(daylightM).padStart(2,'0')}` : '--',
       sub: 'Lever → coucher du soleil' },
   ];
+  if (hasSnowDepth) {
+    stats.push({ icon:'❄️', label:'Neige au sol', value:`${Math.round(snowDepthCm)} cm`, sub:'Épaisseur actuelle' });
+  }
 
   document.getElementById('stats-section').innerHTML = stats.map((s,idx) => `
     <div class="stat-card fade-in stagger-${(idx%4)+1}">
