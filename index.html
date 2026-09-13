@@ -4209,13 +4209,26 @@ function renderStats(d) {
     stats.push({ icon:'❄️', label:'Neige au sol', value:`${Math.round(snowDepthCm)} cm`, sub:'Épaisseur actuelle' });
   }
 
-  document.getElementById('stats-section').innerHTML = stats.map((s,idx) => `
-    <div class="stat-card fade-in stagger-${(idx%4)+1}">
+  // La grille desktop compte 4 colonnes ; si le nombre de cartes ne tombe
+  // pas juste (ex: la neige en fait une 13ᵉ), la ou les dernières se
+  // retrouvent seules avec des cases vides à côté. Plutôt que de dépendre
+  // d'un compte de cartes précis — fragile, ça redeviendrait bancal à la
+  // prochaine carte conditionnelle ajoutée un jour — on étire dynamiquement
+  // les cartes de la dernière ligne pour occuper toute la largeur.
+  const remainder = stats.length % 4;
+  const trailingSpan = remainder === 1 ? 4 : remainder === 2 ? 2 : 1;
+
+  document.getElementById('stats-section').innerHTML = stats.map((s,idx) => {
+    const isTrailing = remainder !== 0 && idx >= stats.length - remainder;
+    const spanStyle = isTrailing && trailingSpan > 1 ? ` style="grid-column: span ${trailingSpan}"` : '';
+    return `
+    <div class="stat-card fade-in stagger-${(idx%4)+1}"${spanStyle}>
       <div class="stat-icon">${s.icon}</div>
       <div class="stat-label">${s.label}</div>
       <div class="stat-value">${s.value}</div>
       <div class="stat-sub">${s.sub}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ──────────────────────────────────────────────────────────────────
