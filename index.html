@@ -1069,6 +1069,23 @@
     .stat-value { font-family: var(--fd); font-size: 1.35rem; font-weight: 700; }
     .stat-sub   { font-size: 0.67rem; color: var(--txt2); }
 
+    /* Comble une dernière ligne incomplète dans la grille de stats.
+       grid-column:1/-1 s'adapte tout seul au nombre de colonnes réel à
+       CHAQUE format d'écran (4 colonnes desktop, 2 en mobile/tablette, 1
+       en très petit écran) — contrairement à un "span 4" fixe, qui casse
+       dès qu'on passe à une grille à moins de 4 colonnes (colonnes
+       implicites forcées, largeurs faussées). Aucune media query requise
+       pour ce cas : il est correct partout par construction. */
+    .stat-span-full { grid-column: 1 / -1; }
+    /* "Occuper la moitié" n'a de sens qu'à 4 colonnes : sur la grille
+       mobile à 2 colonnes, 2 cartes de fin de liste se placent déjà
+       naturellement côte à côte sans rien demander — restreint donc ce
+       cas au desktop, pour ne pas les faire empiler en pleine largeur
+       sur mobile alors qu'elles tiennent très bien côte à côte. */
+    @media (min-width: 1101px) {
+      .stat-span-half { grid-column: span 2; }
+    }
+
     /* ══════════════════════════════════════════════════════════════
        PRESSION ATMOSPHÉRIQUE
     ══════════════════════════════════════════════════════════════ */
@@ -4251,20 +4268,30 @@ function renderStats(d) {
     stats.push({ icon:'❄️', label:'Neige au sol', value:`${Math.round(snowDepthCm)} cm`, sub:'Épaisseur actuelle' });
   }
 
-  // La grille desktop compte 4 colonnes ; si le nombre de cartes ne tombe
-  // pas juste (ex: la neige en fait une 13ᵉ), la ou les dernières se
-  // retrouvent seules avec des cases vides à côté. Plutôt que de dépendre
-  // d'un compte de cartes précis — fragile, ça redeviendrait bancal à la
-  // prochaine carte conditionnelle ajoutée un jour — on étire dynamiquement
-  // les cartes de la dernière ligne pour occuper toute la largeur.
-  const remainder = stats.length % 4;
-  const trailingSpan = remainder === 1 ? 4 : remainder === 2 ? 2 : 1;
+  // La grille change de nombre de colonnes selon l'écran (4 desktop, 2
+  // mobile/tablette, 1 très petit écran) — le reste de la division n'est
+  // donc pas le même partout : un total qui tombe juste à 4 colonnes peut
+  // très bien laisser une carte seule à 2 colonnes, et inversement. Les
+  // deux calculs sont donc indépendants, pas dérivés l'un de l'autre.
+  const total = stats.length;
+  const rem4 = total % 4;
+  const lastIdx = total - 1;
 
   document.getElementById('stats-section').innerHTML = stats.map((s,idx) => {
-    const isTrailing = remainder !== 0 && idx >= stats.length - remainder;
-    const spanStyle = isTrailing && trailingSpan > 1 ? ` style="grid-column: span ${trailingSpan}"` : '';
+    let spanClass = '';
+    // Desktop (4 colonnes) : 1 carte seule en fin de grille → pleine
+    // largeur ; 2 cartes → une moitié chacune. À 3, rien à faire : trois
+    // cartes sur quatre colonnes ne semblent pas "seules".
+    if (rem4 === 1 && idx === lastIdx) spanClass = ' stat-span-full';
+    else if (rem4 === 2 && idx >= total - 2) spanClass = ' stat-span-half';
+    // Mobile/tablette (2 colonnes) : indépendant du calcul ci-dessus — un
+    // total impair laisse toujours la toute dernière carte seule sur une
+    // grille à 2 colonnes, même quand le calcul à 4 colonnes ne signale
+    // rien (ex: 15 cartes → reste 3 à 4 colonnes, correct sans retouche,
+    // mais reste 1 à 2 colonnes → la 15ᵉ carte y est bel et bien seule).
+    if (total % 2 === 1 && idx === lastIdx && !spanClass) spanClass = ' stat-span-full';
     return `
-    <div class="stat-card fade-in stagger-${(idx%4)+1}"${spanStyle}>
+    <div class="stat-card fade-in stagger-${(idx%4)+1}${spanClass}">
       <div class="stat-icon">${s.icon}</div>
       <div class="stat-label">${s.label}</div>
       <div class="stat-value">${s.value}</div>
