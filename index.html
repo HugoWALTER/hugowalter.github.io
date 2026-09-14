@@ -3059,7 +3059,7 @@ document.getElementById('anim-btn').addEventListener('click', function() {
 async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,visibility,snow_depth`
+    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,visibility,snow_depth,freezing_level_height,cape`
     + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,snowfall_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration,sunshine_duration`
     + `&current_weather=true`
     + `&forecast_days=16`
@@ -4179,6 +4179,37 @@ function renderStats(d) {
   // bruit visuel pour la quasi-totalité des villes/jours sans neige.
   const hasSnowDepth = snowDepthCm !== null && snowDepthCm >= 1;
 
+  // ── Limite pluie-neige ───────────────────────────────────────
+  // Altitude du niveau 0°C : au-dessus, les précipitations tombent en
+  // neige plutôt qu'en pluie. `d.elevation` vient de la même réponse
+  // Open-Meteo déjà récupérée (aucun appel réseau en plus) — c'est
+  // l'altitude du point de grille utilisé pour CETTE ville, quelle que
+  // soit la façon dont elle a été choisie (recherche, favori, géoloc).
+  // N'est affichée que si la limite est proche de l'altitude du lieu
+  // (moins de 800 m d'écart) : sinon ce n'est climatiquement pas
+  // plausible que ça concerne cette ville maintenant — pertinent pour
+  // une ville de montagne par temps normal, mais aussi pour une ville
+  // côtière lors d'un vrai coup de froid (limite qui plonge vers 0).
+  const freezingLevelM = nowIdxStat >= 0 ? d.hourly.freezing_level_height?.[nowIdxStat] : null;
+  const elevationM = typeof d.elevation === 'number' ? d.elevation : null;
+  const showFreezingLevel = freezingLevelM != null && elevationM != null
+    && (freezingLevelM - elevationM) < 800;
+
+  // ── Risque d'orage ───────────────────────────────────────────
+  // Dérivé du CAPE (énergie disponible pour la convection, en J/kg) —
+  // seuils indicatifs courants en météorologie, pas une échelle
+  // officielle (comme l'estimation canicule maison plus bas dans ce
+  // fichier : un repère utile, pas une prévision d'orage certifiée).
+  const capeNow = nowIdxStat >= 0 ? d.hourly.cape?.[nowIdxStat] : null;
+  function stormRiskFromCape(cape) {
+    if (cape == null || !isFinite(cape)) return null;
+    if (cape < 300)  return { label: 'Faible',      color: '#4caf50' };
+    if (cape < 1000) return { label: 'Modéré',       color: '#ff9800' };
+    if (cape < 2500) return { label: 'Élevé',        color: '#f4511e' };
+    return                 { label: 'Très élevé',   color: '#f44336' };
+  }
+  const stormRisk = stormRiskFromCape(capeNow);
+
   const stats = [
     { icon:'🔆', label:'Indice UV',
       value: `<span style="color:${uv.color};font-weight:700">${uvDisplay}</span>`,
@@ -4204,7 +4235,18 @@ function renderStats(d) {
     { icon:'⏱', label:'Durée du jour',
       value: daylightH !== null ? `${daylightH}h${String(daylightM).padStart(2,'0')}` : '--',
       sub: 'Lever → coucher du soleil' },
+    { icon:'⛈', label:'Risque d\'orage',
+      value: stormRisk ? `<span style="color:${stormRisk.color};font-weight:700">${stormRisk.label}</span>` : '--',
+      sub: 'Estimation indicative' },
   ];
+  // Placée juste après "Risque d'orage" : les deux tombent naturellement
+  // côte à côte dans la grille (orage à gauche, limite pluie-neige à
+  // droite) grâce à leur position adjacente dans ce tableau.
+  if (showFreezingLevel) {
+    stats.push({ icon:'🌨', label:'Limite pluie-neige',
+      value: `${Math.round(freezingLevelM / 50) * 50} m`,
+      sub: 'Altitude du niveau 0°C' });
+  }
   if (hasSnowDepth) {
     stats.push({ icon:'❄️', label:'Neige au sol', value:`${Math.round(snowDepthCm)} cm`, sub:'Épaisseur actuelle' });
   }
