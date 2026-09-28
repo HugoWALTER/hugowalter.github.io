@@ -4768,15 +4768,45 @@ function renderWaterCard(marine) {
   const tMax = day.sea_surface_temperature_max && day.sea_surface_temperature_max[0];
   const tMin = day.sea_surface_temperature_min && day.sea_surface_temperature_min[0];
 
-  const fmtT = v => (v != null && isFinite(v)) ? `${(+v).toFixed(1)}°` : '--';
+  // toFixed(1) d'un petit négatif (ex. -0,04) donne "-0.0" : on le ramène
+  // à "0.0". Une eau de mer proche de 0 °C n'a rien d'irréaliste (mers
+  // froides, hiver), donc le cas peut réellement se produire.
+  const fmtT = v => {
+    if (v == null || !isFinite(v)) return '--';
+    const s = (+v).toFixed(1);
+    return `${s === '-0.0' ? '0.0' : s}°`;
+  };
 
   // Écart eau / air : utile avant la baignade (choc thermique si l'air est
   // bien plus chaud que l'eau). Air = température courante de la prévision.
   const air = S.forecast && S.forecast.current_weather && S.forecast.current_weather.temperature;
   const hasAir = air != null && isFinite(air);
   const diff = hasAir ? sst - air : null;
-  const diffTxt = diff != null ? `${diff >= 0 ? '+' : '−'}${Math.abs(Math.round(diff))}°` : '--';
-  const airTxt = hasAir ? `Air ${Math.round(air)}°` : 'Air indisponible';
+
+  // Le signe se décide sur la valeur ARRONDIE, pas sur l'écart brut : avant,
+  // un écart de −0,3° donnait le signe « − » (pris sur −0,3) accolé à un
+  // chiffre arrondi à 0 → « −0° ». Arrondi symétrique aussi : Math.round
+  // envoie −0,5 vers 0 mais +0,5 vers 1, ce qui décalait les écarts négatifs.
+  const roundSym = x => Math.sign(x) * Math.round(Math.abs(x));
+  const diffR = diff != null ? roundSym(diff) : null;
+  let diffTxt = '--';
+  let diffColor = 'var(--txt)';
+  let diffSub = 'Air indisponible';
+  if (diffR !== null) {
+    const airR = roundSym(air);            // même arrondi que l'écart, pour rester cohérent
+    if (diffR === 0) {                       // vaut aussi pour -0
+      diffTxt = '0°';
+      diffSub = `Eau ≈ air · air ${airR}°`;
+    } else if (diffR > 0) {
+      diffTxt = `+${diffR}°`;
+      diffColor = '#ffb74d';
+      diffSub = `Eau plus chaude · air ${airR}°`;
+    } else {
+      diffTxt = `−${Math.abs(diffR)}°`;
+      diffColor = '#4fc3f7';
+      diffSub = `Eau plus froide · air ${airR}°`;
+    }
+  }
 
   // ── Demain ─────────────────────────────────────────────────────────
   // La température de l'eau a une grande inertie thermique : le Tmax
@@ -4828,7 +4858,7 @@ function renderWaterCard(marine) {
     <div class="water-sub-grid">
       <div class="water-sub-item"><div class="wsi-label">🌊 Houle</div><div class="wsi-value">${waveVal}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2);margin-top:2px">${waveSub}</div></div>
       <div class="water-sub-item"><div class="wsi-label">📊 Min / Max jour</div><div class="wsi-value">${fmtT(tMin)} / ${fmtT(tMax)}</div></div>
-      <div class="water-sub-item"><div class="wsi-label">🆚 Eau vs air</div><div class="wsi-value">${diffTxt}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2)">${airTxt}</div></div>
+      <div class="water-sub-item"><div class="wsi-label">🆚 Eau vs air</div><div class="wsi-value" style="color:${diffColor}">${diffTxt}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2)">${diffSub}</div></div>
       <div class="water-sub-item"><div class="wsi-label">📅 Houle demain</div><div class="wsi-value">${tomorrowVal}</div><div class="wsi-sub" style="font-size:.62rem;color:var(--txt2)">${tomorrowSub}</div></div>
     </div>`;
   card.style.display = '';
