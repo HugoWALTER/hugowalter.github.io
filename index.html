@@ -894,7 +894,13 @@
     .week-day { font-size: 0.8rem; font-weight: 500; }
     .week-day.is-today { color: var(--accent); }
     .week-icon { font-size: 1.25rem; justify-self: center; }
-    .week-desc { font-size: 0.7rem; color: var(--txt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .week-desc { font-size: 0.7rem; color: var(--txt2); display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .week-desc-txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Pastille de rafales (>= 60 km/h) : ne se tronque jamais, la description passe avant en ellipsis. */
+    .week-gust {
+      flex-shrink: 0; font-size: 0.62rem; font-weight: 700; line-height: 1;
+      padding: 3px 6px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap;
+    }
     .week-temp-min { font-size: 0.78rem; color: var(--cold); text-align: right; }
     .week-temp-max { font-size: 0.78rem; color: var(--warm); font-weight: 600; text-align: right; }
 
@@ -945,6 +951,35 @@
     .charts-section { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
     .chart-wrap { padding: 6px 16px 16px; height: 220px; }
     .chart-note { margin: -6px 16px 14px; font-size: .66rem; line-height: 1.4; color: var(--txt2); }
+
+    /* Vigilance indisponible : neutre, une ligne, boutons tactiles (>= 36 px de haut). */
+    .alert-compact.vig-unavailable { border-color: var(--border); background: var(--surface2); }
+    .vig-unavail-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; }
+    .vig-unavail-row .alert-text { display: block; flex: 1; min-width: 0; }
+    .vig-unavail-row .alert-title { display: block; font-weight: 700; font-size: 0.8rem; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vig-unavail-row .alert-sub   { display: block; font-size: 0.66rem; color: var(--txt2); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vig-unavail-btn {
+      flex-shrink: 0; min-height: 36px; padding: 0 12px; display: inline-flex; align-items: center;
+      border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent;
+      color: var(--txt); font: inherit; font-size: 0.72rem; font-weight: 600; text-decoration: none; cursor: pointer;
+    }
+    .vig-unavail-btn:disabled { opacity: .5; cursor: default; }
+
+    /* Créneau de rafales fortes (panneau de détails de la vigilance « vent »). */
+    .vig-gust-window {
+      margin-top: 10px; padding: 8px 10px; font-size: 0.74rem; line-height: 1.5;
+      border-radius: var(--radius-sm); background: var(--surface2); border: 1px solid var(--border);
+    }
+    .vig-gust-window[hidden] { display: none; }
+    .vig-gust-window strong { font-weight: 700; }
+
+    /* Autres phénomènes en vigueur (panneau de détails de la vigilance). */
+    .vig-others { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .vig-others-label { width: 100%; font-size: 0.66rem; color: var(--txt2); }
+    .vig-other {
+      font-size: 0.7rem; padding: 4px 9px; border-radius: 999px; background: var(--surface2);
+      border: 1px solid var(--border); border-left: 3px solid var(--vig, #888);
+    }
     .chart-tabs { display: flex; gap: 4px; padding: 12px 16px 0; flex-wrap: wrap; }
     .chart-tab {
       padding: 5px 13px; border-radius: 20px;
@@ -1259,7 +1294,8 @@
     .alert-chip.expanded .alert-chevron { transform: rotate(180deg); }
 
     .alert-details { max-height: 0; overflow: hidden; transition: max-height .25s ease; }
-    .alert-details.expanded { max-height: 520px; }
+    /* Plafond large : le panneau (grille + autres phénomènes + conseils + lien) peut dépasser 520 px sur petit écran. */
+    .alert-details.expanded { max-height: 1200px; }
     .alert-details-inner {
       padding: 2px 14px 14px; border-top: 1px solid rgba(255,255,255,0.08); margin: 0 0 0;
     }
@@ -1513,6 +1549,7 @@
       .chart-tab { font-size: 0.65rem; padding: 4px 8px; }
       .chart-wrap { height: 220px; padding: 4px 10px 12px; }
       .chart-note { margin: -4px 10px 12px; font-size: .62rem; }
+      .week-gust { font-size: 0.58rem; padding: 3px 5px; }
       .stat-card { padding: 12px; min-height: 100px; }
       .stat-value { font-size: 1.15rem; }
       footer {
@@ -1523,6 +1560,7 @@
       .footer-links { flex-wrap: wrap; gap: 8px 14px; }
     }
     @media (max-width: 380px) {
+      .vig-unavail-link, .vig-unavail-row .alert-sub { display: none; }
       main { padding-left: 8px; padding-right: 8px; }
       .header-pill { max-width: 36vw; }
       .stats-section { grid-template-columns: 1fr; }
@@ -3503,6 +3541,8 @@ function renderTomorrow(d) {
 function renderWeek(d) {
   const DAYS = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   const todayStr = d.daily.time[0] || TODAY_STR;
+  const official = windOfficialByDay(d);
+  S._officialSig = JSON.stringify(official);
   const rows = d.daily.time.slice(0, 7).map((t, i) => {
     const date = new Date(t + 'T12:00:00');
     const info  = wmoInfo(d.daily.weathercode[i]);
@@ -3511,11 +3551,22 @@ function renderWeek(d) {
     const isToday = t === todayStr;
     const dayLbl  = isToday ? `<span class="week-day is-today">Auj.</span>` :
                               `<span class="week-day">${DAYS[date.getDay()]} ${date.getDate()}</span>`;
+    // Pastille de rafales : couleur OFFICIELLE si connue (aujourd'hui / demain),
+    // sinon repères génériques ; masquée sous WEEK_GUST_BADGE_MIN.
+    const g = d.daily.windgusts_10m_max?.[i];
+    let gustBadge = '';
+    if (g != null && Math.round(g) >= WEEK_GUST_BADGE_MIN) {
+      const col = official[i] !== null
+        ? (official[i] > 0 ? VIGILANCE_COLORS[official[i]] : 'var(--txt2)')
+        : (windGustLevel(g)?.color || 'var(--txt2)');
+      const gv = Math.round(g);
+      gustBadge = `<span class="week-gust" style="color:${col}" role="img" aria-label="Rafales jusqu’à ${gv} kilomètres par heure">💨 ${gv}</span>`;
+    }
     return `
     <div class="week-row">
       ${dayLbl}
       <span class="week-icon">${info.icon}</span>
-      <span class="week-desc">${info.desc}</span>
+      <span class="week-desc"><span class="week-desc-txt">${info.desc}</span>${gustBadge}</span>
       <span class="week-temp-min">${tMin}°</span>
       <span class="week-temp-max">${tMax}°</span>
     </div>`;
@@ -3612,11 +3663,79 @@ function windOfficialByDay(d) {
   }
   return out;
 }
-// Reconstruit le graphique vent si le niveau officiel a changé (la vigilance
-// arrive souvent après la météo, ou est actualisée toutes les 15 min).
-function refreshWindChartIfNeeded() {
-  if (S.chartType !== 'wind' || !S.forecast || !S.chart) return;
-  if (JSON.stringify(windOfficialByDay(S.forecast)) !== S._windSig) buildChart(S.forecast);
+// Met à jour les vues qui dépendent du niveau officiel (liste 7 jours + graphique
+// vent) quand il change : la vigilance arrive souvent après la météo, ou est
+// actualisée toutes les 15 min. Sans changement, on ne touche à rien.
+function refreshOfficialViews() {
+  if (!S.forecast) return;
+  const sig = JSON.stringify(windOfficialByDay(S.forecast));
+  if (sig === S._officialSig) return;
+  renderWeek(S.forecast);                      // met aussi à jour S._officialSig
+  if (S.chartType === 'wind' && S.chart) buildChart(S.forecast);
+}
+
+// Seuil d'affichage de la pastille de rafales dans la liste des jours (km/h).
+const WEEK_GUST_BADGE_MIN = 60;
+
+// Repère « aujourd'hui » : bande légère derrière la première colonne du graphique.
+const todayMarkerPlugin = {
+  id: 'todayMarker',
+  beforeDatasetsDraw(chart) {
+    const x = chart.scales.x;
+    if (!x || (chart.data.datasets[0]?.data.length || 0) < 2) return;
+    const { ctx, chartArea } = chart;
+    const x0 = x.getPixelForValue(0), x1 = x.getPixelForValue(1);
+    const left = Math.max(chartArea.left, x0 - (x1 - x0) / 2);
+    const right = Math.min(chartArea.right, x0 + (x1 - x0) / 2);
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.045)';
+    ctx.fillRect(left, chartArea.top, right - left, chartArea.height);
+    ctx.restore();
+  },
+};
+
+// Étiquette de valeur sur le point le plus haut (lisible sans toucher le graphique,
+// utile sur mobile). Reste dans la zone du graphique, passe sous le point si pas de place.
+const windPeakLabelPlugin = {
+  id: 'windPeakLabel',
+  afterDatasetsDraw(chart, _args, opts) {
+    if (!opts || !opts.enabled) return;
+    const data = chart.data.datasets[0]?.data || [];
+    let idx = -1, best = -Infinity;
+    data.forEach((p, i) => { const v = p?.y; if (v != null && v > best) { best = v; idx = i; } });
+    const el = idx >= 0 ? chart.getDatasetMeta(0).data[idx] : null;
+    if (!el) return;
+    const { ctx, chartArea } = chart;
+    const text = `${best} km/h`;
+    const fs = chartArea.width < 300 ? 10 : 11;
+    ctx.save();
+    ctx.font = `700 ${fs}px Inter, sans-serif`;
+    const w = ctx.measureText(text).width + 12, h = fs + 8;
+    const x = Math.min(Math.max(el.x - w / 2, chartArea.left), chartArea.right - w);
+    let y = el.y - h - 9;
+    if (y < 0) y = el.y + 10;
+    ctx.fillStyle = 'rgba(7,9,15,0.92)'; ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, 6); else ctx.rect(x, y, w, h);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e8eaf2'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + w / 2, y + h / 2 + 0.5);
+    ctx.restore();
+  },
+};
+
+// Résumé textuel du graphique pour les lecteurs d'écran (le canvas est muet).
+function chartAriaLabel(cfg, points, official) {
+  const vals = points.filter(p => p && p.y != null);
+  if (!vals.length) return `${cfg.label} : données indisponibles`;
+  const max = vals.reduce((a, b) => (b.y > a.y ? b : a));
+  const min = vals.reduce((a, b) => (b.y < a.y ? b : a));
+  let txt = `${cfg.label} sur 15 jours : maximum ${max.y} le ${max.x}, minimum ${min.y} le ${min.x}.`;
+  const offTxt = official ? [[0, 'aujourd’hui'], [1, 'demain']]
+    .filter(([i]) => official[i] != null)
+    .map(([i, lbl]) => `${lbl} ${VIGILANCE_NAMES_FR[official[i]]}`) : [];
+  if (offTxt.length) txt += ` Vigilance officielle vent : ${offTxt.join(', ')}.`;
+  return txt;
 }
 
 // Trace les lignes de repère sur le graphique (aucune dépendance externe).
@@ -3672,6 +3791,7 @@ const CHART_CONFIGS = {
     tension: 0.25,
     levels: WIND_GUST_REF,
     official: d => windOfficialByDay(d),
+    peakLabel: true,
     // Aujourd'hui / demain : couleur OFFICIELLE de la vigilance (point cerclé de
     // blanc). Autres jours : couleur selon les repères génériques ci-dessus.
     points: d => {
@@ -3728,7 +3848,6 @@ function buildChart(d) {
   if (noteEl) { noteEl.textContent = noteTxt || ''; noteEl.hidden = !noteTxt; }
   const pts      = cfg.points ? cfg.points(d) : null;
   const official = cfg.official ? cfg.official(d) : null;
-  if (cfg.official) S._windSig = JSON.stringify(official);
   const datasets = [{
     label: cfg.label,
     data:  cfg.getData(d),
@@ -3756,17 +3875,21 @@ function buildChart(d) {
       pointRadius: 2, pointBackgroundColor: ex.color,
     });
   }
-  const ctx = document.getElementById('main-chart').getContext('2d');
+  const canvasEl = document.getElementById('main-chart');
+  canvasEl.setAttribute('role', 'img');
+  canvasEl.setAttribute('aria-label', chartAriaLabel(cfg, datasets[0].data, official));
+  const ctx = canvasEl.getContext('2d');
   const gridColor = 'rgba(255,255,255,0.05)';
   const tickColor = '#8990ae';
   const font = { family:'Inter', size:10 };
   S.chart = new Chart(ctx, {
     type: isBar ? 'bar' : 'line',
     data: { datasets },
-    plugins: [windThresholdsPlugin],
+    plugins: [windThresholdsPlugin, windPeakLabelPlugin, todayMarkerPlugin],
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode:'index', intersect:false },
+      layout: cfg.peakLabel ? { padding: { top: 18 } } : {},
       plugins: {
         legend: { labels: { color:tickColor, font:{ family:'Inter',size:11 }, boxWidth:12, padding:16 } },
         tooltip: {
@@ -3789,9 +3912,12 @@ function buildChart(d) {
           },
         },
         windThresholds: cfg.levels ? { levels: cfg.levels } : false,
+        windPeakLabel: cfg.peakLabel ? { enabled: true } : false,
       },
       scales: {
-        x: { type:'category', ticks:{ color:tickColor, font, maxRotation:0 }, grid:{ color:gridColor } },
+        x: { type:'category', grid:{ color:gridColor },
+             ticks:{ color:tickColor, font, maxRotation:0,
+                     callback(v) { return v === 0 ? 'Auj.' : this.getLabelForValue(v); } } },
         y: { ticks:{ color:tickColor, font }, grid:{ color:gridColor },
              ...(cfg.yMax ? { beginAtZero: true, suggestedMax: cfg.yMax(d) } : {}) },
       },
@@ -4292,8 +4418,12 @@ function renderStats(d) {
     .map((t,idx)=>({t,idx}))
     .filter(o => o.t.startsWith(d.daily.time[0] || TODAY_STR))
     .map(o => o.idx);
-  const gustsToday = todayHourIdxs.map(idx => d.hourly.windgusts_10m?.[idx]).filter(v => v != null);
-  const gustMax = gustsToday.length ? Math.round(Math.max(...gustsToday)) : null;
+  let gustMax = null, gustPeakHour = null;
+  for (const idx of todayHourIdxs) {
+    const v = d.hourly.windgusts_10m?.[idx];
+    if (v != null && (gustMax === null || v > gustMax)) { gustMax = v; gustPeakHour = parseInt(d.hourly.time[idx].slice(11, 13), 10); }
+  }
+  if (gustMax !== null) gustMax = Math.round(gustMax);
 
   // ── Durée du jour ────────────────────────────────────────────
   const daylightSec = d.daily.daylight_duration?.[i];
@@ -4393,7 +4523,7 @@ function renderStats(d) {
     { icon:'👁', label:'Visibilité',
       value: visKm !== null ? `${visKm.toFixed(1)} km` : '--',
       sub: visL.txt },
-    { icon: windsockSVG, label:'Rafales max', value: gustMax !== null ? `${gustMax} km/h` : '--', sub:'Pic du jour' },
+    { icon: windsockSVG, label:'Rafales max', value: gustMax !== null ? `${gustMax} km/h` : '--', sub: gustPeakHour !== null ? `Pic vers ${gustPeakHour} h` : 'Pic du jour' },
     { icon:'⏱', label:'Durée du jour',
       value: daylightH !== null ? `${daylightH}h${String(daylightM).padStart(2,'0')}` : '--',
       sub: 'Lever → coucher du soleil' },
@@ -5121,6 +5251,68 @@ function wireAlertToggle(chipId, detailsId) {
   chip.addEventListener('click', toggle);
 }
 
+// Seuil (km/h) au-dessus duquel les rafales comptent comme « fortes » dans le créneau
+// affiché dans le détail de la vigilance vent.
+const GUST_WINDOW_MIN = 60;
+
+// Créneaux horaires où les rafales prévues dépassent `min`, entre fromMs et toMs
+// (bornés à « maintenant » → +36 h). Les heures du modèle sont en heure locale de la
+// ville : on les ramène en époque UTC avec utc_offset_seconds. Renvoie du HTML
+// sûr (uniquement des nombres et du texte fixe) ou '' si les données manquent.
+function gustWindowHTML(d, fromMs, toMs, nowMs = Date.now(), min = GUST_WINDOW_MIN) {
+  const times = d?.hourly?.time, gusts = d?.hourly?.windgusts_10m;
+  if (!times || !gusts) return '';
+  const HOUR = 36e5;
+  const off = (d.utc_offset_seconds ?? 3600) * 1000;
+  const lo = Math.max(fromMs, nowMs) - HOUR;          // l'heure en cours compte
+  const hi = Math.min(toMs, nowMs + 36 * HOUR);
+  const nowDay = new Date(nowMs + off).toISOString().slice(0, 10);
+  const fmt = ep => {
+    const l = new Date(ep + off).toISOString();
+    const day = l.slice(0, 10);
+    const diff = Math.round((Date.parse(day) - Date.parse(nowDay)) / 864e5);
+    const prefix = diff === 0 ? '' : diff === 1 ? 'demain ' : `${day.slice(8, 10)}/${day.slice(5, 7)} `;
+    return `${prefix}${parseInt(l.slice(11, 13), 10)} h`;
+  };
+
+  const hits = [];
+  for (let i = 0; i < times.length; i++) {
+    const ep = Date.parse(`${times[i]}Z`) - off;
+    if (Number.isNaN(ep) || ep < lo || ep > hi) continue;
+    const g = gusts[i];
+    if (g != null && g >= min) hits.push({ ep, g: Math.round(g) });
+  }
+  if (!hits.length) {
+    return `💨 Aucune rafale ≥ ${min} km/h prévue par le modèle sur la période. La vigilance officielle reste la référence.`;
+  }
+  const runs = [];
+  for (const h of hits) {
+    const last = runs[runs.length - 1];
+    if (last && h.ep - last.end <= HOUR) {
+      last.end = h.ep;
+      if (h.g > last.peak) { last.peak = h.g; last.peakEp = h.ep; }
+    } else {
+      runs.push({ start: h.ep, end: h.ep, peak: h.g, peakEp: h.ep });
+    }
+  }
+  const best = runs.reduce((a, b) => (b.peak > a.peak ? b : a));
+  const shown = runs.slice(0, 2).map(r => (r.start === r.end ? fmt(r.start) : `${fmt(r.start)} – ${fmt(r.end)}`));
+  const more = runs.length > 2 ? ' …' : '';
+  return `💨 <strong>Rafales ≥ ${min} km/h</strong> : ${shown.join(' · ')}${more} · pic ${best.peak} km/h vers ${fmt(best.peakEp)}`;
+}
+
+// Remplit le créneau dans le panneau de la vigilance (si présent). Appelé quand la
+// vigilance est rendue ET quand la météo arrive (l'ordre d'arrivée n'est pas garanti).
+function updateVigilanceGustWindow() {
+  const el = document.getElementById('vig-gust-window');
+  if (!el) return;
+  const win = S._vigWind;
+  if (!S._forecastReady || !S.forecast || !win) { el.hidden = true; return; }
+  const html = gustWindowHTML(S.forecast, win.from, win.to);
+  el.innerHTML = html;
+  el.hidden = !html;
+}
+
 // Avance (en heures) avec laquelle la bannière apparaît AVANT le début d'une
 // vigilance. 0 = strict : elle n'apparaît qu'à l'heure de début.
 // Actuellement : jaune strict, orange 6 h avant, rouge 12 h avant.
@@ -5130,7 +5322,7 @@ let _vigRefreshTimer = null;
 function renderVigilance(records) {
   const banner = document.getElementById('vigilance-banner');
   if (!banner) return;
-  if (!records || !records.length) { S.vigilanceRecords = null; refreshWindChartIfNeeded(); banner.style.display = 'none'; markVigilanceSettled(); return; }
+  if (!records || !records.length) { S.vigilanceRecords = null; refreshOfficialViews(); banner.style.display = 'none'; markVigilanceSettled(); return; }
 
   records = records.map(r => ({
     ...r,
@@ -5139,7 +5331,7 @@ function renderVigilance(records) {
     echeance: String(r.echeance ?? '').trim().toUpperCase(),
   }));
   S.vigilanceRecords = records;
-  refreshWindChartIfNeeded();
+  refreshOfficialViews();
   const byEcheance = { J: [], J1: [] };
   for (const rec of records) {
     if (byEcheance[rec.echeance]) byEcheance[rec.echeance].push(rec);
@@ -5187,6 +5379,29 @@ function renderVigilance(records) {
   const icon  = uniquePhenomena.slice(0, 3).map(p => VIGILANCE_ICONS[p] || '⚠️').join(' ');
   const names = uniquePhenomena.map(p => phenLabel(p)).join(', ');
   const whenLabel = started ? 'en cours' : 'à venir';
+
+  // Autres phénomènes en vigueur à un niveau inférieur (sinon un orange « vent »
+  // masquerait un jaune « orages » ou « pluie-inondation »).
+  const otherMap = new Map();
+  for (const r of activeList) {
+    const sv = sevOf(r);
+    if (sv >= daySev || uniquePhenomena.includes(r.phenomenon)) continue;
+    otherMap.set(r.phenomenon, Math.max(otherMap.get(r.phenomenon) ?? 0, sv));
+  }
+  const others = [...otherMap].sort((a, b) => b[1] - a[1]);
+  const othersHTML = others.length ? `
+        <div class="vig-others">
+          <span class="vig-others-label">Aussi en vigueur</span>
+          ${others.map(([p, sv]) => `<span class="vig-other" style="--vig:${VIGILANCE_COLORS[sv]}">${VIGILANCE_ICONS[p] || '⚠️'} ${escapeHTML(phenLabel(p))} · ${VIGILANCE_NAMES_FR[sv]}</span>`).join('')}
+        </div>` : '';
+  // Période pendant laquelle le vent est en vigueur → sert au créneau de rafales fortes.
+  const windRecs = activeList.filter(r => r.phenomenon === 'vent');
+  S._vigWind = windRecs.length ? {
+    from: Math.min(...windRecs.map(r => tOf(r.begin_time) ?? now)),
+    to:   Math.max(...windRecs.map(r => tOf(r.end_time) ?? now + 36 * 36e5)),
+  } : null;
+  const gustWindowBox = S._vigWind ? '<div class="vig-gust-window" id="vig-gust-window" hidden></div>' : '';
+  const othersTag = others.length ? ` · +${others.length} autre${others.length > 1 ? 's' : ''}` : '';
 
   // Période : fenêtre horaire englobant tous les phénomènes déclencheurs.
   const fmtH = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
@@ -5246,7 +5461,7 @@ function renderVigilance(records) {
       <span class="alert-icon">${icon}</span>
       <span class="alert-text">
         <span class="alert-title">${escapeHTML(VIGILANCE_LABELS[dayColor])} — ${escapeHTML(names)}</span>
-        <span class="alert-sub">${escapeHTML(`${whenLabel} · ${period}${bulletinLabel} · ${S.city}`)}</span>
+        <span class="alert-sub">${escapeHTML(`${whenLabel}${othersTag} · ${period}${bulletinLabel} · ${S.city}`)}</span>
       </span>
       <span class="alert-chevron">▼</span>
     </button>
@@ -5257,7 +5472,7 @@ function renderVigilance(records) {
           ${stat('🎨 Niveau', dayColor.charAt(0).toUpperCase() + dayColor.slice(1), 'Échelle officielle Météo-France')}
           ${stat('🕐 Période', period, `Vigilance ${whenLabel}`)}
           ${stat('📅 Demain', trendValue, trendSub)}
-        </div>
+        </div>${othersHTML}${gustWindowBox}
         <div class="hw-advice">
           ${advice.map(a => `<span>${a[0]} ${a[1]}</span>`).join('')}
         </div>
@@ -5268,7 +5483,47 @@ function renderVigilance(records) {
     </div>`;
   banner.style.display = '';
   wireAlertToggle('vig-chip', 'vig-details');
+  updateVigilanceGustWindow();
   markVigilanceSettled();
+}
+
+// Vigilance indisponible (erreur réseau/API) : on le DIT, au lieu de masquer la
+// bannière comme si tout était vert. Neutre, une ligne, bouton « Réessayer ».
+function showVigilanceUnavailable() {
+  const banner = document.getElementById('vigilance-banner');
+  if (!banner) return;
+  S.vigilanceRecords = null;
+  refreshOfficialViews();
+  banner.className = 'alert-compact vig-unavailable';
+  banner.innerHTML = `
+    <div class="vig-unavail-row" role="status">
+      <span class="alert-icon" aria-hidden="true">ℹ️</span>
+      <span class="alert-text">
+        <span class="alert-title">Vigilance indisponible</span>
+        <span class="alert-sub">Consultez la carte officielle Météo-France</span>
+      </span>
+      <a class="vig-unavail-btn vig-unavail-link" href="https://vigilance.meteofrance.fr/" target="_blank" rel="noopener">Carte ↗</a>
+      <button type="button" class="vig-unavail-btn" id="vig-retry">Réessayer</button>
+    </div>`;
+  banner.style.display = '';
+  document.getElementById('vig-retry')?.addEventListener('click', retryVigilance);
+  markVigilanceSettled();
+}
+
+async function retryVigilance() {
+  const btn = document.getElementById('vig-retry');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const code = S.departmentCode || await resolveDepartmentCode(S.lat, S.lon);
+    if (!code) throw new Error('Département introuvable');
+    S.departmentCode = code;
+    const records = await fetchVigilance(code);
+    renderVigilance(records);
+    scheduleVigilanceRefresh();
+  } catch (err) {
+    console.error('Vigilance toujours indisponible:', err);
+    showVigilanceUnavailable();
+  }
 }
 
 function renderHeatwave(d) {
@@ -5844,6 +6099,8 @@ function scheduleVigilanceRefresh() {
 
 async function loadAll() {
   S.vigilanceRecords = null;   // évite d'appliquer la vigilance de l'ancienne ville
+  S._vigWind = null;
+  S._forecastReady = false;    // le créneau de rafales attend la météo de la NOUVELLE ville
   updateMarker();
   document.getElementById('city-name').textContent    = S.city;
   document.getElementById('city-country').textContent = S.region;
@@ -5893,6 +6150,7 @@ async function loadAll() {
   try {
     const wData = await fetchWeatherResilient();
     S.forecast = wData;
+    S._forecastReady = true;
 
     updateDateLabels(wData);
     renderToday(wData);
@@ -5903,6 +6161,7 @@ async function loadAll() {
     renderStats(wData);
     renderPressureCard(wData);
     renderHeatwave(wData);
+    updateVigilanceGustWindow();
   } catch(err) {
     console.error('Erreur chargement météo:', err);
     document.getElementById('today-skeleton').innerHTML =
@@ -5934,8 +6193,14 @@ async function loadAll() {
       .then(records => { renderVigilance(records); scheduleVigilanceRefresh(); })
       .catch(err => {
         console.error('Vigilance indisponible:', err);
-        if (vigilanceBanner) vigilanceBanner.style.display = 'none';
-        markVigilanceSettled(); // échec = sort connu, inutile d'attendre le filet de sécurité
+        // Département introuvable = situation normale (pas une panne) -> silence.
+        // Toute autre erreur (réseau, API) -> on l'indique à l'utilisateur.
+        if (err && err.message === 'Département introuvable') {
+          if (vigilanceBanner) vigilanceBanner.style.display = 'none';
+          markVigilanceSettled();
+        } else {
+          showVigilanceUnavailable();   // appelle markVigilanceSettled()
+        }
       });
   }
 }
