@@ -944,6 +944,7 @@
     ══════════════════════════════════════════════════════════════ */
     .charts-section { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
     .chart-wrap { padding: 6px 16px 16px; height: 220px; }
+    .chart-note { margin: -6px 16px 14px; font-size: .66rem; line-height: 1.4; color: var(--txt2); }
     .chart-tabs { display: flex; gap: 4px; padding: 12px 16px 0; flex-wrap: wrap; }
     .chart-tab {
       padding: 5px 13px; border-radius: 20px;
@@ -1223,6 +1224,11 @@
     }
     .alert-compact.level-high   { border-color: rgba(255,112,67,0.5);  background: rgba(255,112,67,0.09); }
     .alert-compact.level-severe { border-color: rgba(244,67,54,0.55); background: rgba(244,67,54,0.11); animation: alertPulseSevere 2.2s ease-in-out infinite; }
+    /* Vigilance officielle : une couleur par niveau, comme sur la carte
+       Météo-France (jaune / orange / rouge), avec un liseré latéral. */
+    .alert-compact.vig-jaune  { border-color: rgba(253,216,53,0.65);  background: rgba(253,216,53,0.10);  border-left: 4px solid #fdd835; }
+    .alert-compact.vig-orange { border-color: rgba(255,152,0,0.75);   background: rgba(255,152,0,0.15);   border-left: 4px solid #ff9800; }
+    .alert-compact.vig-rouge  { border-color: rgba(229,57,53,0.80);   background: rgba(229,57,53,0.16);   border-left: 4px solid #e53935; animation: alertPulseSevere 2.2s ease-in-out infinite; }
     @keyframes alertPulseSevere {
       0%,100% { box-shadow: 0 0 0 rgba(244,67,54,0); }
       50%     { box-shadow: 0 0 16px rgba(244,67,54,0.35); }
@@ -1286,7 +1292,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       .skel { animation: none; }
-      .alert-compact.level-severe { animation: none; }
+      .alert-compact.level-severe, .alert-compact.vig-rouge { animation: none; }
     }
 
     /* Squelette du chip vigilance — occupe la même place qu'un chip
@@ -1506,6 +1512,7 @@
       .stats-section { grid-template-columns: repeat(2,1fr); gap: 10px; }
       .chart-tab { font-size: 0.65rem; padding: 4px 8px; }
       .chart-wrap { height: 220px; padding: 4px 10px 12px; }
+      .chart-note { margin: -4px 10px 12px; font-size: .62rem; }
       .stat-card { padding: 12px; min-height: 100px; }
       .stat-value { font-size: 1.15rem; }
       footer {
@@ -1832,6 +1839,7 @@
           <button class="chart-tab" id="chart-tab-humidity" role="tab" tabindex="-1" aria-selected="false" aria-controls="chart-panel" data-chart="humidity">💧 Humidité</button>
         </div>
         <div class="chart-wrap" id="chart-panel" role="tabpanel" aria-labelledby="chart-tab-temp"><canvas id="main-chart"></canvas></div>
+        <p class="chart-note" id="chart-note" hidden></p>
       </div>
 
       <!-- AQI -->
@@ -3077,8 +3085,9 @@ async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
     + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,visibility,snow_depth,freezing_level_height,cape`
-    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,snowfall_sum,windspeed_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration,sunshine_duration`
+    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,snowfall_sum,windspeed_10m_max,windgusts_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration,sunshine_duration`
     + `&current_weather=true`
+    + `&wind_speed_unit=kmh`
     + `&forecast_days=16`
     + `&timezone=auto`;
   const r = await fetch(u);
@@ -3177,7 +3186,7 @@ async function resolveDepartmentCode(lat, lon) {
 async function fetchVigilance(departmentCode) {
   const base = 'https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets';
   const where = encodeURIComponent(`domain_id="${departmentCode}"`);
-  const u = `${base}/weatherref-france-vigilance-meteo-departement/records?where=${where}&limit=20`;
+  const u = `${base}/weatherref-france-vigilance-meteo-departement/records?where=${where}&limit=100`;
   const r = await fetchWithTimeout(u);
   if (!r.ok) throw new Error('Vigilance ' + r.status);
   const j = await r.json();
@@ -3558,6 +3567,80 @@ function renderHourly(d) {
 // ──────────────────────────────────────────────────────────────────
 // CHART
 // ──────────────────────────────────────────────────────────────────
+// Repères de rafales (km/h) — INDICATIFS. Les seuils officiels de vigilance
+// vent violent sont propres à chaque département (Météo-France) ; ajustez
+// ces valeurs si vous voulez coller à ceux de votre zone.
+const WIND_GUST_REF = [
+  { label: 'Jaune',  v: 80,  color: '#fdd835' },
+  { label: 'Orange', v: 100, color: '#ff9800' },
+  { label: 'Rouge',  v: 130, color: '#f44336' },
+];
+function windGustLevel(v) {
+  if (v == null) return null;
+  let found = null;
+  for (const l of WIND_GUST_REF) if (v >= l.v) found = l;
+  return found;
+}
+// Couleurs / noms officiels (index = sévérité 0..3).
+const VIGILANCE_COLORS   = ['#66bb6a', '#fdd835', '#ff9800', '#e53935'];
+const VIGILANCE_NAMES_FR = ['aucune (verte)', 'jaune', 'orange', 'rouge'];
+
+// Niveau OFFICIEL « vent violent » pour chaque jour du graphique (index 0 =
+// aujourd'hui). La vigilance ne couvre que J (jour du bulletin) et J1 (le
+// lendemain) : les autres jours valent null → repères génériques. On rattache
+// J/J1 aux dates du graphique via la date du bulletin, pour qu'un bulletin
+// ancien ne décale pas les jours. Renvoie que des null si la vigilance est
+// indisponible (hors France, erreur réseau, pas encore chargée).
+function windOfficialByDay(d) {
+  const days = d.daily.time.slice(0, 15);
+  const out = new Array(days.length).fill(null);
+  const recs = S.vigilanceRecords;
+  if (!recs || !recs.length) return out;
+  const parisDay = iso => new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+  const addDay = (ymd, n) => {
+    const [y, m, dd] = ymd.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, dd + n)).toISOString().slice(0, 10);
+  };
+  const bulletin = recs.find(r => r.product_datetime)?.product_datetime;
+  const baseDay = bulletin ? parisDay(bulletin) : String(days[0]).slice(0, 10);
+  for (const [ech, n] of [['J', 0], ['J1', 1]]) {
+    const idx = days.findIndex(t => String(t).slice(0, 10) === addDay(baseDay, n));
+    const forDay = recs.filter(r => r.echeance === ech);
+    if (idx < 0 || !forDay.length) continue;
+    out[idx] = forDay.filter(r => r.phenomenon === 'vent')
+      .reduce((m, r) => Math.max(m, VIGILANCE_SEVERITY[r.color] ?? 0), 0);
+  }
+  return out;
+}
+// Reconstruit le graphique vent si le niveau officiel a changé (la vigilance
+// arrive souvent après la météo, ou est actualisée toutes les 15 min).
+function refreshWindChartIfNeeded() {
+  if (S.chartType !== 'wind' || !S.forecast || !S.chart) return;
+  if (JSON.stringify(windOfficialByDay(S.forecast)) !== S._windSig) buildChart(S.forecast);
+}
+
+// Trace les lignes de repère sur le graphique (aucune dépendance externe).
+const windThresholdsPlugin = {
+  id: 'windThresholds',
+  afterDatasetsDraw(chart, _args, opts) {
+    if (!opts || !opts.levels) return;
+    const { ctx, chartArea, scales } = chart;
+    const y = scales.y;
+    ctx.save();
+    ctx.font = '10px Inter, sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    ctx.setLineDash([6, 4]); ctx.lineWidth = 1;
+    for (const lv of opts.levels) {
+      if (lv.v > y.max || lv.v < y.min) continue;
+      const py = y.getPixelForValue(lv.v);
+      ctx.strokeStyle = lv.color; ctx.fillStyle = lv.color;
+      ctx.beginPath(); ctx.moveTo(chartArea.left, py); ctx.lineTo(chartArea.right, py); ctx.stroke();
+      ctx.fillText(`${lv.label} ≥ ${lv.v}`, chartArea.right - 4, py - 2);
+    }
+    ctx.restore();
+  },
+};
+
 const CHART_CONFIGS = {
   temp: {
     label: 'T° Max (°C)', color: '#ffb74d', fill: 'rgba(255,183,77,0.07)',
@@ -3582,11 +3665,46 @@ const CHART_CONFIGS = {
     })),
   },
   wind: {
-    label:'Vent max (km/h)', color:'#80cbc4', fill:'rgba(128,203,196,0.07)',
-    getData: d => d.daily.time.slice(0,15).map((t,i) => ({
-      x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
-      y: Math.round(d.daily.windspeed_10m_max[i]),
-    })),
+    // Les vigilances « vent violent » se basent sur les RAFALES, pas sur le
+    // vent moyen : on trace donc les rafales max en série principale
+    // (points colorés selon le niveau) et le vent moyen max en pointillés.
+    label:'Rafales max (km/h)', color:'#80cbc4', fill:'rgba(128,203,196,0.07)',
+    tension: 0.25,
+    levels: WIND_GUST_REF,
+    official: d => windOfficialByDay(d),
+    // Aujourd'hui / demain : couleur OFFICIELLE de la vigilance (point cerclé de
+    // blanc). Autres jours : couleur selon les repères génériques ci-dessus.
+    points: d => {
+      const off = windOfficialByDay(d);
+      const compact = !!(window.matchMedia && window.matchMedia('(max-width: 480px)').matches);
+      return d.daily.time.slice(0, 15).map((t, i) => {
+        if (off[i] !== null) return { color: VIGILANCE_COLORS[off[i]], border: '#ffffff', borderWidth: 2, radius: compact ? 5 : 6 };
+        const c = windGustLevel(d.daily.windgusts_10m_max?.[i])?.color || '#80cbc4';
+        return { color: c, border: c, borderWidth: 1, radius: compact ? 3 : 4 };
+      });
+    },
+    note: d => (windOfficialByDay(d).some(v => v !== null)
+        ? 'Points cerclés : niveau officiel Météo-France « vent violent » (aujourd’hui, demain). ' : '')
+      + 'Rafales = pic horaire du jour (modèle). Autres jours : repères indicatifs, les seuils réels varient selon le département. Au-delà de J+5, très incertain.',
+    yMax: d => {
+      const m = Math.max(0, ...d.daily.time.slice(0,15).map((t,i) => d.daily.windgusts_10m_max?.[i] ?? 0));
+      const next = WIND_GUST_REF.find(l => l.v > m);
+      return (next && m >= next.v * 0.6) ? next.v + 10 : undefined;
+    },
+    getData: d => d.daily.time.slice(0,15).map((t,i) => {
+      const g = d.daily.windgusts_10m_max?.[i];
+      return {
+        x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+        y: g == null ? null : Math.round(g),
+      };
+    }),
+    extra: d => ({
+      label:'Vent moyen max (km/h)', color:'#b0bec5',
+      data: d.daily.time.slice(0,15).map((t,i) => ({
+        x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+        y: Math.round(d.daily.windspeed_10m_max[i]),
+      })),
+    }),
   },
   humidity: {
     label:'Humidité moy. (%)', color:'#ce93d8', fill:'rgba(206,147,216,0.07)',
@@ -3605,14 +3723,27 @@ function buildChart(d) {
   if (S.chart) S.chart.destroy();
   const cfg     = CHART_CONFIGS[S.chartType];
   const isBar   = cfg.type === 'bar';
+  const noteEl  = document.getElementById('chart-note');
+  const noteTxt = typeof cfg.note === 'function' ? cfg.note(d) : cfg.note;
+  if (noteEl) { noteEl.textContent = noteTxt || ''; noteEl.hidden = !noteTxt; }
+  const pts      = cfg.points ? cfg.points(d) : null;
+  const official = cfg.official ? cfg.official(d) : null;
+  if (cfg.official) S._windSig = JSON.stringify(official);
   const datasets = [{
     label: cfg.label,
     data:  cfg.getData(d),
     borderColor: cfg.color,
     backgroundColor: isBar ? cfg.color + 'cc' : cfg.fill,
-    fill: !isBar, tension: 0.4,
+    fill: !isBar, tension: cfg.tension ?? 0.4,
     borderWidth: isBar ? 0 : 2,
-    pointRadius: 3, pointBackgroundColor: cfg.color,
+    ...(pts ? {
+      pointRadius: pts.map(p => p.radius),
+      pointBackgroundColor: pts.map(p => p.color),
+      pointBorderColor: pts.map(p => p.border),
+      pointBorderWidth: pts.map(p => p.borderWidth),
+    } : {
+      pointRadius: 3, pointBackgroundColor: cfg.color,
+    }),
     borderRadius: isBar ? 6 : 0,
   }];
   if (cfg.extra) {
@@ -3620,7 +3751,7 @@ function buildChart(d) {
     datasets.push({
       label: ex.label, data: ex.data,
       borderColor: ex.color, backgroundColor: 'transparent',
-      fill: false, tension: 0.4,
+      fill: false, tension: cfg.tension ?? 0.4,
       borderWidth: 1.5, borderDash: [5,4],
       pointRadius: 2, pointBackgroundColor: ex.color,
     });
@@ -3632,6 +3763,7 @@ function buildChart(d) {
   S.chart = new Chart(ctx, {
     type: isBar ? 'bar' : 'line',
     data: { datasets },
+    plugins: [windThresholdsPlugin],
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode:'index', intersect:false },
@@ -3644,11 +3776,24 @@ function buildChart(d) {
           titleFont:{ family:'Inter', size:12 },
           bodyFont:{ family:'Inter', size:11 },
           padding:10, cornerRadius:8,
+          callbacks: {
+            footer: items => {
+              if (!cfg.levels) return '';
+              const it = items.find(i => i.datasetIndex === 0);
+              if (!it) return '';
+              const sev = official?.[it.dataIndex];
+              if (sev != null) return `Vigilance officielle (vent) : ${VIGILANCE_NAMES_FR[sev]}`;
+              const lv = windGustLevel(it.raw?.y);
+              return lv ? `⚠ Rafales ≥ repère ${lv.label.toLowerCase()} (indicatif)` : '';
+            },
+          },
         },
+        windThresholds: cfg.levels ? { levels: cfg.levels } : false,
       },
       scales: {
         x: { type:'category', ticks:{ color:tickColor, font, maxRotation:0 }, grid:{ color:gridColor } },
-        y: { ticks:{ color:tickColor, font }, grid:{ color:gridColor } },
+        y: { ticks:{ color:tickColor, font }, grid:{ color:gridColor },
+             ...(cfg.yMax ? { beginAtZero: true, suggestedMax: cfg.yMax(d) } : {}) },
       },
     },
   });
@@ -4236,7 +4381,7 @@ function renderStats(d) {
       sub: nextRainSub },
     { icon:'🌡', label:'Amplitude du jour',  value:`${tMin}° / ${tMax}°`,     sub:`Écart ${tMax-tMin}°C` },
     { icon:'🌧', label:'Précipitations',     value:`${precip} mm`,            sub:precipSub },
-    { icon:'💨', label:'Vent maximum',        value:`${wMax} km/h`,            sub:`Direction ${windDir(cw.winddirection)}` },
+    { icon:'💨', label:'Vent moyen max',        value:`${wMax} km/h`,            sub:`Direction ${windDir(cw.winddirection)}` },
     { icon:'🌡', label:'Ressenti actuel',     value:`${feelsLikeStat}°`, sub:'Température ressentie' },
     { icon:'📅', label:'Moy. semaine proch.', value:`${nwAvg}°`,               sub:'T° max moyenne J+7→14' },
     { icon:'☀️', label:'Ensoleillement',
@@ -4886,6 +5031,25 @@ const VIGILANCE_ICONS = {
   canicule: '🥵', 'grand-froid': '🥶', 'grand_froid': '🥶',
   submersion: '🌊', 'vagues-submersion': '🌊',
 };
+// Normalise les libellés renvoyés par l'API (casse, espaces, « vent violent »…)
+// pour que icônes et conseils soient toujours retrouvés.
+function normalizePhenomenon(p) {
+  const s = String(p ?? '').trim().toLowerCase().replace(/[\s_]+/g, '-');
+  if (/^vents?(-violents?)?$/.test(s)) return 'vent';
+  if (s === 'vague-submersion') return 'vagues-submersion';
+  return s;
+}
+// « vagues-submersion » est émise pour tout un département côtier, mais ne vise
+// que sa bande littorale : une commune de l'intérieur (ex. Nantes, dans le 44)
+// peut donc l'afficher sans être réellement concernée → on le précise.
+const VIGILANCE_PHEN_LABELS = {
+  vent: 'Vent violent',
+  'vagues-submersion': 'Vagues-submersion (littoral)',
+  submersion: 'Submersion (littoral)',
+};
+function phenLabel(p) {
+  return VIGILANCE_PHEN_LABELS[p] || (p.charAt(0).toUpperCase() + p.slice(1).replace(/[-_]/g, ' '));
+}
 const VIGILANCE_LABELS = {
   jaune: 'Vigilance jaune', orange: 'Vigilance orange', rouge: 'Vigilance rouge',
 };
@@ -4904,8 +5068,8 @@ const VIGILANCE_ADVICE = {
   canicule: 'Hydratez-vous régulièrement, évitez les efforts entre 12h et 16h',
   'grand-froid': 'Couvrez-vous bien, limitez le temps passé dehors',
   'grand_froid': 'Couvrez-vous bien, limitez le temps passé dehors',
-  submersion: 'Éloignez-vous du littoral, ne vous approchez pas des digues',
-  'vagues-submersion': 'Éloignez-vous du littoral, ne vous approchez pas des digues',
+  submersion: 'Si vous êtes sur le littoral : éloignez-vous du rivage et des digues',
+  'vagues-submersion': 'Si vous êtes sur le littoral : éloignez-vous du rivage et des digues',
 };
 
 // Attache le comportement déplier/replier à un chip + panneau de détails.
@@ -4957,34 +5121,72 @@ function wireAlertToggle(chipId, detailsId) {
   chip.addEventListener('click', toggle);
 }
 
+// Avance (en heures) avec laquelle la bannière apparaît AVANT le début d'une
+// vigilance. 0 = strict : elle n'apparaît qu'à l'heure de début.
+// Actuellement : jaune strict, orange 6 h avant, rouge 12 h avant.
+const VIGILANCE_LEAD_HOURS = { jaune: 0, orange: 6, rouge: 12 };
+let _vigRefreshTimer = null;
+
 function renderVigilance(records) {
   const banner = document.getElementById('vigilance-banner');
   if (!banner) return;
-  if (!records || !records.length) { banner.style.display = 'none'; markVigilanceSettled(); return; }
+  if (!records || !records.length) { S.vigilanceRecords = null; refreshWindChartIfNeeded(); banner.style.display = 'none'; markVigilanceSettled(); return; }
 
+  records = records.map(r => ({
+    ...r,
+    color: String(r.color ?? '').trim().toLowerCase(),
+    phenomenon: normalizePhenomenon(r.phenomenon),
+    echeance: String(r.echeance ?? '').trim().toUpperCase(),
+  }));
+  S.vigilanceRecords = records;
+  refreshWindChartIfNeeded();
   const byEcheance = { J: [], J1: [] };
   for (const rec of records) {
     if (byEcheance[rec.echeance]) byEcheance[rec.echeance].push(rec);
   }
-  const maxOf = list => list.reduce((m, r) => Math.max(m, VIGILANCE_SEVERITY[r.color] ?? 0), 0);
-  const sevToday    = maxOf(byEcheance.J);
+  const sevOf = r => VIGILANCE_SEVERITY[r.color] ?? 0;
+  const maxOf = list => list.reduce((m, r) => Math.max(m, sevOf(r)), 0);
   const sevTomorrow = maxOf(byEcheance.J1);
 
-  // Rien de notable (jaune ou plus) ni aujourd'hui ni demain → masquée.
-  if (sevToday === 0 && sevTomorrow === 0) { banner.style.display = 'none'; markVigilanceSettled(); return; }
+  // Une vigilance n'est « active » qu'entre son heure de début et sa fin ;
+  // vert = rien à afficher, et une alerte qui n'a pas encore commencé reste masquée.
+  const now = Date.now();
+  const leadMs = r => (VIGILANCE_LEAD_HOURS[r.color] || 0) * 36e5;
+  const tOf = iso => { const t = Date.parse(iso); return Number.isNaN(t) ? null : t; };
+  const isActive = r => {
+    if (sevOf(r) === 0) return false;
+    const b = tOf(r.begin_time), e = tOf(r.end_time);
+    return (b === null || now >= b - leadMs(r)) && (e === null || now < e);
+  };
 
-  const isToday  = sevToday > 0;
-  const dayList  = isToday ? byEcheance.J : byEcheance.J1;
-  const daySev   = isToday ? sevToday : sevTomorrow;
+  // Re-rendu automatique à la prochaine frontière horaire (début ou fin d'une
+  // vigilance), pour que la bannière apparaisse / disparaisse à l'heure dite.
+  clearTimeout(_vigRefreshTimer);
+  const boundaries = records.filter(r => sevOf(r) > 0)
+    .flatMap(r => [tOf(r.begin_time) === null ? null : tOf(r.begin_time) - leadMs(r), tOf(r.end_time)])
+    .filter(t => t !== null && t > now);
+  if (boundaries.length) {
+    _vigRefreshTimer = setTimeout(() => renderVigilance(records), Math.min(Math.min(...boundaries) - now + 1000, 2147483647));
+  }
+
+  const activeList = records.filter(isActive);
+  if (!activeList.length) { banner.style.display = 'none'; markVigilanceSettled(); return; }
+
+  // La bannière reflète la vigilance EN COURS : niveau le plus haut parmi les
+  // vigilances actives à cet instant. La tendance de demain reste dans le détail.
+  const daySev   = maxOf(activeList);
+  const triggers = activeList.filter(r => sevOf(r) === daySev);
+  const sevToday = daySev;
+  const isToday  = triggers.some(r => r.echeance === 'J');
+  const started  = triggers.some(r => { const t = tOf(r.begin_time); return t === null || now >= t; });
   const dayColor = Object.keys(VIGILANCE_SEVERITY).find(k => VIGILANCE_SEVERITY[k] === daySev);
-  const triggers = dayList.filter(r => VIGILANCE_SEVERITY[r.color] === daySev);
   const uniquePhenomena = [...new Set(
     triggers.map(r => String(r.phenomenon ?? '').trim()).filter(Boolean)
   )];
 
   const icon  = uniquePhenomena.slice(0, 3).map(p => VIGILANCE_ICONS[p] || '⚠️').join(' ');
-  const names = uniquePhenomena.map(p => p.charAt(0).toUpperCase() + p.slice(1).replace(/[-_]/g, ' ')).join(', ');
-  const whenLabel = isToday ? "aujourd'hui" : 'demain';
+  const names = uniquePhenomena.map(p => phenLabel(p)).join(', ');
+  const whenLabel = started ? 'en cours' : 'à venir';
 
   // Période : fenêtre horaire englobant tous les phénomènes déclencheurs.
   const fmtH = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
@@ -5010,20 +5212,21 @@ function renderVigilance(records) {
     } else if (sevTomorrow < sevToday) {
       trendValue = '↘️ Amélioration'; trendSub = sevTomorrow > 0 ? VIGILANCE_LABELS[tomorrowColor] : 'Vigilance verte';
     } else if (!samePhenomena && sevTomorrow > 0) {
-      const tomorrowNames = [...tomorrowPhenomena].map(p => p.charAt(0).toUpperCase() + p.slice(1).replace(/[-_]/g, ' ')).join(', ');
+      const tomorrowNames = [...tomorrowPhenomena].map(p => phenLabel(p)).join(', ');
       trendValue = '⇄ Autre risque'; trendSub = `Même niveau, ${tomorrowNames} demain`;
     } else {
       trendValue = '→ Stable'; trendSub = 'Même risque demain';
     }
   } else {
-    trendValue = '—'; trendSub = "Rien de notable aujourd'hui";
+    trendValue = '—'; trendSub = 'Bulletin de demain déjà en vigueur';
   }
 
   // Heure du bulletin officiel (product_datetime), pas l'heure de
   // récupération côté client — répond à "c'est frais ou périmé ?" sans
   // avoir à ouvrir le détail.
   const bulletinTime = records.find(r => r.product_datetime)?.product_datetime;
-  const bulletinLabel = bulletinTime ? ` · bulletin ${fmtH(bulletinTime)}` : '';
+  const bulletinAgeH = bulletinTime ? (Date.now() - new Date(bulletinTime).getTime()) / 36e5 : 0;
+  const bulletinLabel = bulletinTime ? ` · bulletin ${fmtH(bulletinTime)}${bulletinAgeH > 12 ? ' (ancien)' : ''}` : '';
 
   const stat = (label, value, sub) => `
     <div class="hw-stat">
@@ -5037,8 +5240,7 @@ function renderVigilance(records) {
     .filter(a => a[1])
     .slice(0, 4);
 
-  const level = daySev >= 3 ? 'level-severe' : daySev >= 2 ? 'level-high' : 'level-warn';
-  banner.className = `alert-compact ${level}`;
+  banner.className = `alert-compact vig-${dayColor}`;
   banner.innerHTML = `
     <button type="button" class="alert-chip" id="vig-chip" aria-expanded="false" aria-controls="vig-details">
       <span class="alert-icon">${icon}</span>
@@ -5641,6 +5843,7 @@ function scheduleVigilanceRefresh() {
 }
 
 async function loadAll() {
+  S.vigilanceRecords = null;   // évite d'appliquer la vigilance de l'ancienne ville
   updateMarker();
   document.getElementById('city-name').textContent    = S.city;
   document.getElementById('city-country').textContent = S.region;
