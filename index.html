@@ -944,6 +944,9 @@
     .hour-icon { font-size: 1.3rem; line-height: 1; min-height: 26px; display: flex; align-items: center; }
     .hour-temp { font-family: var(--fd); font-size: 0.88rem; font-weight: 700; min-height: 20px; display: flex; align-items: center; }
     .hour-prec { font-size: 0.6rem; color: #81d4fa; min-height: 14px; display: flex; align-items: center; }
+    /* Rafales horaires (>= 60 km/h) : ligne ajoutée à TOUS les créneaux seulement s'il y en a au
+       moins une dans la bande (invisible sinon) -> aucune hauteur ajoutée par temps calme. */
+    .hour-gust { font-size: 0.58rem; font-weight: 700; min-height: 13px; display: flex; align-items: center; white-space: nowrap; color: var(--txt2); }
 
     /* ══════════════════════════════════════════════════════════════
        CHARTS SECTION
@@ -3122,7 +3125,7 @@ document.getElementById('anim-btn').addEventListener('click', function() {
 async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,visibility,snow_depth,freezing_level_height,cape`
+    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,winddirection_10m,visibility,snow_depth,freezing_level_height,cape`
     + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,snowfall_sum,windspeed_10m_max,windgusts_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration,sunshine_duration`
     + `&current_weather=true`
     + `&wind_speed_unit=kmh`
@@ -3309,6 +3312,36 @@ function currentHourKey(d) {
 // ──────────────────────────────────────────────────────────────────
 // RENDER TODAY
 // ──────────────────────────────────────────────────────────────────
+// Ligne « coordonnées · vent » du bandeau d'en-tête. Le vent moyen seul sous-estime le
+// danger en cas de tempête : on ajoute les rafales de l'heure en cours dès HERO_GUST_MIN,
+// colorées selon le niveau officiel (aujourd'hui) ou, à défaut, les repères génériques.
+function renderHeroMeta(d) {
+  const el = document.getElementById('city-meta');
+  if (!el || !d?.current_weather) return;
+  const cw = d.current_weather;
+  const todayStr = d.daily.time[0] || TODAY_STR;
+  const nowIdx = d.hourly.time.indexOf(currentHourKey(d));
+  const gRaw = nowIdx >= 0 ? d.hourly.windgusts_10m?.[nowIdx] : null;
+  const g = gRaw == null ? null : Math.round(gRaw);
+  let gustHTML = '';
+  if (g !== null && g >= HERO_GUST_MIN && g > Math.round(cw.windspeed)) {
+    const col = gustColorFrom(windOfficialByDay(d), Math.max(0, d.daily.time.indexOf(todayStr)), g);
+    gustHTML = ` · <span${col ? ` style="color:${col};font-weight:700"` : ''}>rafales ${g}</span>`;
+  }
+  el.innerHTML =
+    `<span>${coordLabel(S.lat, S.lon)}</span>`
+    + `<span>Vent: ${Math.round(cw.windspeed)} km/h ${windDir(cw.winddirection)}${gustHTML}</span>`;
+}
+
+// Recolore la valeur de la tuile « Rafales max » (sans refaire toute la grille de stats).
+function recolorGustTile() {
+  const el = document.getElementById('gust-tile-value');
+  if (!el || !S.forecast || S._gustTileValue == null) return;
+  const col = gustColorFrom(windOfficialByDay(S.forecast), 0, S._gustTileValue);
+  el.style.color = col || '';
+  el.style.fontWeight = col ? '700' : '';
+}
+
 function renderToday(d) {
   const cw   = d.current_weather;
   const info = wmoInfo(cw.weathercode);
@@ -3323,9 +3356,7 @@ function renderToday(d) {
   document.getElementById('city-temp-big').textContent = `${Math.round(cw.temperature)}°`;
   document.getElementById('city-cond-icon').textContent = info.icon;
   document.getElementById('city-cond-label').textContent = info.desc;
-  document.getElementById('city-meta').innerHTML =
-    `<span>${coordLabel(S.lat, S.lon)}</span>`
-    + `<span>Vent: ${Math.round(cw.windspeed)} km/h ${windDir(cw.winddirection)}</span>`;
+  renderHeroMeta(d);
 
   const daily = d.daily;
   const todayDI = daily.time.indexOf(todayStr) >= 0 ? daily.time.indexOf(todayStr) : 0;
@@ -3577,7 +3608,7 @@ function renderWeek(d) {
 // ──────────────────────────────────────────────────────────────────
 // RENDER HOURLY (48h)
 // ──────────────────────────────────────────────────────────────────
-function renderHourly(d) {
+function renderHourly(d, opts = {}) {
   const hi  = d.hourly;
   const now = new Date(currentHourKey(d) || hi.time[0]);
 
@@ -3586,11 +3617,28 @@ function renderHourly(d) {
   if (startIdx < 0) startIdx = 0;
 
   const slots = [];
-  for (let i = startIdx; i < Math.min(startIdx + 48, hi.time.length); i++) {
+  const endIdx = Math.min(startIdx + 48, hi.time.length);
+  // Ligne de rafales ajoutée à TOUS les créneaux (alignement) seulement si au moins un dépasse le seuil.
+  let anyGust = false;
+  for (let i = startIdx; i < endIdx; i++) {
+    if (Math.round(hi.windgusts_10m?.[i] ?? 0) >= WEEK_GUST_BADGE_MIN) { anyGust = true; break; }
+  }
+  const official = anyGust ? windOfficialByDay(d) : null;
+  for (let i = startIdx; i < endIdx; i++) {
     const dt   = new Date(hi.time[i] + ':00');
     const hm   = dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
     const dayFmt = dt.getDate() !== now.getDate() ? `<br><span style="font-size:.58rem;color:var(--accent);opacity:.7">${dt.toLocaleDateString('fr-FR',{weekday:'short'})}</span>` : '';
     const isNow  = i === startIdx;
+    let gustRow = '';
+    if (anyGust) {
+      const g = Math.round(hi.windgusts_10m?.[i] ?? 0);
+      if (g >= WEEK_GUST_BADGE_MIN) {
+        const col = gustColorFrom(official, d.daily.time.indexOf(hi.time[i].slice(0, 10)), g) || 'var(--txt2)';
+        gustRow = `<div class="hour-gust" style="color:${col}" role="img" aria-label="Rafales ${g} kilomètres par heure">💨${g}</div>`;
+      } else {
+        gustRow = '<div class="hour-gust" style="opacity:0" aria-hidden="true">0</div>';
+      }
+    }
     const prec   = hi.precipitation[i] > 0 ? `${hi.precipitation[i].toFixed(1)}mm` : '';
     slots.push(`
       <div class="hour-slot${isNow ? ' now-hr' : ''}">
@@ -3598,10 +3646,14 @@ function renderHourly(d) {
         <div class="hour-icon">${wmoInfo(hi.weathercode[i]).icon}</div>
         <div class="hour-temp ${tempClass(Math.round(hi.temperature_2m[i]))}">${Math.round(hi.temperature_2m[i])}°</div>
         ${prec ? `<div class="hour-prec">${prec}</div>` : '<div class="hour-prec" style="opacity:0">0</div>'}
+        ${gustRow}
       </div>`);
   }
-  document.getElementById('hourly-scroll').innerHTML = slots.join('');
+  const scrollerEl = document.getElementById('hourly-scroll');
+  const prevScroll = scrollerEl ? scrollerEl.scrollLeft : 0;
+  scrollerEl.innerHTML = slots.join('');
   document.getElementById('hourly-date-label').textContent = 'De maintenant jusqu\'à J+2';
+  if (opts.keepScroll) { scrollerEl.scrollLeft = prevScroll; return; }   // simple recoloration : on ne bouge pas la bande
 
   // Scroll to "now" after render
   setTimeout(() => {
@@ -3671,11 +3723,42 @@ function refreshOfficialViews() {
   const sig = JSON.stringify(windOfficialByDay(S.forecast));
   if (sig === S._officialSig) return;
   renderWeek(S.forecast);                      // met aussi à jour S._officialSig
+  renderHeroMeta(S.forecast);
+  recolorGustTile();
+  renderHourly(S.forecast, { keepScroll: true });
   if (S.chartType === 'wind' && S.chart) buildChart(S.forecast);
 }
 
-// Seuil d'affichage de la pastille de rafales dans la liste des jours (km/h).
+// Seuil d'affichage de la pastille de rafales dans la liste des jours et la bande horaire (km/h).
 const WEEK_GUST_BADGE_MIN = 60;
+// Seuil d'affichage des rafales dans le bandeau d'en-tête (évite le bruit par temps calme).
+const HERO_GUST_MIN = 40;
+// Jours du graphique dont les rafales sont jugées fiables (J..J+5) ; ensuite : pointillés + points clairs.
+const GUST_RELIABLE_DAYS = 6;
+
+// Échelle de Beaufort — valable pour le vent MOYEN uniquement (jamais pour les rafales).
+const BEAUFORT_LIMITS = [1, 6, 12, 20, 29, 39, 50, 62, 75, 89, 103, 118];
+const BEAUFORT_LABELS = ['Calme', 'Très légère brise', 'Légère brise', 'Petite brise', 'Jolie brise', 'Bonne brise',
+  'Vent frais', 'Grand frais', 'Coup de vent', 'Fort coup de vent', 'Tempête', 'Violente tempête', 'Ouragan'];
+function beaufort(kmh) {
+  const v = Number(kmh) || 0;
+  const force = BEAUFORT_LIMITS.filter(l => v >= l).length;
+  return { force, label: BEAUFORT_LABELS[force] };
+}
+
+// Couleur d'affichage d'une rafale : niveau OFFICIEL si connu pour ce jour (vert -> neutre),
+// sinon repères génériques. null = pas de couleur particulière.
+function gustColorFrom(official, dayIdx, g) {
+  const off = official?.[dayIdx];
+  if (off != null) return off > 0 ? VIGILANCE_COLORS[off] : null;
+  return windGustLevel(g)?.color || null;
+}
+function hexA(hex, a) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
 
 // Repère « aujourd'hui » : bande légère derrière la première colonne du graphique.
 const todayMarkerPlugin = {
@@ -3790,6 +3873,7 @@ const CHART_CONFIGS = {
     label:'Rafales max (km/h)', color:'#80cbc4', fill:'rgba(128,203,196,0.07)',
     tension: 0.25,
     levels: WIND_GUST_REF,
+    segment: { borderDash: ctx => (ctx.p0DataIndex >= GUST_RELIABLE_DAYS - 1 ? [4, 4] : undefined) },
     official: d => windOfficialByDay(d),
     peakLabel: true,
     // Aujourd'hui / demain : couleur OFFICIELLE de la vigilance (point cerclé de
@@ -3800,12 +3884,13 @@ const CHART_CONFIGS = {
       return d.daily.time.slice(0, 15).map((t, i) => {
         if (off[i] !== null) return { color: VIGILANCE_COLORS[off[i]], border: '#ffffff', borderWidth: 2, radius: compact ? 5 : 6 };
         const c = windGustLevel(d.daily.windgusts_10m_max?.[i])?.color || '#80cbc4';
-        return { color: c, border: c, borderWidth: 1, radius: compact ? 3 : 4 };
+        const c2 = i >= GUST_RELIABLE_DAYS ? hexA(c, 0.55) : c;      // prévision peu fiable : plus clair
+        return { color: c2, border: c2, borderWidth: 1, radius: compact ? 3 : 4 };
       });
     },
     note: d => (windOfficialByDay(d).some(v => v !== null)
         ? 'Points cerclés : niveau officiel Météo-France « vent violent » (aujourd’hui, demain). ' : '')
-      + 'Rafales = pic horaire du jour (modèle). Autres jours : repères indicatifs, les seuils réels varient selon le département. Au-delà de J+5, très incertain.',
+      + 'Rafales = pic horaire du jour (modèle). Autres jours : repères indicatifs, les seuils réels varient selon le département. Pointillés et points clairs : prévision peu fiable à partir de J+6.',
     yMax: d => {
       const m = Math.max(0, ...d.daily.time.slice(0,15).map((t,i) => d.daily.windgusts_10m_max?.[i] ?? 0));
       const next = WIND_GUST_REF.find(l => l.v > m);
@@ -3854,6 +3939,7 @@ function buildChart(d) {
     borderColor: cfg.color,
     backgroundColor: isBar ? cfg.color + 'cc' : cfg.fill,
     fill: !isBar, tension: cfg.tension ?? 0.4,
+    ...(cfg.segment ? { segment: cfg.segment } : {}),
     borderWidth: isBar ? 0 : 2,
     ...(pts ? {
       pointRadius: pts.map(p => p.radius),
@@ -4418,12 +4504,40 @@ function renderStats(d) {
     .map((t,idx)=>({t,idx}))
     .filter(o => o.t.startsWith(d.daily.time[0] || TODAY_STR))
     .map(o => o.idx);
-  let gustMax = null, gustPeakHour = null;
-  for (const idx of todayHourIdxs) {
-    const v = d.hourly.windgusts_10m?.[idx];
-    if (v != null && (gustMax === null || v > gustMax)) { gustMax = v; gustPeakHour = parseInt(d.hourly.time[idx].slice(11, 13), 10); }
+  // Rafales : on affiche le plus fort pic À VENIR aujourd'hui (les heures passées n'aident pas à
+  // décider) ; si un pic plus fort est déjà passé on le mentionne, et s'il ne reste plus d'heures
+  // on affiche le pic passé. La direction est celle de l'heure du pic (pas celle de maintenant).
+  const peakOf = idxs => {
+    let best = null, bi = null;
+    for (const idx of idxs) {
+      const v = d.hourly.windgusts_10m?.[idx];
+      if (v != null && (best === null || v > best)) { best = v; bi = idx; }
+    }
+    return { v: best === null ? null : Math.round(best), i: bi };
+  };
+  const remIdxs  = nowIdxStat >= 0 ? todayHourIdxs.filter(idx => idx >= nowIdxStat) : todayHourIdxs;
+  const pastIdxs = nowIdxStat >= 0 ? todayHourIdxs.filter(idx => idx <  nowIdxStat) : [];
+  const remPeak = peakOf(remIdxs), pastPeak = peakOf(pastIdxs);
+  const hourOf = idx => parseInt(d.hourly.time[idx].slice(11, 13), 10);
+  const dirAt  = idx => { const deg = d.hourly.winddirection_10m?.[idx]; return deg == null ? '' : ` · ${windDir(deg)}`; };
+  // Le titre dit la période : « à venir » = heures restantes d'aujourd'hui (jusqu'à minuit).
+  // Sans heure courante connue, ou s'il ne reste que des heures passées, on revient à « max ».
+  let gustLabel = 'Rafales max', gustValue = null, gustSub = 'Pic du jour';
+  if (remPeak.v !== null) {
+    gustValue = remPeak.v;
+    gustLabel = nowIdxStat >= 0 ? 'Rafales à venir' : 'Rafales max';
+    gustSub = `Pic vers ${hourOf(remPeak.i)} h${dirAt(remPeak.i)}`;
+    if (pastPeak.v !== null && pastPeak.v > remPeak.v) gustSub += `<br>Déjà passé : ${pastPeak.v} km/h vers ${hourOf(pastPeak.i)} h`;
+  } else if (pastPeak.v !== null) {
+    gustValue = pastPeak.v;
+    gustSub = `Pic passé vers ${hourOf(pastPeak.i)} h${dirAt(pastPeak.i)}`;
   }
-  if (gustMax !== null) gustMax = Math.round(gustMax);
+  const gustCol = gustValue !== null ? gustColorFrom(windOfficialByDay(d), 0, gustValue) : null;
+  const gustValueHTML = gustValue !== null
+    ? `<span id="gust-tile-value"${gustCol ? ` style="color:${gustCol};font-weight:700"` : ''}>${gustValue} km/h</span>`
+    : '--';
+  S._gustTileValue = gustValue;
+  const bf = beaufort(wMax);
 
   // ── Durée du jour ────────────────────────────────────────────
   const daylightSec = d.daily.daylight_duration?.[i];
@@ -4511,8 +4625,8 @@ function renderStats(d) {
       sub: nextRainSub },
     { icon:'🌡', label:'Amplitude du jour',  value:`${tMin}° / ${tMax}°`,     sub:`Écart ${tMax-tMin}°C` },
     { icon:'🌧', label:'Précipitations',     value:`${precip} mm`,            sub:precipSub },
-    { icon:'💨', label:'Vent moyen max',        value:`${wMax} km/h`,            sub:`Direction ${windDir(cw.winddirection)}` },
-    { icon:'🌡', label:'Ressenti actuel',     value:`${feelsLikeStat}°`, sub:'Température ressentie' },
+    { icon:'💨', label:'Vent moyen max',        value:`${wMax} km/h`,            sub:`${bf.label} · force ${bf.force}` },
+    { icon: windsockSVG, label: gustLabel, value: gustValueHTML, sub: gustSub },
     { icon:'📅', label:'Moy. semaine proch.', value:`${nwAvg}°`,               sub:'T° max moyenne J+7→14' },
     { icon:'☀️', label:'Ensoleillement',
       value: sunshineH !== null ? `${sunshineH}h${String(sunshineM).padStart(2,'0')}` : '--',
@@ -4523,7 +4637,7 @@ function renderStats(d) {
     { icon:'👁', label:'Visibilité',
       value: visKm !== null ? `${visKm.toFixed(1)} km` : '--',
       sub: visL.txt },
-    { icon: windsockSVG, label:'Rafales max', value: gustMax !== null ? `${gustMax} km/h` : '--', sub: gustPeakHour !== null ? `Pic vers ${gustPeakHour} h` : 'Pic du jour' },
+    { icon:'🌡', label:'Ressenti actuel',     value:`${feelsLikeStat}°`, sub:'Température ressentie' },
     { icon:'⏱', label:'Durée du jour',
       value: daylightH !== null ? `${daylightH}h${String(daylightM).padStart(2,'0')}` : '--',
       sub: 'Lever → coucher du soleil' },
