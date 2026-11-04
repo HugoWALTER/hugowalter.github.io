@@ -1007,7 +1007,7 @@
     .aqi-sublabel { font-size: 0.68rem; color: var(--txt2); }
     .aqi-bar {
       height: 8px; border-radius: 4px;
-      background: linear-gradient(to right, #4caf50, #8bc34a, #ffeb3b, #ff9800, #f44336, #9c27b0);
+      background: linear-gradient(to right, #4caf50 8.33%, #8bc34a 25%, #ffeb3b 41.67%, #ff9800 58.33%, #f44336 75%, #9c27b0 91.67%);
       position: relative; margin-bottom: 4px;
     }
     .aqi-pointer {
@@ -1017,7 +1017,7 @@
       transition: left 1.2s cubic-bezier(0.34,1.56,0.64,1);
     }
     .aqi-range-labels {
-      display: flex; justify-content: space-between;
+      display: grid; grid-template-columns: repeat(6, 1fr); text-align: center;
       font-size: 0.58rem; color: var(--txt2); margin-bottom: 16px;
     }
     .pollutants { display: flex; flex-direction: column; gap: 9px; }
@@ -4318,14 +4318,18 @@ function renderAQI(data) {
   document.getElementById('aqi-number').style.color = color;
   document.getElementById('aqi-label').textContent  = label;
   document.getElementById('aqi-label').style.color  = color;
-  // pointer: scale 0-150 → 0-95%
-  document.getElementById('aqi-pointer').style.left = `${Math.min(95, (aqi / 150) * 100).toFixed(1)}%`;
+  // Indicateur : chaque catégorie occupe 1/6 de la barre (comme le dégradé et les libellés),
+  // avec interpolation linéaire à l'intérieur ; la dernière (> 100) s'étale jusqu'à 150.
+  const aqiEdges = [0, 20, 40, 60, 80, 100, 150];
+  let aqiBand = aqiEdges.findIndex((e, i) => i < 6 && aqi <= aqiEdges[i + 1]);
+  if (aqiBand < 0) aqiBand = 5;
+  const aqiFrac = Math.min(1, Math.max(0, (aqi - aqiEdges[aqiBand]) / (aqiEdges[aqiBand + 1] - aqiEdges[aqiBand])));
+  document.getElementById('aqi-pointer').style.left = `${Math.min(95, ((aqiBand + aqiFrac) / 6) * 100).toFixed(1)}%`;
 
-  // Seuils OMS (µg/m³) : [bon, moyen, dégradé, mauvais]
-  // PM2.5 : OMS 15 / 25 / 50 / >50
-  // PM10  : OMS 45 / 75 / 150 / >150
-  // NO₂   : OMS 25 / 50 / 100 / >100
-  // O₃    : OMS 100 / 130 / 160 / >160
+  // Paliers internes (µg/m³) : [bon, moyen, dégradé, mauvais]
+  // Seul le 1er palier de chaque polluant correspond aux recommandations OMS 2021
+  // (PM2.5 15 · PM10 45 · NO₂ 25 · O₃ 100) ; les suivants ne sont pas ceux de l'indice
+  // européen : la couleur d'une barre peut donc différer de l'indice global ci-dessus.
   function pollutantColor(val, thresholds) {
     if (val == null || isNaN(val)) return 'var(--border2)';
     const [t1, t2, t3] = thresholds;
@@ -4371,7 +4375,9 @@ function renderAQIUnavailable() {
 // ──────────────────────────────────────────────────────────────────
 // RENDER POLLENS
 // ──────────────────────────────────────────────────────────────────
-// Seuils EAN/EAACI (grains/m³) — différenciés par famille de pollen.
+// Paliers internes (grains/m³) — différenciés par famille de pollen. Ils ne reprennent pas
+// à l'identique une grille officielle (les grilles nationales, ex. MeteoSwiss, s'appliquent
+// à des moyennes JOURNALIÈRES alors qu'ils sont comparés ici à des valeurs HORAIRES du modèle).
 // Arbres (bouleau, aulne, olivier) : seuils plus élevés.
 // Herbacées (graminées, armoise, ambroisie) : seuils plus bas, plus allergisantes à faible dose.
 const POLLEN_CONFIG = [
@@ -4735,8 +4741,9 @@ function renderStats(d) {
   const visKm = visNowM != null ? (visNowM/1000) : null;
   function visLabel(km) {
     if (km === null) return { txt:'N/A', color:'var(--txt2)' };
-    if (km < 1)  return { txt:'Brouillard dense', color:'#f44336' };
-    if (km < 4)  return { txt:'Brume',             color:'#ff9800' };
+    if (km < 0.2) return { txt:'Brouillard dense', color:'#f44336' };   // < 200 m
+    if (km < 1)   return { txt:'Brouillard',       color:'#f44336' };   // < 1 km
+    if (km < 5)   return { txt:'Brume',            color:'#ff9800' };   // 1 à 5 km
     if (km < 10) return { txt:'Bonne',             color:'#fdd835' };
     return              { txt:'Excellente',         color:'#4caf50' };
   }
