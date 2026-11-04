@@ -19,6 +19,7 @@
   <meta property="og:description" content="Radar météo en temps réel, prévisions 7 jours, qualité de l'air." />
   <meta property="og:type" content="website" />
   <meta name="description" content="Application météo avec radar précipitations en temps réel, prévisions 7 jours, qualité de l'air et statistiques détaillées." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <!-- Connexions API ouvertes tôt : évite d'ajouter la latence DNS/TLS
        (~130 ms chacune) au moment du premier fetch, voir rapport Lighthouse -->
@@ -4055,13 +4056,13 @@ const CHART_CONFIGS = {
   temp: {
     label: 'T° Max (°C)', color: '#ffb74d', fill: 'rgba(255,183,77,0.07)',
     getData: d => d.daily.time.slice(0,15).map((t,i) => ({
-      x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+      x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'}),
       y: Math.round(d.daily.temperature_2m_max[i]),
     })),
     extra: d => ({
       label:'T° Min (°C)', color:'#81d4fa',
       data: d.daily.time.slice(0,15).map((t,i) => ({
-        x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+        x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'}),
         y: Math.round(d.daily.temperature_2m_min[i]),
       })),
     }),
@@ -4070,7 +4071,7 @@ const CHART_CONFIGS = {
     label:'Précipitations (mm)', color:'#5c9bd1', fill:'rgba(92,155,209,0.15)',
     type:'bar',
     getData: d => d.daily.time.slice(0,15).map((t,i) => ({
-      x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+      x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'}),
       y: +(d.daily.precipitation_sum[i]||0).toFixed(1),
     })),
   },
@@ -4110,26 +4111,37 @@ const CHART_CONFIGS = {
     getData: d => d.daily.time.slice(0,15).map((t,i) => {
       const g = d.daily.windgusts_10m_max?.[i];
       return {
-        x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+        x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'}),
         y: g == null ? null : Math.round(g),
       };
     }),
     extra: d => ({
       label:'Vent moyen max (km/h)', color:'#b0bec5',
       data: d.daily.time.slice(0,15).map((t,i) => ({
-        x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+        x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'}),
         y: Math.round(d.daily.windspeed_10m_max[i]),
       })),
     }),
   },
   humidity: {
     label:'Humidité moy. (%)', color:'#ce93d8', fill:'rgba(206,147,216,0.07)',
+    unit: '\u00a0%',                       // suffixe des graduations de l'axe Y
+    yRange: { min: 0, max: 100 },          // une humidité relative reste dans 0-100 %
+    monotone: true,                        // pas de dépassement de la courbe au-delà de 100 %
     getData: d => {
-      return d.daily.time.slice(0,15).map((t,i) => {
-        const dayIdxs = d.hourly.time.reduce((a,h,idx) => h.startsWith(t)?[...a,idx]:a,[]);
-        const vals = dayIdxs.map(idx=>d.hourly.relativehumidity_2m[idx]).filter(v=>v!=null);
-        const avg  = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null;
-        return { x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}), y:avg };
+      // Un seul passage sur les données horaires : somme et effectif par jour.
+      const acc = {};
+      const hum = d.hourly.relativehumidity_2m;
+      d.hourly.time.forEach((h, idx) => {
+        const v = hum[idx];
+        if (v == null) return;
+        const a = (acc[h.slice(0, 10)] ??= { s: 0, n: 0 });
+        a.s += v; a.n++;
+      });
+      return d.daily.time.slice(0,15).map(t => {
+        const a = acc[t];
+        return { x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'}),
+                 y: a ? Math.round(a.s / a.n) : null };
       });
     },
   },
@@ -4150,6 +4162,8 @@ function buildChart(d) {
     borderColor: cfg.color,
     backgroundColor: isBar ? cfg.color + 'cc' : cfg.fill,
     fill: !isBar, tension: cfg.tension ?? 0.4,
+    ...(cfg.monotone ? { cubicInterpolationMode: 'monotone' } : {}),
+    ...(cfg.yRange ? { clip: 6 } : {}),   // évite de rogner les points posés sur 0 % / 100 %
     ...(cfg.segment ? { segment: cfg.segment } : {}),
     borderWidth: isBar ? 0 : 2,
     ...(pts ? {
@@ -4230,7 +4244,8 @@ function buildChart(d) {
         x: { type:'category', grid:{ color:gridColor },
              ticks:{ color:tickColor, font, maxRotation:0,
                      callback(v) { return v === 0 ? 'Auj.' : this.getLabelForValue(v); } } },
-        y: { ticks:{ color:tickColor, font }, grid:{ color:gridColor },
+        y: { ticks:{ color:tickColor, font, ...(cfg.unit ? { callback: v => v + cfg.unit } : {}) }, grid:{ color:gridColor },
+             ...(cfg.yRange ?? {}),
              ...(cfg.yMax ? { beginAtZero: true, suggestedMax: cfg.yMax(d) } : {}) },
       },
     },
