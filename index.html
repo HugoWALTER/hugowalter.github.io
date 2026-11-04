@@ -446,6 +446,11 @@
       font-family: var(--fd); font-size: 1.35rem; font-weight: 800;
       letter-spacing: 0; color: var(--txt); text-decoration: none;
     }
+    /* Logo cliquable = retour en haut de page. Zone tactile >= 44 px de haut, sans changer la mise en page. */
+    a.logo { cursor: pointer; padding: 6px 8px; margin: -6px -8px; border-radius: 10px; -webkit-tap-highlight-color: transparent; }
+    a.logo:active { opacity: .7; }
+    a.logo:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (hover: hover) { a.logo:hover { opacity: .85; } }
     .logo-icon { width: 32px; height: 32px;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       border-radius: 8px; display: flex; align-items: center; justify-content: center;
@@ -790,6 +795,7 @@
     .legend-title { font-size: 0.62rem; color: var(--txt2); text-transform: uppercase; letter-spacing: 0; margin-bottom: 5px; }
     .legend-scale { display: flex; align-items: center; gap: 2px; }
     .legend-color { width: 18px; height: 7px; border-radius: 2px; }
+    .legend-snow { font-size: 0.56rem; color: var(--txt2); margin-top: 5px; white-space: nowrap; }
     .legend-labels { display: flex; justify-content: space-between; font-size: 0.58rem; color: var(--txt2); margin-top: 3px; }
 
     .radar-status {
@@ -953,7 +959,7 @@
     ══════════════════════════════════════════════════════════════ */
     .charts-section { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
     .chart-wrap { padding: 6px 16px 16px; height: 220px; }
-    .chart-note { margin: -6px 16px 14px; font-size: .66rem; line-height: 1.4; color: var(--txt2); }
+    .chart-note { margin: -6px 16px 14px; font-size: .72rem; line-height: 1.45; color: var(--txt2); }
 
     /* Vigilance indisponible : neutre, une ligne, boutons tactiles (>= 36 px de haut). */
     .alert-compact.vig-unavailable { border-color: var(--border); background: var(--surface2); }
@@ -1244,6 +1250,7 @@
       color: var(--accent); text-decoration: none; opacity: 0.85;
     }
     .alert-source-link:hover { opacity: 1; text-decoration: underline; }
+    .alert-source-link + .alert-source-link { display: block; margin-top: 6px; }
     @media (max-width: 700px) {
       .hw-grid { grid-template-columns: repeat(2, 1fr); }
       .hw-badge { margin-left: 0; }
@@ -1547,11 +1554,11 @@
       .hour-time { font-size: 0.6rem; }
       .hour-temp { font-size: 0.82rem; }
       /* Charts */
-      .chart-tabs { padding: 10px 12px 0; gap: 3px; }
+      .chart-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 10px 12px 0; gap: 6px; }
       .stats-section { grid-template-columns: repeat(2,1fr); gap: 10px; }
-      .chart-tab { font-size: 0.65rem; padding: 4px 8px; }
+      .chart-tab { font-size: 0.72rem; min-height: 40px; padding: 6px 8px; display: flex; align-items: center; justify-content: center; text-align: center; border-color: var(--border); }
       .chart-wrap { height: 220px; padding: 4px 10px 12px; }
-      .chart-note { margin: -4px 10px 12px; font-size: .62rem; }
+      .chart-note { margin: -4px 10px 12px; font-size: .7rem; }
       .week-gust { font-size: 0.58rem; padding: 3px 5px; }
       .stat-card { padding: 12px; min-height: 100px; }
       .stat-value { font-size: 1.15rem; }
@@ -1618,7 +1625,7 @@
 
   <!-- ════════════════════ HEADER ════════════════════ -->
   <header>
-    <div class="logo">
+    <a class="logo" id="logo-top" href="#" aria-label="WeatherRadar, retour en haut de la page">
       <div class="logo-icon">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="12" cy="12" r="2.5" fill="white"/>
@@ -1628,7 +1635,7 @@
         </svg>
       </div>
       WeatherRadar
-    </div>
+    </a>
 
     <!-- Navigation -->
     <nav class="header-nav" aria-label="Sections">
@@ -1739,6 +1746,7 @@
               <div class="legend-labels">
                 <span>0.1</span><span>1</span><span>5</span><span>10</span><span>25</span><span>50+</span>
               </div>
+              <div class="legend-snow">❄ Neige : bleu pâle → bleu vif</div>
             </div>
           </div>
           <div class="radar-status">
@@ -3729,6 +3737,206 @@ function refreshOfficialViews() {
   if (S.chartType === 'wind' && S.chart) buildChart(S.forecast);
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// PLUIE À 15 MINUTES (nowcast) — remplace la prévision radar que RainViewer ne
+// fournit plus. Requête séparée et légère (Open-Meteo minutely_15) : en cas
+// d'échec, la tuile « Prochaine pluie » garde sa logique horaire d'origine.
+// ───────────────────────────────────────────────────────────────────────────
+const NOWCAST_WET_MM = 0.1;               // mm par pas de 15 min (≈ 0,4 mm/h) : seuil « il pleut »
+const NOWCAST_HORIZON_MS = 2 * 36e5;      // on regarde les 2 prochaines heures
+let _nowcastKey = null;
+
+function rainIntensityLabel(mmh) {
+  if (mmh < 0.5) return 'très faible';
+  if (mmh < 2.5) return 'faible';
+  if (mmh < 7.6) return 'modérée';
+  return 'forte';
+}
+
+// Les pas de 15 min d'Open-Meteo portent l'heure de FIN du pas (cumul des 15 min précédentes).
+// Renvoie { state:'ongoing'|'soon', … } ou null s'il ne pleut pas dans les 2 heures.
+function nextRainFromNowcast(n, nowMs = Date.now(), thr = NOWCAST_WET_MM) {
+  if (!n || !Array.isArray(n.time) || !Array.isArray(n.precip)) return null;
+  const off = (n.offset ?? 3600) * 1000, STEP = 15 * 60e3;
+  const slots = [];
+  for (let i = 0; i < n.time.length; i++) {
+    const end = Date.parse(`${n.time[i]}Z`) - off;
+    const mm = n.precip[i];
+    if (Number.isNaN(end) || mm == null) continue;
+    if (end <= nowMs || end - STEP >= nowMs + NOWCAST_HORIZON_MS) continue;
+    slots.push({ start: end - STEP, end, mm });
+  }
+  slots.sort((a, b) => a.start - b.start);
+  if (!slots.length) return null;
+  const wet = sl => sl.mm >= thr;
+  if (wet(slots[0]) && slots[0].start <= nowMs) {
+    let k = 0;
+    while (k + 1 < slots.length && wet(slots[k + 1])) k++;
+    return { state: 'ongoing', off,
+             endMs: k + 1 < slots.length ? slots[k].end : null,
+             rate: Math.max(...slots.slice(0, k + 1).map(sl => sl.mm)) * 4 };
+  }
+  const first = slots.find(wet);
+  if (!first) return null;
+  return { state: 'soon', off, startMs: first.start, rate: first.mm * 4,
+           inMin: Math.max(0, Math.round((first.start - nowMs) / 6e4)) };
+}
+
+// Le pas de 15 min n'est natif que sur certaines régions (Europe, Amérique du Nord) :
+// ailleurs Open-Meteo l'interpole depuis l'horaire → pas plus précis, on ne l'utilise pas.
+function isNowcastRegion(lat, lon) {
+  return (lat >= 34 && lat <= 72 && lon >= -12 && lon <= 45)
+      || (lat >= 24 && lat <= 72 && lon >= -170 && lon <= -50);
+}
+
+async function fetchNowcast15(lat, lon) {
+  const u = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
+    + `&minutely_15=precipitation&forecast_days=2&timezone=auto`;
+  const r = await fetchWithTimeout(u, 8000);
+  if (!r.ok) throw new Error('Nowcast ' + r.status);
+  const j = await r.json();
+  const m = j && j.minutely_15;
+  if (!m || !Array.isArray(m.time) || !Array.isArray(m.precipitation)) throw new Error('Nowcast : format inattendu');
+  return { time: m.time, precip: m.precipitation, offset: j.utc_offset_seconds ?? 3600 };
+}
+
+async function loadNowcast15() {
+  if (!isNowcastRegion(S.lat, S.lon)) return;
+  const key = `${S.lat},${S.lon}`;
+  _nowcastKey = key;
+  try {
+    const n = await fetchNowcast15(S.lat, S.lon);
+    if (_nowcastKey !== key) return;          // l'utilisateur a changé de ville entre-temps
+    S.nowcast = n;
+    applyNowcastToTile();
+  } catch (err) {
+    console.warn('Pluie à 15 min indisponible :', err);   // non critique
+  }
+}
+
+// Met à jour la tuile « Prochaine pluie » EN PLACE (pas de re-rendu de la grille, donc pas de scintillement).
+function applyNowcastToTile() {
+  const card = document.querySelector('.stat-card[data-stat="next-rain"]');
+  if (!card || !S.nowcast) return;
+  const r = nextRainFromNowcast(S.nowcast);
+  if (!r) return;                             // rien d'imminent : on garde la logique horaire (48 h)
+  const d = S.forecast;
+  let isSnow = false;
+  if (d && d.hourly) {
+    const idx = d.hourly.time.indexOf(currentHourKey(d));
+    isSnow = idx >= 0 && wmoInfo(d.hourly.weathercode?.[idx]).effect === 'snow';
+  }
+  const hhmm = ms => new Date(ms + r.off).toISOString().slice(11, 16);
+  const rate = `≈ ${r.rate.toFixed(1)} mm/h`;
+  let icon, label, value, sub;
+  if (r.state === 'ongoing') {
+    icon  = isSnow ? '❄️' : '🌧';
+    label = isSnow ? 'Neige en cours' : 'Pluie en cours';
+    value = r.endMs ? `Fin ~${hhmm(r.endMs)}` : 'Plus de 2 h';
+    sub   = `${rate} · ${rainIntensityLabel(r.rate)}`;
+  } else {
+    icon  = isSnow ? '❄️' : '🌂';
+    label = isSnow ? 'Prochaine neige' : 'Prochaine pluie';
+    value = hhmm(r.startMs);
+    sub   = `${r.inMin < 3 ? 'Imminente' : `Dans ~${Math.round(r.inMin / 5) * 5} min`} · ${rate}`;
+  }
+  card.querySelector('.stat-icon').textContent  = icon;
+  card.querySelector('.stat-label').textContent = label;
+  card.querySelector('.stat-value').textContent = value;
+  card.querySelector('.stat-sub').textContent   = sub;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// PLAGE PROBABLE DES RAFALES — ensemble ECMWF (51 scénarios), chargée À LA DEMANDE
+// (seulement quand l'onglet « Vent » est ouvert) et sans effet si l'API ne répond pas
+// ou change de format : le graphique reste alors exactement comme avant.
+// ───────────────────────────────────────────────────────────────────────────
+let _ensembleKey = null;
+
+function percentile(values, q) {
+  const a = values.filter(v => Number.isFinite(v)).sort((x, y) => x - y);
+  if (!a.length) return null;
+  const pos = (a.length - 1) * q, lo = Math.floor(pos), hi = Math.ceil(pos);
+  return a[lo] + (a[hi] - a[lo]) * (pos - lo);
+}
+
+// Rafale max de chaque jour pour chaque scénario → percentiles 10 et 90 par jour.
+function ensembleDailyBands(json) {
+  const h = json && json.hourly;
+  if (!h || !Array.isArray(h.time)) return null;
+  const keys = Object.keys(h).filter(k => /^wind_?gusts_10m(_member\d+)?$/.test(k) && Array.isArray(h[k]));
+  if (keys.length < 10) return null;           // trop peu de scénarios : pas une vraie plage
+  const perDay = new Map();
+  h.time.forEach((t, i) => {
+    const date = String(t).slice(0, 10);
+    let rec = perDay.get(date);
+    if (!rec) { rec = {}; perDay.set(date, rec); }
+    for (const k of keys) {
+      const v = h[k][i];
+      if (Number.isFinite(v) && (rec[k] === undefined || v > rec[k])) rec[k] = v;
+    }
+  });
+  const byDate = {};
+  for (const [date, rec] of perDay) {
+    const vals = Object.values(rec);
+    if (vals.length < 10) continue;
+    byDate[date] = { p10: Math.round(percentile(vals, 0.1)), p90: Math.round(percentile(vals, 0.9)) };
+  }
+  return Object.keys(byDate).length ? { byDate, members: keys.length } : null;
+}
+
+async function ensureGustEnsemble() {
+  const key = `${S.lat},${S.lon}`;
+  if (_ensembleKey === key) return;            // déjà chargée (ou déjà tentée) pour cette ville
+  _ensembleKey = key;
+  try {
+    const u = `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${S.lat}&longitude=${S.lon}`
+      + `&hourly=wind_gusts_10m&models=ecmwf_ifs025&forecast_days=15&timezone=auto&wind_speed_unit=kmh`;
+    const r = await fetchWithTimeout(u, 15000);
+    if (!r.ok) throw new Error('Ensemble ' + r.status);
+    const bands = ensembleDailyBands(await r.json());
+    if (!bands) throw new Error('Ensemble : format inattendu');
+    if (_ensembleKey !== key) return;          // ville changée entre-temps
+    S.gustEnsemble = bands;
+    applyEnsembleBand();
+  } catch (err) {
+    console.warn('Plage probable des rafales indisponible :', err);   // non critique
+  }
+}
+
+// Ajoute la zone au graphique vent déjà affiché (sans le reconstruire). Elle englobe
+// TOUJOURS la prévision principale : [min(p10, prévision) ; max(p90, prévision)].
+function applyEnsembleBand() {
+  const ch = S.chart, ens = S.gustEnsemble;
+  if (!ch || !ch.$wind || !ens || !S.forecast) return;
+  if (ch.data.datasets.some(ds => ds._band)) return;       // déjà appliquée
+  const det = ch.data.datasets[0].data;
+  const days = S.forecast.daily.time.slice(0, 15);
+  const high = [], low = [];
+  det.forEach((pt, i) => {
+    const b = ens.byDate[days[i]];
+    if (!b || !pt || pt.y == null) { high.push({ x: pt?.x, y: null }); low.push({ x: pt?.x, y: null }); return; }
+    high.push({ x: pt.x, y: Math.max(b.p90, pt.y) });
+    low.push({ x: pt.x, y: Math.min(b.p10, pt.y) });
+  });
+  const base = { borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, pointHitRadius: 0, tension: 0.25, order: 10 };
+  ch.data.datasets.push(
+    { ...base, label: 'Plage probable (10–90 %)', data: high, _band: 'high', fill: '+1',
+      backgroundColor: 'rgba(128,203,196,0.18)', borderColor: 'rgba(128,203,196,0.18)' },
+    { ...base, label: 'Plage probable (bas)', data: low, _band: 'low', fill: false,
+      backgroundColor: 'transparent', borderColor: 'transparent' },
+  );
+  const noteEl = document.getElementById('chart-note');
+  const t = CHART_CONFIGS.wind.note(S.forecast);
+  if (noteEl) { noteEl.textContent = t; noteEl.hidden = !t; }
+  ch.update();
+}
+
+// Les graphiques ne doivent pas s'animer si l'utilisateur a demandé moins d'animations.
+function chartAnimOff() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
 // Seuil d'affichage de la pastille de rafales dans la liste des jours et la bande horaire (km/h).
 const WEEK_GUST_BADGE_MIN = 60;
 // Seuil d'affichage des rafales dans le bandeau d'en-tête (évite le bruit par temps calme).
@@ -3782,7 +3990,7 @@ const todayMarkerPlugin = {
 const windPeakLabelPlugin = {
   id: 'windPeakLabel',
   afterDatasetsDraw(chart, _args, opts) {
-    if (!opts || !opts.enabled) return;
+    if (!opts || !opts.enabled || !chart.isDatasetVisible(0)) return;
     const data = chart.data.datasets[0]?.data || [];
     let idx = -1, best = -Infinity;
     data.forEach((p, i) => { const v = p?.y; if (v != null && v > best) { best = v; idx = i; } });
@@ -3888,9 +4096,12 @@ const CHART_CONFIGS = {
         return { color: c2, border: c2, borderWidth: 1, radius: compact ? 3 : 4 };
       });
     },
-    note: d => (windOfficialByDay(d).some(v => v !== null)
-        ? 'Points cerclés : niveau officiel Météo-France « vent violent » (aujourd’hui, demain). ' : '')
-      + 'Rafales = pic horaire du jour (modèle). Autres jours : repères indicatifs, les seuils réels varient selon le département. Pointillés et points clairs : prévision peu fiable à partir de J+6.',
+    note: d => [
+      windOfficialByDay(d).some(v => v !== null) ? 'Points cerclés : niveau officiel Météo-France (aujourd’hui, demain).' : '',
+      'Rafales = pic horaire du jour (modèle) ; repères indicatifs, seuils réels variables selon le département.',
+      'Pointillés : peu fiable dès J+6.',
+      S.gustEnsemble ? 'Zone : plage probable (10–90 % des scénarios ECMWF).' : '',
+    ].filter(Boolean).join(' '),
     yMax: d => {
       const m = Math.max(0, ...d.daily.time.slice(0,15).map((t,i) => d.daily.windgusts_10m_max?.[i] ?? 0));
       const next = WIND_GUST_REF.find(l => l.v > m);
@@ -3965,6 +4176,7 @@ function buildChart(d) {
   canvasEl.setAttribute('role', 'img');
   canvasEl.setAttribute('aria-label', chartAriaLabel(cfg, datasets[0].data, official));
   const ctx = canvasEl.getContext('2d');
+  const compactLegend = !!(window.matchMedia && window.matchMedia('(max-width: 480px)').matches);
   const gridColor = 'rgba(255,255,255,0.05)';
   const tickColor = '#8990ae';
   const font = { family:'Inter', size:10 };
@@ -3974,10 +4186,14 @@ function buildChart(d) {
     plugins: [windThresholdsPlugin, windPeakLabelPlugin, todayMarkerPlugin],
     options: {
       responsive: true, maintainAspectRatio: false,
+      ...(chartAnimOff() ? { animation: false } : {}),
       interaction: { mode:'index', intersect:false },
       layout: cfg.peakLabel ? { padding: { top: 18 } } : {},
       plugins: {
-        legend: { labels: { color:tickColor, font:{ family:'Inter',size:11 }, boxWidth:12, padding:16 } },
+        legend: { labels: { color:tickColor, font:{ family:'Inter',size:11 }, boxWidth:12, padding:16,
+                            // Zone de plage probable : une seule entrée, et seulement hors petit écran (en mobile
+                            // elle ferait passer la légende sur 2 lignes ; la note sous le graphique l'explique).
+                            filter: (item, data) => { const b = data.datasets[item.datasetIndex]?._band; return !b || (b === 'high' && !compactLegend); } } },
         tooltip: {
           backgroundColor:'rgba(7,9,15,0.96)',
           borderColor:'rgba(255,255,255,0.1)', borderWidth:1,
@@ -3985,15 +4201,25 @@ function buildChart(d) {
           titleFont:{ family:'Inter', size:12 },
           bodyFont:{ family:'Inter', size:11 },
           padding:10, cornerRadius:8,
+          filter: item => !item.dataset._band,          // la zone de plage probable n'apparaît pas comme une ligne
           callbacks: {
             footer: items => {
               if (!cfg.levels) return '';
+              const lines = [];
               const it = items.find(i => i.datasetIndex === 0);
-              if (!it) return '';
-              const sev = official?.[it.dataIndex];
-              if (sev != null) return `Vigilance officielle (vent) : ${VIGILANCE_NAMES_FR[sev]}`;
-              const lv = windGustLevel(it.raw?.y);
-              return lv ? `⚠ Rafales ≥ repère ${lv.label.toLowerCase()} (indicatif)` : '';
+              if (it) {
+                const sev = official?.[it.dataIndex];
+                if (sev != null) lines.push(`Vigilance officielle (vent) : ${VIGILANCE_NAMES_FR[sev]}`);
+                else {
+                  const lv = windGustLevel(it.raw?.y);
+                  if (lv) lines.push(`⚠ Rafales ≥ repère ${lv.label.toLowerCase()} (indicatif)`);
+                }
+                const dsets = it.chart.data.datasets;
+                const hi = dsets.find(ds => ds._band === 'high')?.data[it.dataIndex]?.y;
+                const lo = dsets.find(ds => ds._band === 'low')?.data[it.dataIndex]?.y;
+                if (hi != null && lo != null) lines.push(`Plage probable : ${lo}–${hi} km/h`);
+              }
+              return lines;
             },
           },
         },
@@ -4009,6 +4235,8 @@ function buildChart(d) {
       },
     },
   });
+  S.chart.$wind = !!cfg.peakLabel;              // marque le graphique vent (zone de plage probable)
+  if (cfg.peakLabel) { applyEnsembleBand(); ensureGustEnsemble(); }
 }
 
 // Onglets du graphique : clic, état ARIA et navigation clavier.
@@ -4620,7 +4848,7 @@ function renderStats(d) {
     { icon:'🔆', label:'Indice UV',
       value: `<span style="color:${uv.color};font-weight:700">${uvDisplay}</span>`,
       sub: uv.txt + (uvMax !== null ? ` · max ${Math.round(uvMax)}` : '') },
-    { icon: nextRainIcon, label: nextRainTitle,
+    { key: 'next-rain', icon: nextRainIcon, label: nextRainTitle,
       value: nextRainLabel,
       sub: nextRainSub },
     { icon:'🌡', label:'Amplitude du jour',  value:`${tMin}° / ${tMax}°`,     sub:`Écart ${tMax-tMin}°C` },
@@ -4680,13 +4908,14 @@ function renderStats(d) {
     // mais reste 1 à 2 colonnes → la 15ᵉ carte y est bel et bien seule).
     if (total % 2 === 1 && idx === lastIdx && !spanClass) spanClass = ' stat-span-full';
     return `
-    <div class="stat-card fade-in stagger-${(idx%4)+1}${spanClass}">
+    <div class="stat-card fade-in stagger-${(idx%4)+1}${spanClass}"${s.key ? ` data-stat="${s.key}"` : ''}>
       <div class="stat-icon">${s.icon}</div>
       <div class="stat-label">${s.label}</div>
       <div class="stat-value">${s.value}</div>
       <div class="stat-sub">${s.sub}</div>
     </div>`;
   }).join('');
+  applyNowcastToTile();    // si la pluie à 15 min est déjà arrivée (re-rendu de la grille)
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -5515,6 +5744,8 @@ function renderVigilance(records) {
     to:   Math.max(...windRecs.map(r => tOf(r.end_time) ?? now + 36 * 36e5)),
   } : null;
   const gustWindowBox = S._vigWind ? '<div class="vig-gust-window" id="vig-gust-window" hidden></div>' : '';
+  const crueLink = activeList.some(r => r.phenomenon === 'crues')
+    ? `<a class="alert-source-link" href="https://www.vigicrues.gouv.fr/" target="_blank" rel="noopener">Suivre les crues sur vigicrues.gouv.fr ↗</a>` : '';
   const othersTag = others.length ? ` · +${others.length} autre${others.length > 1 ? 's' : ''}` : '';
 
   // Période : fenêtre horaire englobant tous les phénomènes déclencheurs.
@@ -5592,7 +5823,7 @@ function renderVigilance(records) {
         </div>
         <a class="alert-source-link" href="https://vigilance.meteofrance.fr/" target="_blank" rel="noopener">
           Voir la carte officielle sur vigilance.meteofrance.fr ↗
-        </a>
+        </a>${crueLink}
       </div>
     </div>`;
   banner.style.display = '';
@@ -6215,6 +6446,8 @@ async function loadAll() {
   S.vigilanceRecords = null;   // évite d'appliquer la vigilance de l'ancienne ville
   S._vigWind = null;
   S._forecastReady = false;    // le créneau de rafales attend la météo de la NOUVELLE ville
+  S.nowcast = null; _nowcastKey = null;          // pluie à 15 min de l'ancienne ville
+  S.gustEnsemble = null; _ensembleKey = null;    // plage probable des rafales de l'ancienne ville
   updateMarker();
   document.getElementById('city-name').textContent    = S.city;
   document.getElementById('city-country').textContent = S.region;
@@ -6276,6 +6509,7 @@ async function loadAll() {
     renderPressureCard(wData);
     renderHeatwave(wData);
     updateVigilanceGustWindow();
+    loadNowcast15();            // non bloquant : met la tuile « Prochaine pluie » à jour si ça répond
   } catch(err) {
     console.error('Erreur chargement météo:', err);
     document.getElementById('today-skeleton').innerHTML =
@@ -6403,6 +6637,18 @@ function focusSearch() {
   const searchInput = document.getElementById('search-input');
   if (searchInput) searchInput.focus({ preventScroll: true });
 }
+
+// Le logo ramène en haut de page. L'en-tête est sticky : le logo est donc visible (et
+// cliquable) où que l'on soit dans la page. On respecte prefers-reduced-motion.
+(function () {
+  const logo = document.getElementById('logo-top');
+  if (!logo) return;
+  logo.addEventListener('click', e => {
+    e.preventDefault();                       // pas de « # » ajouté à l'URL
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+  });
+})();
 
 function goToSearch() {
   if (window.scrollY > 0) {
