@@ -1025,7 +1025,7 @@
     .pollutant-name { font-size: 0.7rem; color: var(--txt2); width: 38px; flex-shrink: 0; }
     .pollutant-bar-bg { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
     .pollutant-bar-fill { height: 100%; border-radius: 2px; transition: width 1.6s ease; }
-    .pollutant-val { font-size: 0.68rem; color: var(--txt2); width: 52px; text-align: right; flex-shrink: 0; }
+    .pollutant-val { font-size: 0.68rem; color: var(--txt2); min-width: 66px; text-align: right; white-space: nowrap; flex-shrink: 0; }
 
     /* ── Pollens ─────────────────────────────────────────────────── */
     .pollen-body { padding: 14px 20px 20px; }
@@ -2368,13 +2368,13 @@ function fillFavoriteTemps(favs, scopeEl) {
       return;
     }
     try {
-      const u = `https://api.open-meteo.com/v1/forecast?latitude=${f.lat}&longitude=${f.lon}&current_weather=true&timezone=auto`;
+      const u = `https://api.open-meteo.com/v1/forecast?latitude=${f.lat}&longitude=${f.lon}&current=temperature_2m,weather_code&timezone=auto`;
       const r = await fetchWithTimeout(u, 8000);
       if (!r.ok) return;
       const j = await r.json();
-      const cw = j.current_weather;
-      if (!cw) return;
-      const data = { temp: Math.round(cw.temperature), icon: wmoInfo(cw.weathercode).icon, ts: Date.now() };
+      const cw = j.current;
+      if (!cw || cw.temperature_2m == null) return;
+      const data = { temp: Math.round(cw.temperature_2m), icon: wmoInfo(cw.weather_code).icon, ts: Date.now() };
       _favTempCache.set(key, data);
       const el = scopeEl.querySelector(`[data-fs-temp="${i}"]`);
       if (el) el.textContent = `${data.icon} ${data.temp}°`;
@@ -2682,7 +2682,7 @@ async function reverseGeocodeToLocation(lat, lon) {
     country: '', countryCode: '', lat, lon, timezone: 'auto', source: 'geoloc',
   };
   try {
-    const u = `https://data.geopf.fr/geocodage/reverse/?lon=${lon}&lat=${lat}&limit=1`;
+    const u = `https://data.geopf.fr/geocodage/reverse?lon=${lon}&lat=${lat}&limit=1`;
     const r = await fetchWithTimeout(u, 6000);
     if (!r.ok) return fallback;
     const j = await r.json();
@@ -3131,18 +3131,50 @@ document.getElementById('anim-btn').addEventListener('click', function() {
 // ──────────────────────────────────────────────────────────────────
 // OPEN-METEO FETCH
 // ──────────────────────────────────────────────────────────────────
+// Open-Meteo documente wind_speed_10m, weather_code, relative_humidity_2m… et le paramètre
+// `current`. Le reste de l'application lit encore les clés historiques (windspeed_10m,
+// weathercode, relativehumidity_2m… et `current_weather`) : on les reconstruit ICI, à la
+// frontière réseau, pour que toute la logique d'affichage reste inchangée. Idempotent.
+const _FC_HOURLY_KEYS = {
+  weather_code: 'weathercode', wind_speed_10m: 'windspeed_10m', relative_humidity_2m: 'relativehumidity_2m',
+  cloud_cover: 'cloudcover', dew_point_2m: 'dewpoint_2m', wind_gusts_10m: 'windgusts_10m',
+  wind_direction_10m: 'winddirection_10m',
+};
+const _FC_DAILY_KEYS = {
+  weather_code: 'weathercode', wind_speed_10m_max: 'windspeed_10m_max', wind_gusts_10m_max: 'windgusts_10m_max',
+};
+function normalizeForecast(j) {
+  if (!j || typeof j !== 'object') return j;
+  const rename = (obj, map) => {
+    if (!obj) return;
+    for (const [fresh, legacy] of Object.entries(map)) {
+      if (obj[fresh] !== undefined && obj[legacy] === undefined) { obj[legacy] = obj[fresh]; delete obj[fresh]; }
+    }
+  };
+  rename(j.hourly, _FC_HOURLY_KEYS);
+  rename(j.daily, _FC_DAILY_KEYS);
+  const c = j.current;
+  if (c && !j.current_weather) {
+    j.current_weather = {
+      time: c.time, temperature: c.temperature_2m, windspeed: c.wind_speed_10m,
+      winddirection: c.wind_direction_10m, weathercode: c.weather_code, is_day: c.is_day,
+    };
+  }
+  return j;
+}
+
 async function fetchWeather() {
   const u = `https://api.open-meteo.com/v1/forecast`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=temperature_2m,weathercode,precipitation,precipitation_probability,windspeed_10m,relativehumidity_2m,apparent_temperature,uv_index,cloudcover,pressure_msl,surface_pressure,dewpoint_2m,windgusts_10m,winddirection_10m,visibility,snow_depth,freezing_level_height,cape`
-    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,snowfall_sum,windspeed_10m_max,windgusts_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration,sunshine_duration`
-    + `&current_weather=true`
+    + `&hourly=temperature_2m,weather_code,precipitation,precipitation_probability,wind_speed_10m,relative_humidity_2m,apparent_temperature,uv_index,cloud_cover,pressure_msl,surface_pressure,dew_point_2m,wind_gusts_10m,wind_direction_10m,visibility,snow_depth,freezing_level_height,cape`
+    + `&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,sunrise,sunset,precipitation_hours,uv_index_max,daylight_duration,sunshine_duration`
+    + `&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,is_day`
     + `&wind_speed_unit=kmh`
     + `&forecast_days=16`
     + `&timezone=auto`;
   const r = await fetch(u);
   if (!r.ok) throw new Error('Open-Meteo ' + r.status);
-  return r.json();
+  return normalizeForecast(await r.json());
 }
 
 // Attend soit `ms`, soit le retour de connexion — le plus rapide des deux.
@@ -3182,7 +3214,7 @@ async function fetchWeatherResilient(maxAttempts = 4) {
 async function fetchAQI() {
   const u = `https://air-quality-api.open-meteo.com/v1/air-quality`
     + `?latitude=${S.lat}&longitude=${S.lon}`
-    + `&hourly=pm2_5,pm10,nitrogen_dioxide,ozone,european_aqi,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`
+    + `&hourly=pm2_5,pm10,nitrogen_dioxide,ozone,sulphur_dioxide,european_aqi,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`
     + `&timezone=auto&forecast_days=1`;
   const r = await fetch(u);
   if (!r.ok) throw new Error('AQI ' + r.status);
@@ -3213,7 +3245,7 @@ async function fetchWithTimeout(url, ms = 8000) {
 }
 
 async function resolveDepartmentCode(lat, lon) {
-  const u = `https://data.geopf.fr/geocodage/reverse/?lon=${lon}&lat=${lat}&limit=1`;
+  const u = `https://data.geopf.fr/geocodage/reverse?lon=${lon}&lat=${lat}&limit=1`;
   const r = await fetchWithTimeout(u);
   if (!r.ok) throw new Error('Geocodage ' + r.status);
   const j = await r.json();
@@ -3247,7 +3279,7 @@ async function fetchMarine() {
   const u = `https://marine-api.open-meteo.com/v1/marine`
     + `?latitude=${S.lat}&longitude=${S.lon}`
     + `&hourly=sea_surface_temperature,wave_height,wave_period,wave_direction`
-    + `&daily=sea_surface_temperature_max,sea_surface_temperature_min,wave_height_max`
+    + `&daily=wave_height_max`
     + `&timezone=auto&forecast_days=2`;
   const r = await fetch(u);
   if (!r.ok) throw new Error('Marine ' + r.status);
@@ -3424,6 +3456,12 @@ function renderToday(d) {
 // MINI GRAPHIQUE INLINE (températures + précipitations 24h)
 // ──────────────────────────────────────────────────────────────────
 let _inlineChart = null;
+// Math.round(-0.3) vaut -0 : Chart.js (Intl.NumberFormat) l'affiche « -0 » dans l'infobulle.
+// On ramène ce zéro négatif à 0 pour toutes les températures tracées.
+function roundTemp(v) {
+  const r = Math.round(v);
+  return r === 0 ? 0 : r;
+}
 function buildInlineChart(d) {
   const hi = d.hourly;
   const curKey = currentHourKey(d);
@@ -3436,7 +3474,7 @@ function buildInlineChart(d) {
   for (let i = startIdx; i < Math.min(startIdx + hours, hi.time.length); i++) {
     const dt = new Date(hi.time[i] + ':00');
     labels.push(dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
-    temps.push(Math.round(hi.temperature_2m[i] ?? null));
+    temps.push(roundTemp(hi.temperature_2m[i] ?? null));
     precips.push(+(hi.precipitation[i] ?? 0).toFixed(1));
     probs.push(hi.precipitation_probability?.[i] ?? 0);
   }
@@ -4055,15 +4093,16 @@ const windThresholdsPlugin = {
 const CHART_CONFIGS = {
   temp: {
     label: 'T° Max (°C)', color: '#ffb74d', fill: 'rgba(255,183,77,0.07)',
+    unit: '°', intTicks: true,   // graduations « 5° » (comme le graphique 24 h), toujours entières
     getData: d => d.daily.time.slice(0,15).map((t,i) => ({
       x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'}),
-      y: Math.round(d.daily.temperature_2m_max[i]),
+      y: roundTemp(d.daily.temperature_2m_max[i]),
     })),
     extra: d => ({
       label:'T° Min (°C)', color:'#81d4fa',
       data: d.daily.time.slice(0,15).map((t,i) => ({
         x: new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'}),
-        y: Math.round(d.daily.temperature_2m_min[i]),
+        y: roundTemp(d.daily.temperature_2m_min[i]),
       })),
     }),
   },
@@ -4244,7 +4283,8 @@ function buildChart(d) {
         x: { type:'category', grid:{ color:gridColor },
              ticks:{ color:tickColor, font, maxRotation:0,
                      callback(v) { return v === 0 ? 'Auj.' : this.getLabelForValue(v); } } },
-        y: { ticks:{ color:tickColor, font, ...(cfg.unit ? { callback: v => v + cfg.unit } : {}) }, grid:{ color:gridColor },
+        y: { ticks:{ color:tickColor, font, ...(cfg.intTicks ? { precision: 0 } : {}),
+                     ...(cfg.unit ? { callback: v => v + cfg.unit } : {}) }, grid:{ color:gridColor },
              ...(cfg.yRange ?? {}),
              ...(cfg.yMax ? { beginAtZero: true, suggestedMax: cfg.yMax(d) } : {}) },
       },
@@ -4305,6 +4345,7 @@ function renderAQI(data) {
   const pm10 = data.hourly.pm10[idx];
   const no2  = data.hourly.nitrogen_dioxide[idx];
   const o3   = data.hourly.ozone[idx];
+  const so2  = data.hourly.sulphur_dioxide?.[idx];
 
   let label, color;
   if      (aqi <= 20)  { label='Bon';                  color='#4caf50'; }
@@ -4326,25 +4367,23 @@ function renderAQI(data) {
   const aqiFrac = Math.min(1, Math.max(0, (aqi - aqiEdges[aqiBand]) / (aqiEdges[aqiBand + 1] - aqiEdges[aqiBand])));
   document.getElementById('aqi-pointer').style.left = `${Math.min(95, ((aqiBand + aqiFrac) / 6) * 100).toFixed(1)}%`;
 
-  // Paliers internes (µg/m³) : [bon, moyen, dégradé, mauvais]
-  // Seul le 1er palier de chaque polluant correspond aux recommandations OMS 2021
-  // (PM2.5 15 · PM10 45 · NO₂ 25 · O₃ 100) ; les suivants ne sont pas ceux de l'indice
-  // européen : la couleur d'une barre peut donc différer de l'indice global ci-dessus.
+  // Bandes de l'indice européen (EEA, révision 2024 — celles qu'applique Open-Meteo à des
+  // concentrations HORAIRES, en µg/m³) : [bon, moyen, modéré, mauvais, très mauvais] ;
+  // au-delà du dernier palier : extrêmement mauvais. Mêmes couleurs que l'indice global.
+  const AQI_BAND_COLORS = ['#4caf50', '#8bc34a', '#fdd835', '#ff9800', '#f44336', '#9c27b0'];
   function pollutantColor(val, thresholds) {
     if (val == null || isNaN(val)) return 'var(--border2)';
-    const [t1, t2, t3] = thresholds;
-    if (val <= t1) return '#4caf50';   // bon — vert
-    if (val <= t2) return '#fdd835';   // moyen — jaune
-    if (val <= t3) return '#ff9800';   // dégradé — orange
-    return '#f44336';                  // mauvais — rouge
+    const i = thresholds.findIndex(t => val <= t);
+    return AQI_BAND_COLORS[i === -1 ? thresholds.length : i];
   }
 
   const pols = [
-    { name:'PM2.5', val:pm25, max:75,  unit:'µg/m³', thresholds:[15, 25, 50]  },
-    { name:'PM10',  val:pm10, max:200, unit:'µg/m³', thresholds:[45, 75, 150] },
-    { name:'NO₂',   val:no2,  max:200, unit:'µg/m³', thresholds:[25, 50, 100] },
-    { name:'O₃',    val:o3,   max:240, unit:'µg/m³', thresholds:[100,130,160] },
-  ];
+    { name:'PM2.5', val:pm25, max:75,  unit:'µg/m³', thresholds:[5, 15, 50, 90, 140]      },
+    { name:'PM10',  val:pm10, max:200, unit:'µg/m³', thresholds:[15, 45, 120, 195, 270]   },
+    { name:'NO₂',   val:no2,  max:200, unit:'µg/m³', thresholds:[10, 25, 60, 100, 150]    },
+    { name:'O₃',    val:o3,   max:240, unit:'µg/m³', thresholds:[60, 100, 120, 160, 180]  },
+    { name:'SO₂',   val:so2,  max:200, unit:'µg/m³', thresholds:[20, 40, 125, 190, 275]   },
+  ].filter(p => p.name !== 'SO₂' || typeof p.val === 'number');   // SO₂ : ligne masquée si absent
   document.getElementById('pollutants').innerHTML = pols.map(p => {
     const v    = typeof p.val === 'number' ? p.val : 0;
     const pct  = Math.min(100, (v / p.max) * 100).toFixed(1);
@@ -5405,8 +5444,12 @@ function renderWaterCard(marine) {
 
   const c   = waterComfort(sst);
   const day = marine.daily || {};
-  const tMax = day.sea_surface_temperature_max && day.sea_surface_temperature_max[0];
-  const tMin = day.sea_surface_temperature_min && day.sea_surface_temperature_min[0];
+  // Min/max du jour calculés sur la série horaire (agrégation journalière = 24 h d'horaire) :
+  // l'API marine ne documente pas sea_surface_temperature_max/min en variable journalière.
+  const d0 = String((hi.time || [])[0] || '').slice(0, 10);
+  const sstToday = series.filter((v, i) => v != null && isFinite(v) && String((hi.time || [])[i] || '').slice(0, 10) === d0);
+  const tMax = sstToday.length ? Math.max(...sstToday) : null;
+  const tMin = sstToday.length ? Math.min(...sstToday) : null;
 
   // toFixed(1) d'un petit négatif (ex. -0,04) donne "-0.0" : on le ramène
   // à "0.0". Une eau de mer proche de 0 °C n'a rien d'irréaliste (mers
