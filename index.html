@@ -1747,7 +1747,7 @@
               <div class="legend-labels">
                 <span>0.1</span><span>1</span><span>5</span><span>10</span><span>25</span><span>50+</span>
               </div>
-              <div class="legend-snow">❄ Neige : bleu pâle → bleu vif</div>
+              <div class="legend-snow">❄️ Neige : bleu pâle → bleu vif</div>
             </div>
           </div>
           <div class="radar-status">
@@ -1799,7 +1799,7 @@
             <div class="city-temp-row">
               <div class="city-temp-big" id="city-temp-big">--°</div>
               <div class="city-temp-right">
-                <span class="city-cond-icon" id="city-cond-icon">🌤</span>
+                <span class="city-cond-icon" id="city-cond-icon">🌤️</span>
                 <span class="city-cond-label" id="city-cond-label">--</span>
                 <span style="font-size:.72rem;color:var(--txt2)" id="city-cond-sub"></span>
               </div>
@@ -1883,8 +1883,8 @@
           </span>
         </div>
         <div class="chart-tabs" id="chart-tabs" role="tablist" aria-label="Donnée affichée dans le graphique">
-          <button class="chart-tab active" id="chart-tab-temp" role="tab" aria-selected="true" aria-controls="chart-panel" data-chart="temp">🌡 Températures</button>
-          <button class="chart-tab" id="chart-tab-precip" role="tab" tabindex="-1" aria-selected="false" aria-controls="chart-panel" data-chart="precip">🌧 Précipitations</button>
+          <button class="chart-tab active" id="chart-tab-temp" role="tab" aria-selected="true" aria-controls="chart-panel" data-chart="temp">🌡️ Températures</button>
+          <button class="chart-tab" id="chart-tab-precip" role="tab" tabindex="-1" aria-selected="false" aria-controls="chart-panel" data-chart="precip">🌧️ Précipitations</button>
           <button class="chart-tab" id="chart-tab-wind" role="tab" tabindex="-1" aria-selected="false" aria-controls="chart-panel" data-chart="wind">💨 Vent</button>
           <button class="chart-tab" id="chart-tab-humidity" role="tab" tabindex="-1" aria-selected="false" aria-controls="chart-panel" data-chart="humidity">💧 Humidité</button>
         </div>
@@ -2097,7 +2097,7 @@ const CITIES = [
 // WMO WEATHER CODE MAPPING
 // ──────────────────────────────────────────────────────────────────
 // Icône de nuit : soleil → lune, éclaircies → nuages, « soleil + pluie » → pluie.
-const _NIGHT_ICON = { '☀️': '🌙', '🌤': '🌙', '⛅': '☁️', '🌦': '🌧' };
+const _NIGHT_ICON = { '☀️': '🌙', '🌤️': '🌙', '⛅': '☁️', '🌦️': '🌧️' };
 // Vrai si l'instant local « AAAA-MM-JJTHH:MM » tombe avant le lever ou à/après le coucher du soleil
 // de ce jour (formats identiques à ceux de l'API : la comparaison de chaînes est exacte).
 function isNightAt(d, t) {
@@ -2112,41 +2112,41 @@ function wmoInfo(code, isNight = false) {
   const c = code ?? 0;
   const m = {
     0:  ['☀️', 'Ciel dégagé',           'sun'],
-    1:  ['🌤', 'Principalement dégagé', 'sun'],
+    1:  ['🌤️', 'Principalement dégagé', 'sun'],
     2:  ['⛅', 'Partiellement nuageux', 'partly-cloudy'],
     3:  ['☁️', 'Couvert',               'cloud'],
-    45: ['🌫', 'Brouillard',            'fog'],
-    48: ['🌫', 'Brouillard givrant',    'fog'],
-    51: ['🌦', 'Bruine légère',         'drizzle'],
-    53: ['🌦', 'Bruine modérée',        'drizzle'],
-    55: ['🌧', 'Bruine dense',          'drizzle'],
-    56: ['🌨', 'Bruine verglaçante',    'freezing-drizzle'],
-    57: ['🌨', 'Bruine verglaçante forte','freezing-drizzle'],
-    61: ['🌧', 'Pluie légère',          'rain'],
-    63: ['🌧', 'Pluie modérée',         'rain'],
-    65: ['🌧', 'Pluie forte',           'heavyrain'],
-    66: ['🌨', 'Pluie verglaçante',     'freezing-rain'],
-    67: ['🌨', 'Pluie verglaçante forte','freezing-rain'],
+    45: ['🌫️', 'Brouillard',            'fog'],
+    48: ['🌫️', 'Brouillard givrant',    'fog'],
+    51: ['🌦️', 'Bruine légère',         'drizzle'],
+    53: ['🌦️', 'Bruine modérée',        'drizzle'],
+    55: ['🌧️', 'Bruine dense',          'drizzle'],
+    56: ['🌨️', 'Bruine verglaçante',    'freezing-drizzle'],
+    57: ['🌨️', 'Bruine verglaçante forte','freezing-drizzle'],
+    61: ['🌧️', 'Pluie légère',          'rain'],
+    63: ['🌧️', 'Pluie modérée',         'rain'],
+    65: ['🌧️', 'Pluie forte',           'heavyrain'],
+    66: ['🌨️', 'Pluie verglaçante',     'freezing-rain'],
+    67: ['🌨️', 'Pluie verglaçante forte','freezing-rain'],
     71: ['❄️', 'Neige légère',          'snow'],
     73: ['❄️', 'Neige modérée',         'snow'],
     75: ['❄️', 'Neige abondante',       'snow'],
-    77: ['🌨', 'Neige en grains',       'sleet'],
-    80: ['🌦', 'Averses légères',       'rain'],
-    81: ['🌧', 'Averses modérées',      'rain'],
-    82: ['🌧', 'Averses violentes',     'heavyrain'],   // pluie seule : pas d'éclairs
-    85: ['🌨', 'Averses de neige',      'snow'],
-    86: ['🌨', 'Averses de neige fortes','snow'],
-    95: ['⛈', 'Orage',                 'storm'],
-    96: ['⛈', 'Orage avec grêle',      'storm-hail'],
-    99: ['⛈', 'Orage avec forte grêle', 'storm-hail'],
+    77: ['🌨️', 'Neige en grains',       'sleet'],
+    80: ['🌦️', 'Averses légères',       'rain'],
+    81: ['🌧️', 'Averses modérées',      'rain'],
+    82: ['🌧️', 'Averses violentes',     'heavyrain'],   // pluie seule : pas d'éclairs
+    85: ['🌨️', 'Averses de neige',      'snow'],
+    86: ['🌨️', 'Averses de neige fortes','snow'],
+    95: ['⛈️', 'Orage',                 'storm'],
+    96: ['⛈️', 'Orage avec grêle',      'storm-hail'],
+    99: ['⛈️', 'Orage avec forte grêle', 'storm-hail'],
   };
   const r = m[c];
   if (r) return { icon: isNight ? (_NIGHT_ICON[r[0]] || r[0]) : r[0], desc: r[1], effect: r[2] };
   // fallback
-  if (c <= 3)  return { icon: '🌤', desc: 'Variable',   effect: 'sun' };
-  if (c <= 67) return { icon: '🌧', desc: 'Pluie',      effect: 'rain' };
+  if (c <= 3)  return { icon: '🌤️', desc: 'Variable',   effect: 'sun' };
+  if (c <= 67) return { icon: '🌧️', desc: 'Pluie',      effect: 'rain' };
   if (c <= 77) return { icon: '❄️', desc: 'Neige',      effect: 'snow' };
-  return           { icon: '⛈', desc: 'Orages',      effect: 'storm' };
+  return           { icon: '⛈️', desc: 'Orages',      effect: 'storm' };
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -3332,7 +3332,7 @@ function daySlotHTML(s) {
         <span class="day-slot-extra-item">💧 ${s.hum ?? '--'}%</span>
         <span class="day-slot-extra-item">💨 ${s.wind ?? '--'} km/h</span>
         ${extraTemp}
-        ${s.precip ? `<span class="day-slot-extra-item">🌧 ${s.precip} mm</span>` : ''}
+        ${s.precip ? `<span class="day-slot-extra-item">🌧️ ${s.precip} mm</span>` : ''}
       </div>
     </div>`;
 }
@@ -3881,7 +3881,7 @@ function applyNowcastToTile() {
   const rate = `≈ ${r.rate.toFixed(1)} mm/h`;
   let icon, label, value, sub;
   if (r.state === 'ongoing') {
-    icon  = isSnow ? '❄️' : '🌧';
+    icon  = isSnow ? '❄️' : '🌧️';
     label = isSnow ? 'Neige en cours' : 'Pluie en cours';
     value = r.endMs ? `Fin ~${hhmm(r.endMs)}` : 'Plus de 2 h';
     sub   = `${rate} · ${rainIntensityLabel(r.rate)}`;
@@ -4277,7 +4277,7 @@ function buildChart(d) {
                 if (sev != null) lines.push(`Vigilance officielle (vent) : ${VIGILANCE_NAMES_FR[sev]}`);
                 else {
                   const lv = windGustLevel(it.raw?.y);
-                  if (lv) lines.push(`⚠ Rafales ≥ repère ${lv.label.toLowerCase()} (indicatif)`);
+                  if (lv) lines.push(`⚠️ Rafales ≥ repère ${lv.label.toLowerCase()} (indicatif)`);
                 }
                 const dsets = it.chart.data.datasets;
                 const hi = dsets.find(ds => ds._band === 'high')?.data[it.dataIndex]?.y;
@@ -4924,8 +4924,8 @@ function renderStats(d) {
     { key: 'next-rain', icon: nextRainIcon, label: nextRainTitle,
       value: nextRainLabel,
       sub: nextRainSub },
-    { icon:'🌡', label:'Amplitude du jour',  value:`${tMin}° / ${tMax}°`,     sub:`Écart ${tMax-tMin}°C` },
-    { icon:'🌧', label:'Précipitations',     value:`${precip} mm`,            sub:precipSub },
+    { icon:'🌡️', label:'Amplitude du jour',  value:`${tMin}° / ${tMax}°`,     sub:`Écart ${tMax-tMin}°C` },
+    { icon:'🌧️', label:'Précipitations',     value:`${precip} mm`,            sub:precipSub },
     { icon:'💨', label:'Vent moyen max',        value:`${wMax} km/h`,            sub:`${bf.label} · force ${bf.force}` },
     { icon: windsockSVG, label: gustLabel, value: gustValueHTML, sub: gustSub },
     { icon:'📅', label:'Moy. semaine proch.', value:`${nwAvg}°`,               sub:'T° max moyenne J+7→14' },
@@ -4935,14 +4935,14 @@ function renderStats(d) {
     { icon:'💧', label:'Humidité relative',
       value: humNow !== null ? `<span style="color:${humL.color};font-weight:700">${humNow}%</span>` : '--',
       sub: dewNow !== null ? `${humL.txt} · Rosée ${dewNow}°` : humL.txt },
-    { icon:'👁', label:'Visibilité',
+    { icon:'👁️', label:'Visibilité',
       value: visKm !== null ? `${visKm.toFixed(1)} km` : '--',
       sub: visL.txt },
-    { icon:'🌡', label:'Ressenti actuel',     value:`${feelsLikeStat}°`, sub:'Température ressentie' },
-    { icon:'⏱', label:'Durée du jour',
+    { icon:'🌡️', label:'Ressenti actuel',     value:`${feelsLikeStat}°`, sub:'Température ressentie' },
+    { icon:'⏱️', label:'Durée du jour',
       value: daylightH !== null ? `${daylightH}h${String(daylightM).padStart(2,'0')}` : '--',
       sub: 'Lever → coucher du soleil' },
-    { icon:'⛈', label:'Risque d\'orage',
+    { icon:'⛈️', label:'Risque d\'orage',
       value: stormRisk ? `<span style="color:${stormRisk.color};font-weight:700">${stormRisk.label}</span>` : '--',
       sub: 'Estimation indicative' },
   ];
@@ -4950,7 +4950,7 @@ function renderStats(d) {
   // côte à côte dans la grille (orage à gauche, limite pluie-neige à
   // droite) grâce à leur position adjacente dans ce tableau.
   if (showFreezingLevel) {
-    stats.push({ icon:'🌨', label:'Limite pluie-neige',
+    stats.push({ icon:'🌨️', label:'Limite pluie-neige',
       value: `${Math.round(freezingLevelM / 50) * 50} m`,
       sub: 'Altitude du niveau 0°C' });
   }
@@ -6078,7 +6078,7 @@ function renderHeatwave(d) {
     <div class="alert-details" id="hw-details" aria-hidden="true" inert>
       <div class="alert-details-inner">
         <div class="hw-grid">
-          ${stat('🌡 Pic de chaleur', `${Math.round(peak)}°`, `Maximum ${peakDayLabel}`)}
+          ${stat('🌡️ Pic de chaleur', `${Math.round(peak)}°`, `Maximum ${peakDayLabel}`)}
           ${stat('🥵 Ressenti max', feelsPeak > -99 ? `${Math.round(feelsPeak)}°` : '--', 'Température ressentie')}
           ${stat('🌙 Nuits tropicales', `${tropicalNights}`, `Nuit ≥ ${NIGHT}°C`)}
           ${stat('⏰ Heures à risque', riskWindow, `Jour de pic · ressenti ≥ ${riskThr}°C`)}
