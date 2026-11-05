@@ -2096,7 +2096,19 @@ const CITIES = [
 // ──────────────────────────────────────────────────────────────────
 // WMO WEATHER CODE MAPPING
 // ──────────────────────────────────────────────────────────────────
-function wmoInfo(code) {
+// Icône de nuit : soleil → lune, éclaircies → nuages, « soleil + pluie » → pluie.
+const _NIGHT_ICON = { '☀️': '🌙', '🌤': '🌙', '⛅': '☁️', '🌦': '🌧' };
+// Vrai si l'instant local « AAAA-MM-JJTHH:MM » tombe avant le lever ou à/après le coucher du soleil
+// de ce jour (formats identiques à ceux de l'API : la comparaison de chaînes est exacte).
+function isNightAt(d, t) {
+  const day = String(t || '').slice(0, 10);
+  const i = d && d.daily && d.daily.time ? d.daily.time.indexOf(day) : -1;
+  if (i < 0) return false;
+  const sr = d.daily.sunrise && d.daily.sunrise[i], ss = d.daily.sunset && d.daily.sunset[i];
+  if (!sr || !ss) return false;
+  return t < sr || t >= ss;
+}
+function wmoInfo(code, isNight = false) {
   const c = code ?? 0;
   const m = {
     0:  ['☀️', 'Ciel dégagé',           'sun'],
@@ -2118,18 +2130,18 @@ function wmoInfo(code) {
     71: ['❄️', 'Neige légère',          'snow'],
     73: ['❄️', 'Neige modérée',         'snow'],
     75: ['❄️', 'Neige abondante',       'snow'],
-    77: ['🌨', 'Grésil',               'sleet'],
+    77: ['🌨', 'Neige en grains',       'sleet'],
     80: ['🌦', 'Averses légères',       'rain'],
     81: ['🌧', 'Averses modérées',      'rain'],
-    82: ['⛈', 'Violentes averses',     'storm'],
+    82: ['🌧', 'Averses violentes',     'heavyrain'],   // pluie seule : pas d'éclairs
     85: ['🌨', 'Averses de neige',      'snow'],
     86: ['🌨', 'Averses de neige fortes','snow'],
     95: ['⛈', 'Orage',                 'storm'],
     96: ['⛈', 'Orage avec grêle',      'storm-hail'],
-    99: ['⛈', 'Orage violent',         'storm'],
+    99: ['⛈', 'Orage avec forte grêle', 'storm-hail'],
   };
   const r = m[c];
-  if (r) return { icon: r[0], desc: r[1], effect: r[2] };
+  if (r) return { icon: isNight ? (_NIGHT_ICON[r[0]] || r[0]) : r[0], desc: r[1], effect: r[2] };
   // fallback
   if (c <= 3)  return { icon: '🌤', desc: 'Variable',   effect: 'sun' };
   if (c <= 67) return { icon: '🌧', desc: 'Pluie',      effect: 'rain' };
@@ -2368,13 +2380,13 @@ function fillFavoriteTemps(favs, scopeEl) {
       return;
     }
     try {
-      const u = `https://api.open-meteo.com/v1/forecast?latitude=${f.lat}&longitude=${f.lon}&current=temperature_2m,weather_code&timezone=auto`;
+      const u = `https://api.open-meteo.com/v1/forecast?latitude=${f.lat}&longitude=${f.lon}&current=temperature_2m,weather_code,is_day&timezone=auto`;
       const r = await fetchWithTimeout(u, 8000);
       if (!r.ok) return;
       const j = await r.json();
       const cw = j.current;
       if (!cw || cw.temperature_2m == null) return;
-      const data = { temp: Math.round(cw.temperature_2m), icon: wmoInfo(cw.weather_code).icon, ts: Date.now() };
+      const data = { temp: Math.round(cw.temperature_2m), icon: wmoInfo(cw.weather_code, cw.is_day === 0).icon, ts: Date.now() };
       _favTempCache.set(key, data);
       const el = scopeEl.querySelector(`[data-fs-temp="${i}"]`);
       if (el) el.textContent = `${data.icon} ${data.temp}°`;
@@ -3385,7 +3397,7 @@ function recolorGustTile() {
 
 function renderToday(d) {
   const cw   = d.current_weather;
-  const info = wmoInfo(cw.weathercode);
+  const info = wmoInfo(cw.weathercode, cw.is_day === 0);
   S.weatherEffect = info.effect;
   const todayStr = d.daily.time[0] || TODAY_STR;
 
@@ -3690,7 +3702,7 @@ function renderHourly(d, opts = {}) {
     slots.push(`
       <div class="hour-slot${isNow ? ' now-hr' : ''}">
         <div class="hour-time${isNow ? ' now-lbl' : ''}">${isNow ? 'Maint.' : hm}${dayFmt}</div>
-        <div class="hour-icon">${wmoInfo(hi.weathercode[i]).icon}</div>
+        <div class="hour-icon">${wmoInfo(hi.weathercode[i], isNightAt(d, hi.time[i])).icon}</div>
         <div class="hour-temp ${tempClass(Math.round(hi.temperature_2m[i]))}">${Math.round(hi.temperature_2m[i])}°</div>
         ${prec ? `<div class="hour-prec">${prec}</div>` : '<div class="hour-prec" style="opacity:0">0</div>'}
         ${gustRow}
@@ -3863,7 +3875,7 @@ function applyNowcastToTile() {
   let isSnow = false;
   if (d && d.hourly) {
     const idx = d.hourly.time.indexOf(currentHourKey(d));
-    isSnow = idx >= 0 && wmoInfo(d.hourly.weathercode?.[idx]).effect === 'snow';
+    isSnow = idx >= 0 && ['snow', 'sleet'].includes(wmoInfo(d.hourly.weathercode?.[idx]).effect);
   }
   const hhmm = ms => new Date(ms + r.off).toISOString().slice(11, 16);
   const rate = `≈ ${r.rate.toFixed(1)} mm/h`;
@@ -3874,7 +3886,7 @@ function applyNowcastToTile() {
     value = r.endMs ? `Fin ~${hhmm(r.endMs)}` : 'Plus de 2 h';
     sub   = `${rate} · ${rainIntensityLabel(r.rate)}`;
   } else {
-    icon  = isSnow ? '❄️' : '🌂';
+    icon  = isSnow ? '❄️' : '☔';
     label = isSnow ? 'Prochaine neige' : 'Prochaine pluie';
     value = hhmm(r.startMs);
     sub   = `${r.inMin < 3 ? 'Imminente' : `Dans ~${Math.round(r.inMin / 5) * 5} min`} · ${rate}`;
@@ -4753,7 +4765,7 @@ function renderStats(d) {
   if (startIdx < 0) startIdx = 0;
   let nextRainLabel = 'Aucune dans 48h';
   let nextRainSub   = 'Pas de précip. prévue';
-  let nextRainIcon  = '🌂';
+  let nextRainIcon  = '☔';
   let nextRainTitle = 'Prochaine pluie';
   for (let h = startIdx; h < Math.min(startIdx + 48, hi.time.length); h++) {
     const prob = hi.precipitation_probability?.[h] ?? 0;
@@ -4766,9 +4778,9 @@ function renderStats(d) {
         : diffH < 2  ? `Dans ~${diffH*60} min`
         : diffH < 24 ? `Dans ~${diffH}h`
         : `${dt.toLocaleDateString('fr-FR',{weekday:'short'})} ${hm}`;
-      const isSnow = wmoInfo(hi.weathercode?.[h]).effect === 'snow';
+      const isSnow = ['snow', 'sleet'].includes(wmoInfo(hi.weathercode?.[h]).effect);
       nextRainTitle = isSnow ? 'Prochaine neige' : 'Prochaine pluie';
-      nextRainIcon  = isSnow ? '❄️' : '🌂';
+      nextRainIcon  = isSnow ? '❄️' : '☔';
       nextRainLabel = hm;
       nextRainSub   = `${inLabel} · ${prob}% · ${mm.toFixed(1)} mm`;
       break;
