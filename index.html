@@ -853,6 +853,8 @@
     .city-temp-right { display: flex; flex-direction: column; gap: 3px; }
     .city-cond-label { font-size: 1rem; font-weight: 500; }
     .city-cond-icon  { font-size: 2rem; }
+    /* Icône brouillard (SVG) : se cale sur la taille de police du conteneur, comme un emoji */
+    .wx-fog { display: inline-block; width: 1.08em; height: 1.15em; vertical-align: -0.2em; flex: none; }
 
     .day-grid {
       display: grid; grid-template-columns: 1fr 1fr;
@@ -868,7 +870,7 @@
        du texte à l'intérieur, ce qui décalait les cartes en dessous) */
     #tomorrow-card { min-height: 200px; }
     .day-slot-label { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0; color: var(--txt2); }
-    .day-slot-icon  { font-size: 2rem; line-height: 1; }
+    .day-slot-icon  { font-size: 2rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
     .day-slot-temp  { font-family: var(--fd); font-size: 1.55rem; font-weight: 700; }
     .day-slot-desc  { font-size: 0.7rem; color: var(--txt2); text-align: center; line-height: 1.3; }
     .day-slot-extra {
@@ -892,7 +894,7 @@
     /* ── Week list ───────────────────────────────────────────────── */
     .week-list { padding: 6px 0 2px; }
     .week-row {
-      display: grid; grid-template-columns: 72px auto 1fr 44px 44px;
+      display: grid; grid-template-columns: 72px 32px 1fr 44px 44px;
       align-items: center; gap: 6px;
       padding: 8px 20px; border-bottom: 1px solid var(--border);
       transition: background .12s;
@@ -900,7 +902,7 @@
     .week-row:last-child { border-bottom: none; }
     .week-day { font-size: 0.8rem; font-weight: 500; }
     .week-day.is-today { color: var(--accent); }
-    .week-icon { font-size: 1.25rem; justify-self: center; }
+    .week-icon { font-size: 1.25rem; justify-self: center; display: flex; align-items: center; justify-content: center; line-height: 1; }
     .week-desc { font-size: 0.7rem; color: var(--txt2); display: flex; align-items: center; gap: 6px; min-width: 0; }
     .week-desc-txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* Pastille de rafales (>= 60 km/h) : ne se tronque jamais, la description passe avant en ellipsis. */
@@ -2097,6 +2099,8 @@ const CITIES = [
 // WMO WEATHER CODE MAPPING
 // ──────────────────────────────────────────────────────────────────
 // Icône de nuit : soleil → lune, éclaircies → nuages, « soleil + pluie » → pluie.
+// Brouillard : SVG sur mesure (l'emoji 🌫️ rend mal selon les plateformes). Insérer via innerHTML.
+const FOG_ICON = '<svg class="wx-fog" viewBox="0 0 32 34" role="img" aria-label="Brouillard"><circle cx="11" cy="12" r="6" fill="#B4B2A9"/><circle cx="19" cy="10" r="7" fill="#B4B2A9"/><rect x="5" y="12" width="22" height="7" rx="3.5" fill="#B4B2A9"/><g stroke="#888780" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="23.5" x2="24" y2="23.5"/><line x1="8" y1="28" x2="28" y2="28"/><line x1="4" y1="32.5" x2="20" y2="32.5"/></g></svg>';
 const _NIGHT_ICON = { '☀️': '🌙', '🌤️': '🌙', '⛅': '☁️', '🌦️': '🌧️' };
 // Vrai si l'instant local « AAAA-MM-JJTHH:MM » tombe avant le lever ou à/après le coucher du soleil
 // de ce jour (formats identiques à ceux de l'API : la comparaison de chaînes est exacte).
@@ -2115,8 +2119,8 @@ function wmoInfo(code, isNight = false) {
     1:  ['🌤️', 'Principalement dégagé', 'sun'],
     2:  ['⛅', 'Partiellement nuageux', 'partly-cloudy'],
     3:  ['☁️', 'Couvert',               'cloud'],
-    45: ['🌫️', 'Brouillard',            'fog'],
-    48: ['🌫️', 'Brouillard givrant',    'fog'],
+    45: [FOG_ICON, 'Brouillard',            'fog'],
+    48: [FOG_ICON, 'Brouillard givrant',    'fog'],
     51: ['🌦️', 'Bruine légère',         'drizzle'],
     53: ['🌦️', 'Bruine modérée',        'drizzle'],
     55: ['🌧️', 'Bruine dense',          'drizzle'],
@@ -2376,7 +2380,7 @@ function fillFavoriteTemps(favs, scopeEl) {
     const cached = _favTempCache.get(key);
     if (cached && (Date.now() - cached.ts) < FAV_TEMP_CACHE_TTL_MS) {
       const el = scopeEl.querySelector(`[data-fs-temp="${i}"]`);
-      if (el) el.textContent = `${cached.icon} ${cached.temp}°`;
+      if (el) el.innerHTML = `${cached.icon} ${cached.temp}°`;
       return;
     }
     try {
@@ -2389,7 +2393,7 @@ function fillFavoriteTemps(favs, scopeEl) {
       const data = { temp: Math.round(cw.temperature_2m), icon: wmoInfo(cw.weather_code, cw.is_day === 0).icon, ts: Date.now() };
       _favTempCache.set(key, data);
       const el = scopeEl.querySelector(`[data-fs-temp="${i}"]`);
-      if (el) el.textContent = `${data.icon} ${data.temp}°`;
+      if (el) el.innerHTML = `${data.icon} ${data.temp}°`;
     } catch (e) { /* silencieux — ce favori reste sans température, les autres continuent */ }
   });
 }
@@ -3407,7 +3411,7 @@ function renderToday(d) {
 
   // Big temp + condition
   document.getElementById('city-temp-big').textContent = `${Math.round(cw.temperature)}°`;
-  document.getElementById('city-cond-icon').textContent = info.icon;
+  document.getElementById('city-cond-icon').innerHTML = info.icon;
   document.getElementById('city-cond-label').textContent = info.desc;
   renderHeroMeta(d);
 
