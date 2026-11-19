@@ -49,8 +49,11 @@
   try {
     var root = document.documentElement, force = (location.search.match(/[?&]emoji=([01])/) || [])[1];
     if (force === '0') return;
-    var need = force === '1' || /Tesla|QtCarBrowser/i.test(navigator.userAgent || '');
-    if (!need) {
+    var ua = navigator.userAgent || '';
+    var need = force === '1' || /Tesla|QtCarBrowser/i.test(ua);
+    // Mobiles (Android / iOS) : toujours une police emoji native, on ne teste pas et on garde le rendu d'origine
+    var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+    if (!need && !mobile) {
       var c = document.createElement('canvas'); c.width = c.height = 48;
       var x = c.getContext('2d', { willReadFrequently: true });
       var draw = function (ch) {
