@@ -42,37 +42,22 @@
   html.emoji-fix { --fd: 'EmojiFix', 'Inter', sans-serif; --fb: 'EmojiFix', 'Inter', sans-serif; }
 </style>
 <script>
-/* Détection emoji : on n'active la police embarquée (EmojiFix) que si le navigateur
-   est une Tesla OU ne sait pas dessiner les emojis en couleur. Sinon : comportement d'origine.
-   Forçage pour test : ?emoji=1 (activer) / ?emoji=0 (désactiver). */
+/* Police emoji embarquée (EmojiFix) : activée UNIQUEMENT sur le navigateur de voiture Tesla.
+   Tous les autres supports (PC, mobile, PWA...) gardent le rendu d'origine.
+   Secours si la Tesla n'est pas reconnue : ouvrir une fois  ?emoji=1  (mémorisé sur cet appareil).
+   Pour revenir au rendu d'origine : ?emoji=0 */
 (function () {
   try {
-    var root = document.documentElement, force = (location.search.match(/[?&]emoji=([01])/) || [])[1];
-    if (force === '0') return;
-    var ua = navigator.userAgent || '';
-    var need = force === '1' || /Tesla|QtCarBrowser/i.test(ua);
-    // Mobiles (Android / iOS) : toujours une police emoji native, on ne teste pas et on garde le rendu d'origine
-    var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
-    if (!need && !mobile) {
-      var c = document.createElement('canvas'); c.width = c.height = 48;
-      var x = c.getContext('2d', { willReadFrequently: true });
-      var draw = function (ch) {
-        x.clearRect(0, 0, 48, 48); x.fillStyle = '#000'; x.textBaseline = 'top';
-        x.font = '32px sans-serif'; x.fillText(ch, 2, 2);
-        var d = x.getImageData(0, 0, 48, 48).data, ink = 0, col = 0;
-        for (var i = 0; i < d.length; i += 4) {
-          if (d[i + 3] > 40) { ink++; if (Math.abs(d[i] - d[i + 1]) > 24 || Math.abs(d[i + 1] - d[i + 2]) > 24) col++; }
-        }
-        return { ink: ink, col: col };
-      };
-      // Canvas bloqué / anti-fingerprinting (rien dessiné pour un « A ») : on ne touche à rien
-      if (x && draw('A').ink > 0) {
-        // Emojis météo + récents (Unicode 11/12) : si l'un n'est pas en couleur, la police système est absente ou trop ancienne
-        var set = ['\u{1F327}\uFE0F', '\u2600\uFE0F', '\u26C5', '\u{1F321}\uFE0F', '\u{1F975}', '\u{1F9CA}', '\u{1F9ED}'];
-        for (var k = 0; k < set.length; k++) { if (draw(set[k]).col < 12) { need = true; break; } }
-      }
-    }
-    if (need) root.classList.add('emoji-fix');
+    var root = document.documentElement, KEY = 'emojiFix';
+    var q = (location.search.match(/[?&]emoji=([01])/) || [])[1], saved = null;
+    try {
+      if (q === '1') localStorage.setItem(KEY, '1');
+      else if (q === '0') localStorage.removeItem(KEY);
+      saved = localStorage.getItem(KEY);
+    } catch (e) {}
+    var tesla = /Tesla|TeslaBrowser|QtCarBrowser/i.test(navigator.userAgent || '');
+    if (q === '0') return;
+    if (tesla || q === '1' || saved === '1') root.classList.add('emoji-fix');
   } catch (e) {}
 })();
 </script>
