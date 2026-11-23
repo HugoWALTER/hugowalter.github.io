@@ -4,7 +4,7 @@
 //             Cache-first pour les autres assets statiques
 // ──────────────────────────────────────────────────────────────────
 
-const CACHE_NAME   = 'weatherradar-v47';
+const CACHE_NAME   = 'weatherradar-v48';
 const OFFLINE_PAGE = '/';
 
 // Assets à mettre en cache immédiatement à l'installation
